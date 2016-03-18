@@ -1,0 +1,89 @@
+# coding: utf-8
+
+# $Id: $
+from unittest import TestCase
+from fffw.graph import FilterComplex, filters
+
+
+class FilterGraphTestCase(TestCase):
+
+    def testFilterGraph(self):
+        """ Большой тест на работоспособность и как пример использования.
+
+        [I-1/Logo]---<Scale>-------
+                                  |
+        [I-0/input]--<Deint>--<Overlay>--<Split>--<Scale>--[O/480p]
+                                            |
+                                            ------<Scale>--[O/720p]
+        """
+
+        inputs = 2  # число входных файлов - лого + видео
+
+        outputs = 2  # число выходных файлов - 480p + 720p
+
+        fc = FilterComplex(inputs=inputs, audio_inputs=1, outputs=outputs)
+
+        deint = filters.Deint(enabled=True)  # можно отключить, если не нужен
+
+        # первый видеопоток идет в деинтерлейсинг
+        next_node = fc.video | deint
+
+        left, top = 20, 20  # лого будет в левом верхнем углу
+
+        # прокидываем в overlay либо первый источник, либо его
+        # deinterlaced - вариант
+        over = next_node | filters.Overlay(left, top)
+
+        logo_width, logo_height = 200, 50  # размер лого подогнан под размер
+        # исходника видео
+
+        # второй поток идет в масштабировине логотипа, а затем вторым
+        # входом в overlay
+        next_node = fc.video | filters.Scale(logo_width, logo_height) | over
+
+        # разбираемся с аудио
+        asplit = fc.audio | filters.AudioSplit(2)
+
+        for i in range(2):
+            asplit.connect_dest(fc.get_audio_dest(i))
+
+        # делим видео на потоки; если выходной поток всего один, то вставляем
+        # заглушку
+
+        # подключаем split к предыдущей вершине
+        split = next_node | filters.Split(2)
+
+        # готовим почву для добавления масштабирования в промежуточные
+        # видеопотоки
+        sizes = [(640, 480), (1280, 720)]
+
+        for i, size in enumerate(sizes):
+            # готовим фильтр масштабирования; если масштабирование не задано,
+            # генерируем заглушку
+            w, h = size or (0, 0)
+            scale = filters.Scale(w, h, enabled=size)
+            # связываем потоки из фильтра split с выходными потоками через
+            # фильтр масштабирования
+            split | scale | fc.get_video_dest(i)
+
+        result = fc.render()
+
+        expected = ';'.join([
+            # деинтерлейс
+            '[0:v]yadif[v:yadif0]',
+            # наложение лого
+            '[v:yadif0][v:overlay0]overlay=x=20:y=20[v:overlay1]',
+            # копирование видео в 2 потока
+            '[v:overlay1]split[v:split0][v:split1]',
+            # каждый поток масштабируется к своему размеру
+            '[v:split0]scale=640x480[vout0]',
+            '[v:split1]scale=1280x720[vout1]',
+
+            # масштабирование логотипа
+            '[1:v]scale=200x50[v:overlay0]',
+
+            # копирование аудио в 2 потока
+            '[0:a]asplit[aout0][aout1]'
+        ])
+
+        self.assertEqual(result, expected)
