@@ -35,7 +35,6 @@ class FFMPEGTestCase(TestCase):
         ff.add_output(out0, cv0, ca0)
         ff.add_output(out1, ca1)
 
-        cmd = ff.get_cmd()
         expected = [
             'ffmpeg',
             '-i', '/tmp/input.mp4',

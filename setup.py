@@ -1,12 +1,15 @@
-from distutils.core import setup
+from setuptools import setup
+
+from setuptools import find_packages
 
 setup(
     name='fffw',
     version='0.0.1',
-    packages=['fffw'],
+    packages=find_packages(exclude=["tests"]),
     url='http://github.com/rutube/fffw',
     license='Beer License',
     author='tumb1er',
     author_email='zimbler@gmail.com',
-    description='FFMPEG filters wrapper'
+    description='FFMPEG filters wrapper', requires=['six'],
+    test_suite="tests"
 )
