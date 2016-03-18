@@ -14,6 +14,16 @@ __all__ = [
 ]
 
 
+class Pass(Node):
+    kind = VIDEO
+    enabled = False
+
+
+class AudioPass(Node):
+    kind = AUDIO
+    enabled = False
+
+
 class Deint(Node):
     kind = VIDEO
     name = 'yadif'

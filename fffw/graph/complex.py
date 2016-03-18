@@ -79,6 +79,9 @@ class FilterComplex(object):
         # лету, поэтому перед конкатенацией удаляем дубликаты (с учетом порядка)
         return ';'.join(collections.OrderedDict.fromkeys(result))
 
+    def __str__(self):
+        return self.render()
+
     def video_naming(self, name='tmp'):
         """ Функция, генерирующая уникальные идентификаторы ребер графа.
 
