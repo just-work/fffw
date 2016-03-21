@@ -51,7 +51,7 @@ class Dest(object):
         return "Dest('[%s]')" % self.id
 
     # noinspection PyMethodMayBeStatic,PyUnusedLocal
-    def render(self, namer):
+    def render(self, namer, id=None):
         # за него уже все отрендерели
         return []
 
@@ -115,7 +115,7 @@ class Edge(object):
         self._output = dest
         return dest
 
-    def render(self, namer):
+    def render(self, namer, id=None):
         """ Возвращает список описаний ребер графа в виде строк
 
         :param namer: функция, генерирующая уникальные идентификаторы ребер
@@ -125,7 +125,7 @@ class Edge(object):
         """
         if not self.id:
             self.id = namer(self._output.name)
-        return self._output.render(namer)
+        return self._output.render(namer, id=id)
 
 
 class Node(object):
@@ -144,7 +144,7 @@ class Node(object):
         self.inputs = [None] * self.input_count
         self.outputs = [None] * self.output_count
 
-    def render(self, namer):
+    def render(self, namer, id=None):
         """ Возвращает список описаний ребер графа в виде строк
 
         Первым элементом списка является строка, соответствующая текущему
@@ -156,9 +156,12 @@ class Node(object):
         :rtype: List[str]
         """
         if not self.enabled:
-            return self.outputs[0].render(namer)
+            # id входного ребра/потока переносится на выходно
 
-        result = [self.get_filter_cmd(namer)]
+            next_edge = self.outputs[0]
+            return next_edge.render(namer, id=id)
+
+        result = [self.get_filter_cmd(namer, id=id)]
 
         for dest in self.outputs:
             if isinstance(dest.output, Dest):
@@ -166,7 +169,7 @@ class Node(object):
             result.extend(dest.render(namer))
         return result
 
-    def get_filter_cmd(self, namer):
+    def get_filter_cmd(self, namer, id=id):
         """ Возвращает строку-описание фильтра.
 
         Возвращаемое значение имеет формат [IN] FILTER ARGS [OUT]
@@ -183,14 +186,15 @@ class Node(object):
         for edge in self.inputs:
             if not edge.id:
                 edge.id = namer(self.name)
-            inputs.append("[%s]" % edge.id)
+            inputs.append("[%s]" % str(id or edge.id))
 
         for edge in self.outputs:
             node = edge.output
-            if isinstance(node, Node) and not node.enabled:
+            while isinstance(node, Node) and not node.enabled:
                 # если следующая вершина у графа выключена, используем
                 # id ребра, следующего за ней
                 edge = node.outputs[0]
+                node = edge.output
             if not edge.id:
                 edge.id = namer(self.name)
             outputs.append("[%s]" % edge.id)
@@ -302,12 +306,15 @@ class Source(object):
         :rtype: List[str]
         """
         edge = self._edge
+        id = edge.id
         node = edge.output
         # если следующая вершина отключена, используем ID ребра, следующего
         # за ней
         if isinstance(node, Node) and not node.enabled:
             edge = node.outputs[0]
-        return edge.render(namer)
+        else:
+            id = None
+        return edge.render(namer, id=id)
 
     def __repr__(self):
         return "Source('[%s]')" % self.id

@@ -21,11 +21,13 @@ class FFMPEG(BaseWrapper):
     arguments = [
         ('strict', '-strict '),
         ('realtime', '-re '),
+        ('threads', '-threads '),
         ('time_offset', '-ss '),
         ('inputfile', '-i '),
         ('presize_offset', '-ss '),
         ('filter_complex', '-filter_complex '),
         ('time_limit', '-t '),
+        ('vframes', '-vframes '),
         ('overwrite', '-y '),
         ('verbose', '-v '),
         ('metadata', '-metadata '),
@@ -78,6 +80,10 @@ class FFMPEG(BaseWrapper):
                 c.connect(self.filter_complex.video_outputs[self.__vdest])
                 self.__vdest += 1
             if c.codec_type == AUDIO:
-                c.connect(self.filter_complex.audio_outputs[self.__adest])
-                self.__adest += 1
+                try:
+                    c.connect(self.filter_complex.audio_outputs[self.__adest])
+                    self.__adest += 1
+                except IndexError:
+                    c.map = '0:a'
+
         self.__outputs.append((codecs, muxer))

@@ -87,3 +87,30 @@ class FilterGraphTestCase(TestCase):
         ])
 
         self.assertEqual(result, expected)
+
+    def testDisableFilter(self):
+        """Проверяет возможность выключения любого фильтра."""
+        fc = FilterComplex(audio_outputs=0, audio_inputs=0)
+
+        dest = fc.get_video_dest(0)
+        fc.video | filters.Scale(640, 360) | filters.Deint(enabled=False) | dest
+        self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
+
+        fc = FilterComplex(audio_outputs=0, audio_inputs=0)
+        dest = fc.get_video_dest(0)
+        fc.video | filters.Deint(enabled=False) | filters.Scale(640, 360) | dest
+        self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
+
+        fc = FilterComplex(audio_outputs=0, audio_inputs=0)
+        dest = fc.get_video_dest(0)
+        tmp = fc.video | filters.Deint(enabled=False)
+        tmp = tmp | filters.Deint(enabled=False)
+        tmp | filters.Scale(640, 360) | dest
+        self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
+
+        fc = FilterComplex(audio_outputs=0, audio_inputs=0)
+        dest = fc.get_video_dest(0)
+        tmp = fc.video | filters.Scale(640, 360)
+        tmp = tmp | filters.Deint(enabled=False)
+        tmp | filters.Deint(enabled=False) | dest
+        self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')

@@ -28,6 +28,14 @@ class Deint(Node):
     kind = VIDEO
     name = 'yadif'
 
+    def __init__(self, mode='0', enabled=True):
+        super(Deint, self).__init__(enabled=enabled)
+        self.mode = mode
+
+    @property
+    def args(self):
+        return "=%s" % self.mode
+
 
 class Scale(Node):
     kind = VIDEO
@@ -79,6 +87,93 @@ class Split(Node):
         return '=%s' % self._output_count
 
 
+class Concat(Node):
+    kind = VIDEO
+    name = 'concat'
+
+    def __init__(self, input_count=2):
+        enabled = input_count > 1
+        self.input_count = input_count
+        super(Concat, self).__init__(enabled=enabled)
+
+    @property
+    def args(self):
+        if self.input_count == 2:
+            return ''
+        return '=n=%s' % self.input_count
+
+
+class AudioConcat(Node):
+    kind = AUDIO
+    name = 'concat'
+
+    def __init__(self, input_count=2):
+        enabled = input_count > 1
+        self.input_count = input_count
+        super(AudioConcat, self).__init__(enabled=enabled)
+
+    @property
+    def args(self):
+        return '=v=0:a=1:n=%s' % self.input_count
+
+
+class Trim(Node):
+    kind = VIDEO
+    name = 'trim'
+
+    def __init__(self, start=None, end=None, enabled=True):
+        self.start = start
+        self.end = end
+        super(Trim, self).__init__(enabled=enabled)
+
+    @property
+    def args(self):
+        return '=start=%s:end=%s' % (self.start, self.end)
+
+
+class AudioTrim(Node):
+    kind = VIDEO
+    name = 'atrim'
+
+    def __init__(self, start=None, end=None, enabled=True):
+        self.start = start
+        self.end = end
+        super(AudioTrim, self).__init__(enabled=enabled)
+
+    @property
+    def args(self):
+        return '=start=%s:end=%s' % (self.start, self.end)
+
+
+class SetPTS(Node):
+    kind = VIDEO
+    name = 'setpts'
+
+    def __init__(self, mode='PTS-STARTPTS', enabled=True):
+        self.mode = mode
+        super(SetPTS, self).__init__(enabled=enabled)
+
+    @property
+    def args(self):
+        return '=%s' % self.mode
+
+
+class AudioSetPTS(Node):
+    kind = VIDEO
+    name = 'asetpts'
+
+    def __init__(self, mode='PTS-STARTPTS', enabled=True):
+        self.mode = mode
+        super(AudioSetPTS, self).__init__(enabled=enabled)
+
+    @property
+    def args(self):
+        return '=%s' % self.mode
+
+
+
+
+
 class AudioSplit(Node):
     kind = AUDIO
     name = "asplit"
@@ -112,3 +207,37 @@ class Overlay(Node):
     @property
     def args(self):
         return "=x=%s:y=%s" % (self.left, self.top)
+
+
+class Volume(Node):
+    kind = AUDIO
+    name='volume'
+
+    def __init__(self, volume, enabled=True):
+        super(Volume, self).__init__(enabled=enabled)
+        self.volume = volume
+
+    @property
+    def args(self):
+        return "=%.2f" % self.volume
+
+
+class Rotate(Node):
+    kind = VIDEO
+    name = "rotate"
+
+    def __init__(self, degrees=None, output_size=None, enabled=True):
+        super(Rotate, self).__init__(enabled=enabled)
+        self.degrees = degrees
+        self.output_size = output_size
+
+    @property
+    def args(self):
+        if self.degrees is not None:
+            result = "=%s*PI/180" % self.degrees
+            if self.output_size:
+                w, h = self.output_size
+                result += ':ow=%s:oh=%s' % (w, h)
+            return result
+        else:
+            raise ValueError(self.degrees)

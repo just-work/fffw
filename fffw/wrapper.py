@@ -81,5 +81,9 @@ class BaseWrapper(object):
 
         return list(map(ensure_binary, result))
 
+    def set_args(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+
     def get_cmd(self):
         return ' '.join(map(quote, ensure_text(self.get_args())))
