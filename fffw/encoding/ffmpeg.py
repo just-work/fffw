@@ -23,6 +23,7 @@ class FFMPEG(BaseWrapper):
         ('realtime', '-re '),
         ('threads', '-threads '),
         ('time_offset', '-ss '),
+        ('no_autorotate', '-noautorotate'),
         ('inputfile', '-i '),
         ('presize_offset', '-ss '),
         ('filter_complex', '-filter_complex '),
@@ -30,6 +31,10 @@ class FFMPEG(BaseWrapper):
         ('vframes', '-vframes '),
         ('overwrite', '-y '),
         ('verbose', '-v '),
+        ('novideo', '-vn '),
+        ('noaudio', '-an '),
+        ('vfilter', '-vf '),
+        ('afilter', '-af '),
         ('metadata', '-metadata '),
         ('map_chapters', '-map_chapters '),
         ('map_metadata', '-map_metadata '),
@@ -87,3 +92,7 @@ class FFMPEG(BaseWrapper):
                     c.map = '0:a'
 
         self.__outputs.append((codecs, muxer))
+
+    @property
+    def outputs(self):
+        return list(self.__outputs)

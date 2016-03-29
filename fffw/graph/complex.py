@@ -43,6 +43,8 @@ class FilterComplex(object):
                               for i in range(audio_outputs)]
         self._video_tmp = None
         self._audio_tmp = None
+        self._video_tmp = collections.Counter()
+        self._audio_tmp = collections.Counter()
 
     def get_video_dest(self, index=0):
         """ Возвращает выходной видеопоток по индексу.
@@ -62,18 +64,16 @@ class FilterComplex(object):
         """
         return self.audio_outputs[index]
 
-    def render(self):
+    def render(self, partial=False):
         """ Возвращает описание filter_graph в форме, понятной ffmpeg.
 
         :rtype: str
         """
         result = []
-        self._video_tmp = collections.Counter()
-        self._audio_tmp = collections.Counter()
         for src in self.video.streams:
-            result.extend(src.render(self.video_naming))
+            result.extend(src.render(self.video_naming, partial=partial))
         for src in self.audio.streams:
-            result.extend(src.render(self.audio_naming))
+            result.extend(src.render(self.audio_naming, partial=partial))
 
         # При рекурсивном обходе графа не производится проверка посещений на
         # лету, поэтому перед конкатенацией удаляем дубликаты (с учетом порядка)

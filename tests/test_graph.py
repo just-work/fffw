@@ -70,7 +70,7 @@ class FilterGraphTestCase(TestCase):
 
         expected = ';'.join([
             # деинтерлейс
-            '[0:v]yadif[v:yadif0]',
+            '[0:v]yadif=0[v:yadif0]',
             # наложение лого
             '[v:yadif0][v:overlay0]overlay=x=20:y=20[v:overlay1]',
             # копирование видео в 2 потока

@@ -28,9 +28,9 @@ class FFMPEGTestCase(TestCase):
         out0 = Muxer('flv', '/tmp/out.flv')
         out1 = Muxer('mp3', '/tmp/out.mp3')
 
-        cv0 = VideoCodec(codec='libx264', bitrate='700000', size='640x360')
-        ca0 = AudioCodec(codec='aac', bitrate='128000')
-        ca1 = AudioCodec(codec='libmp3lame', bitrate='394000')
+        cv0 = VideoCodec(vcodec='libx264', vbitrate='700000', size='640x360')
+        ca0 = AudioCodec(acodec='aac', abitrate='128000')
+        ca1 = AudioCodec(acodec='libmp3lame', abitrate='394000')
 
         ff.add_output(out0, cv0, ca0)
         ff.add_output(out1, ca1)
@@ -60,8 +60,8 @@ class FFMPEGTestCase(TestCase):
 
         ff.filter_complex = fc
 
-        cv0 = VideoCodec(codec='libx264', bitrate='700000', size='640x360')
-        ca0 = AudioCodec(codec='aac', bitrate='128000')
+        cv0 = VideoCodec(vcodec='libx264', vbitrate='700000', size='640x360')
+        ca0 = AudioCodec(acodec='aac', abitrate='128000')
         out0 = Muxer('flv', '/tmp/out.flv')
         ff.add_output(out0, cv0, ca0)
 
