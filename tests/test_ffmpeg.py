@@ -77,3 +77,31 @@ class FFMPEGTestCase(TestCase):
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
         print(ff.get_cmd())
+
+    def testCodecCopy(self):
+        """ Проверяется корректность использования vcodec=copy совместно с
+        фильтрами для аудио."""
+        ff = FFMPEG(inputfile='/tmp/input.mp4')
+
+        fc = FilterComplex(inputs=0, audio_inputs=1, outputs=0, audio_outputs=1)
+
+        fc.audio | filters.Volume(20) | fc.get_audio_dest(0)
+
+        ff.filter_complex = fc
+
+        cv0 = VideoCodec(vcodec='copy')
+        ca0 = AudioCodec(acodec='aac', abitrate='128000')
+        out0 = Muxer('flv', '/tmp/out.flv')
+        ff.add_output(out0, cv0, ca0)
+        expected = [
+            'ffmpeg',
+            '-i', '/tmp/input.mp4',
+            '-filter_complex',
+            '[0:a]volume=20.00[aout0]',
+            '-f', 'flv',
+            '-c:v', 'copy',
+            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '128000',
+            '/tmp/out.flv'
+        ]
+        print(ff.get_cmd())
+        self.assertEqual(ff.get_args(), ensure_binary(expected))

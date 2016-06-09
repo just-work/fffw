@@ -313,6 +313,16 @@ class Source(object):
         other.connect_edge(self._edge)
         return other
 
+    def __or__(self, other):
+        """
+        :type other: Node
+        :return: other
+        :rtype: Node
+        """
+        if not isinstance(other, Node):
+            return NotImplemented
+        return self.connect(other)
+
     def render(self, namer, partial=False):
         """ Возвращает список описаний ребер графа в виде строк
 

@@ -81,6 +81,8 @@ class FFMPEG(BaseWrapper):
             assert isinstance(c, BaseCodec)
             if not self.filter_complex:
                 continue
+            if c.codecname == 'copy':
+                continue
             if c.codec_type == VIDEO:
                 c.connect(self.filter_complex.video_outputs[self.__vdest])
                 self.__vdest += 1
