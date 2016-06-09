@@ -28,9 +28,9 @@ class FFMPEGTestCase(TestCase):
         out0 = Muxer('flv', '/tmp/out.flv')
         out1 = Muxer('mp3', '/tmp/out.mp3')
 
-        cv0 = VideoCodec(codec='libx264', bitrate='700000', size='640x360')
-        ca0 = AudioCodec(codec='aac', bitrate='128000')
-        ca1 = AudioCodec(codec='libmp3lame', bitrate='394000')
+        cv0 = VideoCodec(vcodec='libx264', vbitrate='700000', size='640x360')
+        ca0 = AudioCodec(acodec='aac', abitrate='128000')
+        ca1 = AudioCodec(acodec='libmp3lame', abitrate='394000')
 
         ff.add_output(out0, cv0, ca0)
         ff.add_output(out1, ca1)
@@ -50,3 +50,58 @@ class FFMPEGTestCase(TestCase):
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
+    def testBypass(self):
+        """ Проверка работы в режиме bypass, когда аудиопоток не проходит ни
+        через один фильтр."""
+        ff = FFMPEG(inputfile='/tmp/input.mp4')
+
+        fc = FilterComplex(audio_inputs=0, audio_outputs=0)
+        fc.video | filters.Scale(640, 360) | fc.get_video_dest(0)
+
+        ff.filter_complex = fc
+
+        cv0 = VideoCodec(vcodec='libx264', vbitrate='700000', size='640x360')
+        ca0 = AudioCodec(acodec='aac', abitrate='128000')
+        out0 = Muxer('flv', '/tmp/out.flv')
+        ff.add_output(out0, cv0, ca0)
+
+        expected = [
+            'ffmpeg',
+            '-i', '/tmp/input.mp4',
+            '-filter_complex',
+            '[0:v]scale=640x360[vout0]',
+            '-f', 'flv',
+            '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '700000',
+            '-map', '0:a', '-c:a', 'aac', '-b:a', '128000',
+            '/tmp/out.flv'
+        ]
+        self.assertEqual(ff.get_args(), ensure_binary(expected))
+        print(ff.get_cmd())
+
+    def testCodecCopy(self):
+        """ Проверяется корректность использования vcodec=copy совместно с
+        фильтрами для аудио."""
+        ff = FFMPEG(inputfile='/tmp/input.mp4')
+
+        fc = FilterComplex(inputs=0, audio_inputs=1, outputs=0, audio_outputs=1)
+
+        fc.audio | filters.Volume(20) | fc.get_audio_dest(0)
+
+        ff.filter_complex = fc
+
+        cv0 = VideoCodec(vcodec='copy')
+        ca0 = AudioCodec(acodec='aac', abitrate='128000')
+        out0 = Muxer('flv', '/tmp/out.flv')
+        ff.add_output(out0, cv0, ca0)
+        expected = [
+            'ffmpeg',
+            '-i', '/tmp/input.mp4',
+            '-filter_complex',
+            '[0:a]volume=20.00[aout0]',
+            '-f', 'flv',
+            '-c:v', 'copy',
+            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '128000',
+            '/tmp/out.flv'
+        ]
+        print(ff.get_cmd())
+        self.assertEqual(ff.get_args(), ensure_binary(expected))

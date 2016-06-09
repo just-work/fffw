@@ -18,4 +18,11 @@ class Muxer(BaseWrapper):
         self.output = output
         super(Muxer, self).__init__(format=format, **kw)
 
+    def __repr__(self):
+        return "<%s>(%s)" % (
+            self.output,
+            ','.join('%s=%s' % (k, self._args[k]) for k in self._key_mapping
+                     if self._args[k])
+        )
+
 

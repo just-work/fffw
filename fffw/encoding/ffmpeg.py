@@ -21,13 +21,20 @@ class FFMPEG(BaseWrapper):
     arguments = [
         ('strict', '-strict '),
         ('realtime', '-re '),
+        ('threads', '-threads '),
         ('time_offset', '-ss '),
+        ('no_autorotate', '-noautorotate'),
         ('inputfile', '-i '),
         ('presize_offset', '-ss '),
         ('filter_complex', '-filter_complex '),
         ('time_limit', '-t '),
+        ('vframes', '-vframes '),
         ('overwrite', '-y '),
         ('verbose', '-v '),
+        ('novideo', '-vn '),
+        ('noaudio', '-an '),
+        ('vfilter', '-vf '),
+        ('afilter', '-af '),
         ('metadata', '-metadata '),
         ('map_chapters', '-map_chapters '),
         ('map_metadata', '-map_metadata '),
@@ -74,10 +81,20 @@ class FFMPEG(BaseWrapper):
             assert isinstance(c, BaseCodec)
             if not self.filter_complex:
                 continue
+            if c.codecname == 'copy':
+                continue
             if c.codec_type == VIDEO:
                 c.connect(self.filter_complex.video_outputs[self.__vdest])
                 self.__vdest += 1
             if c.codec_type == AUDIO:
-                c.connect(self.filter_complex.audio_outputs[self.__adest])
-                self.__adest += 1
+                try:
+                    c.connect(self.filter_complex.audio_outputs[self.__adest])
+                    self.__adest += 1
+                except IndexError:
+                    c.map = '0:a'
+
         self.__outputs.append((codecs, muxer))
+
+    @property
+    def outputs(self):
+        return list(self.__outputs)
