@@ -99,6 +99,7 @@ class FFMPEGTestCase(TestCase):
             '-filter_complex',
             '[0:a]volume=20.00[aout0]',
             '-f', 'flv',
+            '-map', '0:v',
             '-c:v', 'copy',
             '-map', '[aout0]', '-c:a', 'aac', '-b:a', '128000',
             '/tmp/out.flv'

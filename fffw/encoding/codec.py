@@ -58,6 +58,10 @@ class VideoCodec(BaseCodec):
         ('x265', '-x265-params '),
     ]
 
+    def __init__(self, **kw):
+        kw.setdefault('map', '0:v')
+        super(VideoCodec, self).__init__(**kw)
+
     @property
     def codecname(self):
         return self._args['vcodec']
@@ -72,6 +76,10 @@ class AudioCodec(BaseCodec):
         ('arate', '-ar '),
         ('achannels', '-ac '),
     ]
+
+    def __init__(self, **kw):
+        kw.setdefault('map', '0:a')
+        super(AudioCodec, self).__init__(**kw)
 
     @property
     def codecname(self):

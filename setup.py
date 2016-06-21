@@ -4,7 +4,7 @@ from setuptools import find_packages
 
 setup(
     name='fffw',
-    version='0.0.8',
+    version='0.0.9',
     packages=find_packages(exclude=["tests"]),
     url='http://github.com/rutube/fffw',
     license='Beer License',
