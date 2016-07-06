@@ -24,6 +24,7 @@ class FFMPEG(BaseWrapper):
         ('threads', '-threads '),
         ('time_offset', '-ss '),
         ('no_autorotate', '-noautorotate'),
+        ('inputformat', '-f '),
         ('inputfile', '-i '),
         ('presize_offset', '-ss '),
         ('filter_complex', '-filter_complex '),
