@@ -5,6 +5,7 @@ from unittest import TestCase
 
 from fffw.encoding import FFMPEG, Muxer, VideoCodec, AudioCodec
 from fffw.graph import FilterComplex, filters
+from fffw.graph.base import SourceFile
 from fffw.wrapper import ensure_binary
 
 
@@ -12,9 +13,9 @@ class FFMPEGTestCase(TestCase):
 
     def testFFMPEG(self):
         """ Проверка работоспособности и демонстрация возможностей."""
-        ff = FFMPEG(inputfile='/tmp/input.mp4')
+        ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
 
-        fc = FilterComplex(outputs=1, audio_outputs=2)
+        fc = ff.init_filter_complex(audio_outputs=2)
 
         asplit = fc.audio | filters.AudioSplit()
 
@@ -22,8 +23,6 @@ class FFMPEGTestCase(TestCase):
 
         asplit.connect_dest(fc.get_audio_dest(0))
         asplit.connect_dest(fc.get_audio_dest(1))
-
-        ff.filter_complex = fc
 
         out0 = Muxer('flv', '/tmp/out.flv')
         out1 = Muxer('mp3', '/tmp/out.mp3')
@@ -53,12 +52,10 @@ class FFMPEGTestCase(TestCase):
     def testBypass(self):
         """ Проверка работы в режиме bypass, когда аудиопоток не проходит ни
         через один фильтр."""
-        ff = FFMPEG(inputfile='/tmp/input.mp4')
+        ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4', audio_streams=0))
 
-        fc = FilterComplex(audio_inputs=0, audio_outputs=0)
+        fc = ff.init_filter_complex()
         fc.video | filters.Scale(640, 360) | fc.get_video_dest(0)
-
-        ff.filter_complex = fc
 
         cv0 = VideoCodec(vcodec='libx264', vbitrate='700000', size='640x360')
         ca0 = AudioCodec(acodec='aac', abitrate='128000')
@@ -76,18 +73,16 @@ class FFMPEGTestCase(TestCase):
             '/tmp/out.flv'
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
-        print(ff.get_cmd())
 
     def testCodecCopy(self):
         """ Проверяется корректность использования vcodec=copy совместно с
         фильтрами для аудио."""
-        ff = FFMPEG(inputfile='/tmp/input.mp4')
+        ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
 
-        fc = FilterComplex(inputs=0, audio_inputs=1, outputs=0, audio_outputs=1)
+        fc = ff.init_filter_complex(video_inputs=0, audio_inputs=1,
+                                    video_outputs=0, audio_outputs=1)
 
         fc.audio | filters.Volume(20) | fc.get_audio_dest(0)
-
-        ff.filter_complex = fc
 
         cv0 = VideoCodec(vcodec='copy')
         ca0 = AudioCodec(acodec='aac', abitrate='128000')
@@ -104,5 +99,4 @@ class FFMPEGTestCase(TestCase):
             '-map', '[aout0]', '-c:a', 'aac', '-b:a', '128000',
             '/tmp/out.flv'
         ]
-        print(ff.get_cmd())
         self.assertEqual(ff.get_args(), ensure_binary(expected))

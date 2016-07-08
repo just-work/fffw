@@ -379,3 +379,15 @@ class Input(object):
         if not isinstance(other, Node):
             return NotImplemented
         return self.connect_dest(other)
+
+
+class SourceFile(object):
+    """ Описывает видео/аудиопотоки в исходном файле."""
+
+    def __init__(self, filename, video_streams=1, audio_streams=1):
+        self.filename = filename
+        self.video_streams = video_streams
+        self.audio_streams = audio_streams
+
+    def __str__(self):
+        return self.filename
