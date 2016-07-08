@@ -1,23 +1,18 @@
 # coding: utf-8
 
 # $Id: $
+from itertools import chain
+
 from fffw.encoding import Muxer
 from fffw.encoding.codec import BaseCodec
-from fffw.graph import FilterComplex
-from fffw.graph.base import VIDEO, AUDIO, SourceFile, Input, Source
+from fffw.graph import FilterComplex, base
 from fffw.wrapper import BaseWrapper, ensure_binary
-
-__all__ = [
-    'FFMPEG'
-]
-
-
-def flatten(l):
-    return [item for sublist in l for item in sublist]
 
 
 class FFMPEG(BaseWrapper):
     command = 'ffmpeg'
+
+    # noinspection SpellCheckingInspection
     arguments = [
         ('strict', '-strict '),
         ('realtime', '-re '),
@@ -50,14 +45,14 @@ class FFMPEG(BaseWrapper):
         self.__outputs = []
         self.__vdest = self.__adest = 0
 
-        self.__video = Input(kind=VIDEO)
-        self.__audio = Input(kind=AUDIO)
+        self.__video = base.Input(kind=base.VIDEO)
+        self.__audio = base.Input(kind=base.AUDIO)
 
-        if isinstance(inputfile, SourceFile):
+        if isinstance(inputfile, base.SourceFile):
             self.add_input(inputfile)
         elif isinstance(inputfile, (list, tuple)):
-            for input in inputfile:
-                self.add_input(input)
+            for i in inputfile:
+                self.add_input(i)
         else:
             assert inputfile is None, "invalid inputfile type"
 
@@ -85,26 +80,26 @@ class FFMPEG(BaseWrapper):
     def get_output_args(self):
         result = []
         for codecs, muxer in self.__outputs:
-            args = flatten(c.get_args() for c in codecs)
+            args = list(chain.from_iterable(c.get_args() for c in codecs))
             result.extend(muxer.get_args() + args + [muxer.output])
         return result
 
-    def add_input(self, input):
+    def add_input(self, inputfile):
         """ Добавляет новый входящий файл.
 
-        :type input: graph.base.SourceFile
+        :type inputfile: graph.base.SourceFile
         """
         assert not self.filter_complex, "filter complex already initialized"
-        assert isinstance(input, SourceFile)
-        self.__inputs.append(input)
+        assert isinstance(inputfile, base.SourceFile)
+        self.__inputs.append(inputfile)
 
-        for _ in range(input.video_streams):
+        for _ in range(inputfile.video_streams):
             i = len(self.__video.streams)
-            self.__video < Source('%s:v' % i, VIDEO)
+            self.__video < base.Source('%s:v' % i, base.VIDEO)
 
-        for _ in range(input.audio_streams):
+        for _ in range(inputfile.audio_streams):
             i = len(self.__audio.streams)
-            self.__audio < Source('%s:a' % i, AUDIO)
+            self.__audio < base.Source('%s:a' % i, base.AUDIO)
 
     def add_output(self, muxer, *codecs):
         assert isinstance(muxer, Muxer)
@@ -115,11 +110,11 @@ class FFMPEG(BaseWrapper):
                 continue
             if c.codecname == 'copy':
                 continue
-            if c.codec_type == VIDEO:
+            if c.codec_type == base.VIDEO:
                 c.connect(
                     fc.get_video_dest(self.__vdest, create=False))
                 self.__vdest += 1
-            if c.codec_type == AUDIO:
+            if c.codec_type == base.AUDIO:
                 try:
                     c.connect(fc.get_audio_dest(self.__adest, create=False))
                     self.__adest += 1
