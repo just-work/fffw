@@ -14,14 +14,8 @@ __all__ = [
 class FilterComplex(object):
     """ Описание графов конвертации для ffmpeg."""
 
-    def __init__(self, outputs=1, audio_outputs=None,
-                 inputs=1, audio_inputs=None):
+    def __init__(self, inputs=1, audio_inputs=None):
         """
-        :param outputs: Число выходных видео потоков (по-умолчанию 1)
-        :type outputs: int
-        :param audio_outputs: Число выходных аудио потоков (по-уполчанию равно
-        числу выходных видео-потоков)
-        :type audio_outputs: int
         :param inputs: Число входных видео потоков (по-умолчанию 1)
         :type inputs: int
         :param audio_inputs: Число входных аудио потоков (по-уполчанию равно
@@ -30,39 +24,46 @@ class FilterComplex(object):
         """
         if audio_inputs is None:
             audio_inputs = inputs
-        if audio_outputs is None:
-            audio_outputs = outputs
-
         self.video = base.Input([base.Source('%s:v' % i, base.VIDEO)
                                 for i in range(inputs)], base.VIDEO)
         self.audio = base.Input([base.Source('%s:a' % i, base.AUDIO)
                                 for i in range(audio_inputs)], base.AUDIO)
-        self.video_outputs = [base.Dest('vout%s' % i, base.VIDEO)
-                              for i in range(outputs)]
-        self.audio_outputs = [base.Dest('aout%s' % i, base.AUDIO)
-                              for i in range(audio_outputs)]
+        self.__video_outputs = {}
+        self.__audio_outputs = {}
         self._video_tmp = None
         self._audio_tmp = None
         self._video_tmp = collections.Counter()
         self._audio_tmp = collections.Counter()
 
-    def get_video_dest(self, index=0):
+    def get_video_dest(self, index=0, create=True):
         """ Возвращает выходной видеопоток по индексу.
         :param index: номер видеопотока.
         :type index: int
         :return: выходной видеопоток
         :rtype: base.Dest
         """
-        return self.video_outputs[index]
+        try:
+            return self.__video_outputs[index]
+        except KeyError:
+            if not create:
+                raise IndexError(index)
+            self.__video_outputs[index] = base.Dest('vout%s' % index, base.VIDEO)
+        return self.__video_outputs[index]
 
-    def get_audio_dest(self, index=0):
+    def get_audio_dest(self, index=0, create=True):
         """ Возвращает выходной аудиопоток по индексу.
         :param index: номер аудиопотока.
         :type index: int
         :return: выходной аудиопоток
         :rtype: base.Dest
         """
-        return self.audio_outputs[index]
+        try:
+            return self.__audio_outputs[index]
+        except KeyError:
+            if not create:
+                raise IndexError(index)
+            self.__audio_outputs[index] = base.Dest('aout%s' % index, base.AUDIO)
+        return self.__audio_outputs[index]
 
     def render(self, partial=False):
         """ Возвращает описание filter_graph в форме, понятной ffmpeg.

@@ -21,7 +21,7 @@ class FilterGraphTestCase(TestCase):
 
         outputs = 2  # число выходных файлов - 480p + 720p
 
-        fc = FilterComplex(inputs=inputs, audio_inputs=1, outputs=outputs)
+        fc = FilterComplex(inputs=inputs, audio_inputs=1)
 
         deint = filters.Deint(enabled=True)  # можно отключить, если не нужен
 
@@ -90,25 +90,25 @@ class FilterGraphTestCase(TestCase):
 
     def testDisableFilter(self):
         """Проверяет возможность выключения любого фильтра."""
-        fc = FilterComplex(audio_outputs=0, audio_inputs=0)
+        fc = FilterComplex(audio_inputs=0)
 
         dest = fc.get_video_dest(0)
         fc.video | filters.Scale(640, 360) | filters.Deint(enabled=False) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
-        fc = FilterComplex(audio_outputs=0, audio_inputs=0)
+        fc = FilterComplex(audio_inputs=0)
         dest = fc.get_video_dest(0)
         fc.video | filters.Deint(enabled=False) | filters.Scale(640, 360) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
-        fc = FilterComplex(audio_outputs=0, audio_inputs=0)
+        fc = FilterComplex(audio_inputs=0)
         dest = fc.get_video_dest(0)
         tmp = fc.video | filters.Deint(enabled=False)
         tmp = tmp | filters.Deint(enabled=False)
         tmp | filters.Scale(640, 360) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
-        fc = FilterComplex(audio_outputs=0, audio_inputs=0)
+        fc = FilterComplex(audio_inputs=0)
         dest = fc.get_video_dest(0)
         tmp = fc.video | filters.Scale(640, 360)
         tmp = tmp | filters.Deint(enabled=False)

@@ -4,7 +4,7 @@
 from unittest import TestCase
 
 from fffw.encoding import FFMPEG, Muxer, VideoCodec, AudioCodec
-from fffw.graph import FilterComplex, filters
+from fffw.graph import filters
 from fffw.graph.base import SourceFile
 from fffw.wrapper import ensure_binary
 
@@ -13,7 +13,8 @@ class FFMPEGTestCase(TestCase):
 
     def testFFMPEG(self):
         """ Проверка работоспособности и демонстрация возможностей."""
-        ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
+        ff = FFMPEG()
+        ff < SourceFile('/tmp/input.mp4')
 
         fc = ff.init_filter_complex(audio_outputs=2)
 

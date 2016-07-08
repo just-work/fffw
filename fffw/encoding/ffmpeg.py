@@ -48,7 +48,6 @@ class FFMPEG(BaseWrapper):
         super(FFMPEG, self).__init__(**kw)
         self._args['inputfile'] = self.__inputs = []
         self.__outputs = []
-        self.__dest_count = None
         self.__vdest = self.__adest = 0
 
         if isinstance(inputfile, SourceFile):
@@ -72,14 +71,9 @@ class FFMPEG(BaseWrapper):
             audio_outputs = 0
 
         self._args['filter_complex'] = fc = FilterComplex(
-            outputs=video_outputs,
-            audio_outputs=audio_outputs,
             inputs=video_inputs,
             audio_inputs=audio_inputs
         )
-        self.__dest_count = max(len(fc.video_outputs),
-                                len(fc.audio_outputs))
-
         return fc
 
     @property
@@ -113,16 +107,18 @@ class FFMPEG(BaseWrapper):
         assert isinstance(muxer, Muxer)
         for c in codecs:
             assert isinstance(c, BaseCodec)
-            if not self.filter_complex:
+            fc = self.filter_complex
+            if not fc:
                 continue
             if c.codecname == 'copy':
                 continue
             if c.codec_type == VIDEO:
-                c.connect(self.filter_complex.video_outputs[self.__vdest])
+                c.connect(
+                    fc.get_video_dest(self.__vdest, create=False))
                 self.__vdest += 1
             if c.codec_type == AUDIO:
                 try:
-                    c.connect(self.filter_complex.audio_outputs[self.__adest])
+                    c.connect(fc.get_audio_dest(self.__adest, create=False))
                     self.__adest += 1
                 except IndexError:
                     c.map = '0:a'
