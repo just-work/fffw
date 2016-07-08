@@ -119,3 +119,14 @@ class FilterGraphTestCase(TestCase):
         tmp = tmp | filters.Deint(enabled=False)
         tmp | filters.Deint(enabled=False) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
+
+    def testDontUseNotConnectedSrc(self):
+        """ Проверяет возможность инициализировать, но не использовать
+        исходный поток.
+        """
+        fc = FilterComplex(video=Input([Source("0:v", VIDEO)], VIDEO),
+                           audio=Input([Source("0:a", AUDIO)], AUDIO))
+        dest = fc.get_video_dest(0)
+        fc.video | filters.Scale(640, 360) | dest
+
+        self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')

@@ -9,6 +9,9 @@ from fffw.graph import FilterComplex, base
 from fffw.wrapper import BaseWrapper, ensure_binary
 
 
+__all__ = ['FFMPEG']
+
+
 class FFMPEG(BaseWrapper):
     command = 'ffmpeg'
 
@@ -57,9 +60,9 @@ class FFMPEG(BaseWrapper):
             assert inputfile is None, "invalid inputfile type"
 
     def init_filter_complex(self):
-        assert self.__inputs, "no inputs defined yet"
-        assert not self.__outputs, "outputs already defined"
-
+        # assert self.__inputs, "no inputs defined yet"
+        # assert not self.__outputs, "outputs already defined"
+        #
         self._args['filter_complex'] = fc = FilterComplex(
             video=self.__video,
             audio=self.__audio
@@ -108,12 +111,13 @@ class FFMPEG(BaseWrapper):
             fc = self.filter_complex
             if not fc:
                 continue
-            if c.codecname == 'copy':
-                continue
             if c.codec_type == base.VIDEO:
-                c.connect(
-                    fc.get_video_dest(self.__vdest, create=False))
-                self.__vdest += 1
+                try:
+                    c.connect(
+                        fc.get_video_dest(self.__vdest, create=False))
+                    self.__vdest += 1
+                except IndexError:
+                    c.map = '0:v'
             if c.codec_type == base.AUDIO:
                 try:
                     c.connect(fc.get_audio_dest(self.__adest, create=False))

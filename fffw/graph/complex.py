@@ -61,8 +61,12 @@ class FilterComplex(object):
         """
         result = []
         for src in self.video.streams:
+            if not src._edge:
+                continue
             result.extend(src.render(self.video_naming, partial=partial))
         for src in self.audio.streams:
+            if not src._edge:
+                continue
             result.extend(src.render(self.audio_naming, partial=partial))
 
         # При рекурсивном обходе графа не производится проверка посещений на

@@ -78,7 +78,7 @@ class FFMPEGTestCase(TestCase):
     def testCodecCopy(self):
         """ Проверяется корректность использования vcodec=copy совместно с
         фильтрами для аудио."""
-        ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp3', video_streams=0))
+        ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
 
         fc = ff.init_filter_complex()
 
@@ -90,7 +90,7 @@ class FFMPEGTestCase(TestCase):
         ff.add_output(out0, cv0, ca0)
         expected = [
             'ffmpeg',
-            '-i', '/tmp/input.mp3',
+            '-i', '/tmp/input.mp4',
             '-filter_complex',
             '[0:a]volume=20.00[aout0]',
             '-f', 'flv',
