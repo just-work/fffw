@@ -14,24 +14,13 @@ __all__ = [
 class FilterComplex(object):
     """ Описание графов конвертации для ffmpeg."""
 
-    def __init__(self, inputs=1, audio_inputs=None):
+    def __init__(self, video=None, audio=None):
         """
-        :param inputs: Число входных видео потоков (по-умолчанию 1)
-        :type inputs: int
-        :param audio_inputs: Число входных аудио потоков (по-уполчанию равно
-        числу входных видео-потоков)
-        :type audio_inputs: int
         """
-        if audio_inputs is None:
-            audio_inputs = inputs
-        self.video = base.Input([base.Source('%s:v' % i, base.VIDEO)
-                                for i in range(inputs)], base.VIDEO)
-        self.audio = base.Input([base.Source('%s:a' % i, base.AUDIO)
-                                for i in range(audio_inputs)], base.AUDIO)
+        self.video = video or base.Input(kind=base.VIDEO)
+        self.audio = audio or base.Input(kind=base.AUDIO)
         self.__video_outputs = {}
         self.__audio_outputs = {}
-        self._video_tmp = None
-        self._audio_tmp = None
         self._video_tmp = collections.Counter()
         self._audio_tmp = collections.Counter()
 

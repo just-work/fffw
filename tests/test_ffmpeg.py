@@ -16,7 +16,7 @@ class FFMPEGTestCase(TestCase):
         ff = FFMPEG()
         ff < SourceFile('/tmp/input.mp4')
 
-        fc = ff.init_filter_complex(audio_outputs=2)
+        fc = ff.init_filter_complex()
 
         asplit = fc.audio | filters.AudioSplit()
 
@@ -78,10 +78,9 @@ class FFMPEGTestCase(TestCase):
     def testCodecCopy(self):
         """ Проверяется корректность использования vcodec=copy совместно с
         фильтрами для аудио."""
-        ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
+        ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp3', video_streams=0))
 
-        fc = ff.init_filter_complex(video_inputs=0, audio_inputs=1,
-                                    video_outputs=0, audio_outputs=1)
+        fc = ff.init_filter_complex()
 
         fc.audio | filters.Volume(20) | fc.get_audio_dest(0)
 
@@ -91,7 +90,7 @@ class FFMPEGTestCase(TestCase):
         ff.add_output(out0, cv0, ca0)
         expected = [
             'ffmpeg',
-            '-i', '/tmp/input.mp4',
+            '-i', '/tmp/input.mp3',
             '-filter_complex',
             '[0:a]volume=20.00[aout0]',
             '-f', 'flv',

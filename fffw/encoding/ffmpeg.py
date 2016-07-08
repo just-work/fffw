@@ -4,7 +4,7 @@
 from fffw.encoding import Muxer
 from fffw.encoding.codec import BaseCodec
 from fffw.graph import FilterComplex
-from fffw.graph.base import VIDEO, AUDIO, SourceFile
+from fffw.graph.base import VIDEO, AUDIO, SourceFile, Input, Source
 from fffw.wrapper import BaseWrapper, ensure_binary
 
 __all__ = [
@@ -50,6 +50,9 @@ class FFMPEG(BaseWrapper):
         self.__outputs = []
         self.__vdest = self.__adest = 0
 
+        self.__video = Input(kind=VIDEO)
+        self.__audio = Input(kind=AUDIO)
+
         if isinstance(inputfile, SourceFile):
             self.add_input(inputfile)
         elif isinstance(inputfile, (list, tuple)):
@@ -58,21 +61,13 @@ class FFMPEG(BaseWrapper):
         else:
             assert inputfile is None, "invalid inputfile type"
 
-    def init_filter_complex(self, video_inputs=None, audio_inputs=None,
-                            video_outputs=1, audio_outputs=None):
+    def init_filter_complex(self):
         assert self.__inputs, "no inputs defined yet"
         assert not self.__outputs, "outputs already defined"
-        if video_inputs is None:
-            video_inputs = sum(map(lambda i: i.video_streams, self.__inputs))
-        if audio_inputs is None:
-            audio_inputs = sum(map(lambda i: i.audio_streams, self.__inputs))
-
-        if not audio_inputs and audio_outputs is None:
-            audio_outputs = 0
 
         self._args['filter_complex'] = fc = FilterComplex(
-            inputs=video_inputs,
-            audio_inputs=audio_inputs
+            video=self.__video,
+            audio=self.__audio
         )
         return fc
 
@@ -102,6 +97,14 @@ class FFMPEG(BaseWrapper):
         assert not self.filter_complex, "filter complex already initialized"
         assert isinstance(input, SourceFile)
         self.__inputs.append(input)
+
+        for _ in range(input.video_streams):
+            i = len(self.__video.streams)
+            self.__video < Source('%s:v' % i, VIDEO)
+
+        for _ in range(input.audio_streams):
+            i = len(self.__audio.streams)
+            self.__audio < Source('%s:a' % i, AUDIO)
 
     def add_output(self, muxer, *codecs):
         assert isinstance(muxer, Muxer)
