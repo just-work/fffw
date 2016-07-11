@@ -3,6 +3,8 @@
 # $Id: $
 from unittest import TestCase
 from fffw.graph import FilterComplex, filters
+from fffw.graph.base import Input, VIDEO, AUDIO
+from fffw.graph.base import Source
 
 
 class FilterGraphTestCase(TestCase):
@@ -19,9 +21,11 @@ class FilterGraphTestCase(TestCase):
 
         inputs = 2  # число входных файлов - лого + видео
 
-        outputs = 2  # число выходных файлов - 480p + 720p
+        video_streams = [Source("%i:v" % i, VIDEO) for i in range(inputs)]
+        audio_streams = [Source("0:a", AUDIO)]
 
-        fc = FilterComplex(inputs=inputs, audio_inputs=1, outputs=outputs)
+        fc = FilterComplex(video=Input(video_streams, VIDEO),
+                           audio=Input(audio_streams, AUDIO))
 
         deint = filters.Deint(enabled=True)  # можно отключить, если не нужен
 
@@ -90,27 +94,39 @@ class FilterGraphTestCase(TestCase):
 
     def testDisableFilter(self):
         """Проверяет возможность выключения любого фильтра."""
-        fc = FilterComplex(audio_outputs=0, audio_inputs=0)
+        fc = FilterComplex(video=Input([Source("0:v", VIDEO)], VIDEO))
 
         dest = fc.get_video_dest(0)
         fc.video | filters.Scale(640, 360) | filters.Deint(enabled=False) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
-        fc = FilterComplex(audio_outputs=0, audio_inputs=0)
+        fc = FilterComplex(video=Input([Source("0:v", VIDEO)], VIDEO))
+
         dest = fc.get_video_dest(0)
         fc.video | filters.Deint(enabled=False) | filters.Scale(640, 360) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
-        fc = FilterComplex(audio_outputs=0, audio_inputs=0)
+        fc = FilterComplex(video=Input([Source("0:v", VIDEO)], VIDEO))
         dest = fc.get_video_dest(0)
         tmp = fc.video | filters.Deint(enabled=False)
         tmp = tmp | filters.Deint(enabled=False)
         tmp | filters.Scale(640, 360) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
-        fc = FilterComplex(audio_outputs=0, audio_inputs=0)
+        fc = FilterComplex(video=Input([Source("0:v", VIDEO)], VIDEO))
         dest = fc.get_video_dest(0)
         tmp = fc.video | filters.Scale(640, 360)
         tmp = tmp | filters.Deint(enabled=False)
         tmp | filters.Deint(enabled=False) | dest
+        self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
+
+    def testDontUseNotConnectedSrc(self):
+        """ Проверяет возможность инициализировать, но не использовать
+        исходный поток.
+        """
+        fc = FilterComplex(video=Input([Source("0:v", VIDEO)], VIDEO),
+                           audio=Input([Source("0:a", AUDIO)], AUDIO))
+        dest = fc.get_video_dest(0)
+        fc.video | filters.Scale(640, 360) | dest
+
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')

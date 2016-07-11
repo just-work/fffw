@@ -13,6 +13,10 @@ __all__ = [
 class BaseCodec(BaseWrapper):
     codec_type = None
 
+    def __init__(self, **kw):
+        super(BaseCodec, self).__init__(**kw)
+        self.map = None
+
     def connect(self, dest):
         assert isinstance(dest, Dest), "Codec must connect to Dest"
         self.map = '[%s]' % dest.id
@@ -65,6 +69,7 @@ class VideoCodec(BaseCodec):
     @property
     def codecname(self):
         return self._args['vcodec']
+
 
 class AudioCodec(BaseCodec):
     codec_type = AUDIO

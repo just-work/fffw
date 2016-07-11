@@ -351,12 +351,17 @@ class Source(object):
 
 class Input(object):
     """ Хелпер для группировки входных потоков по типам."""
-    def __init__(self, streams, kind):
+    def __init__(self, streams=(), kind=None):
         """
         :type streams: List[Source]
         """
-        self.streams = streams
+        assert kind in (VIDEO, AUDIO)
+        self.streams = streams or []
         self.kind = kind
+
+    def connect_source(self, other):
+        assert isinstance(other, Source)
+        self.streams.append(other)
 
     def connect_dest(self, other):
         """ Подключает первый неподключенный источник к фильтру
@@ -379,3 +384,21 @@ class Input(object):
         if not isinstance(other, Node):
             return NotImplemented
         return self.connect_dest(other)
+
+    def __lt__(self, other):
+        if not isinstance(other, Source):
+            return NotImplemented
+        return self.connect_source(other)
+
+
+
+class SourceFile(object):
+    """ Описывает видео/аудиопотоки в исходном файле."""
+
+    def __init__(self, filename, video_streams=1, audio_streams=1):
+        self.filename = filename
+        self.video_streams = video_streams
+        self.audio_streams = audio_streams
+
+    def __str__(self):
+        return self.filename
