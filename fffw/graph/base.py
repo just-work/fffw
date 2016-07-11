@@ -372,6 +372,8 @@ class Input(object):
         """
 
         for stream in self.streams:
+            if stream.id is None:
+                continue
             if stream.edge is None:
                 return stream.connect(other)
         raise IndexError("No free sources")

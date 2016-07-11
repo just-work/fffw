@@ -99,10 +99,14 @@ class FFMPEG(BaseWrapper):
         for _ in range(inputfile.video_streams):
             i = len(self.__video.streams)
             self.__video < base.Source('%s:v' % i, base.VIDEO)
+        if not inputfile.video_streams:
+            self.__video < base.Source(None, base.VIDEO)
 
         for _ in range(inputfile.audio_streams):
             i = len(self.__audio.streams)
             self.__audio < base.Source('%s:a' % i, base.AUDIO)
+        if not inputfile.audio_streams:
+            self.__audio < base.Source(None, base.AUDIO)
 
     def add_output(self, muxer, *codecs):
         assert isinstance(muxer, Muxer)
