@@ -75,6 +75,42 @@ class FFMPEGTestCase(TestCase):
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
+    def testInputSkipStreams(self):
+        """ Проверка корректности наименования входных потоков в фильтрах."""
+
+        ff = FFMPEG()
+        ff < SourceFile('/tmp/input.jpg', audio_streams=0)
+        ff < SourceFile('/tmp/input.mp4')
+        fc = ff.init_filter_complex()
+        overlay = filters.Overlay(0,0)
+        fc.video | filters.Scale(640, 360) | overlay
+        fc.video | filters.Scale(1280, 720) | overlay
+        fc.audio | filters.Volume(-20) | fc.get_audio_dest(0)
+        overlay | fc.get_video_dest(0)
+
+        cv0 = VideoCodec(vcodec='libx264', vbitrate='700000', size='640x360')
+        ca0 = AudioCodec(acodec='aac', abitrate='128000')
+        out0 = Muxer('flv', '/tmp/out.flv')
+        ff.add_output(out0, cv0, ca0)
+
+        expected = [
+            'ffmpeg',
+            '-i', '/tmp/input.jpg',
+            '-i', '/tmp/input.mp4',
+            '-filter_complex',
+            (
+                '[0:v]scale=640x360[v:scale0];'
+                '[v:scale0][v:overlay0]overlay=x=0:y=0[vout0];'
+                '[1:v]scale=1280x720[v:overlay0];'
+                '[1:a]volume=-20.00[aout0]'),
+            '-f', 'flv',
+            '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '700000',
+            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '128000',
+            '/tmp/out.flv'
+        ]
+        self.assertEqual(ff.get_args(), ensure_binary(expected))
+
+
     def testCodecCopy(self):
         """ Проверяется корректность использования vcodec=copy совместно с
         фильтрами для аудио."""
