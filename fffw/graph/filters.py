@@ -51,6 +51,19 @@ class Scale(Node):
         return "=%sx%s" % (self.width, self.height)
 
 
+class SetSAR(Node):
+    kind = VIDEO
+    name = "setsar"
+
+    def __init__(self, sar, enabled=True):
+        super(SetSAR, self).__init__(enabled=enabled)
+        self.sar = sar
+
+    @property
+    def args(self):
+        return "=%s" % self.sar
+
+
 class Crop(Node):
     kind = VIDEO
     name = "crop"
