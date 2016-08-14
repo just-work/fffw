@@ -5,12 +5,23 @@ from fffw.graph.base import Node, VIDEO, AUDIO
 
 
 __all__ = [
+    'Pass',
+    'AudioPass',
     'Deint',
     'Scale',
+    'SetSAR',
     'Crop',
     'Split',
+    'Concat',
+    'AudioConcat',
+    'Trim',
+    'AudioTrim',
+    'SetPTS',
+    'AudioSetPTS',
     'AudioSplit',
-    'Overlay'
+    'Overlay',
+    'Volume',
+    'Rotate',
 ]
 
 
