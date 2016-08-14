@@ -37,6 +37,7 @@ class VideoCodec(BaseCodec):
     codec_type = VIDEO
     arguments = [
         ('map', '-map '),
+        ('vbsf', '-bsf:v '),
         ('vcodec', '-c:v '),
         ('pass', '-pass '),
         ('pix_fmt', '-pix_fmt '),
@@ -75,6 +76,7 @@ class AudioCodec(BaseCodec):
     codec_type = AUDIO
     arguments = [
         ('map', '-map '),
+        ('absf', '-bsf:a '),
         ('acodec', '-c:a '),
         ('aprofile', '-profile:a '),
         ('abitrate', '-b:a '),
