@@ -114,6 +114,10 @@ class FFMPEG(BaseWrapper):
             assert isinstance(c, BaseCodec)
             fc = self.filter_complex
             if not fc:
+                if c.codec_type == base.VIDEO:
+                    self.__video | c
+                if c.codec_type == base.AUDIO:
+                    self.__audio | c
                 continue
             if c.codec_type == base.VIDEO:
                 try:
@@ -121,13 +125,13 @@ class FFMPEG(BaseWrapper):
                         fc.get_video_dest(self.__vdest, create=False))
                     self.__vdest += 1
                 except IndexError:
-                    c.map = '0:v'
+                    self.__video | c
             if c.codec_type == base.AUDIO:
                 try:
                     c.connect(fc.get_audio_dest(self.__adest, create=False))
                     self.__adest += 1
                 except IndexError:
-                    c.map = '0:a'
+                    self.__audio | c
 
         self.__outputs.append((codecs, muxer))
 
