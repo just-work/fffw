@@ -77,7 +77,7 @@ class VideoCodec(BaseCodec):
     ]
 
     def __init__(self, **kw):
-        kw.setdefault('map', '0:v')
+        kw.setdefault('map', '0:v:0')
         super(VideoCodec, self).__init__(**kw)
 
     @property
@@ -98,7 +98,7 @@ class AudioCodec(BaseCodec):
     ]
 
     def __init__(self, **kw):
-        kw.setdefault('map', '0:a')
+        kw.setdefault('map', '0:a:0')
         super(AudioCodec, self).__init__(**kw)
 
     @property
