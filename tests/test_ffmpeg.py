@@ -50,10 +50,10 @@ class FFMPEGTestCase(TestCase):
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
-    def testBypass(self):
+    def testBypassWithFilterComplex(self):
         """ Проверка работы в режиме bypass, когда аудиопоток не проходит ни
         через один фильтр."""
-        ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4', audio_streams=0))
+        ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
 
         fc = ff.init_filter_complex()
         fc.video | filters.Scale(640, 360) | fc.get_video_dest(0)
@@ -70,6 +70,25 @@ class FFMPEGTestCase(TestCase):
             '[0:v]scale=640x360[vout0]',
             '-f', 'flv',
             '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '700000',
+            '-map', '0:a', '-c:a', 'aac', '-b:a', '128000',
+            '/tmp/out.flv'
+        ]
+        self.assertEqual(ff.get_args(), ensure_binary(expected))
+
+    def testBypassWithoutFilterComplex(self):
+        """ Проверка работы в режиме bypass, когда вообще нет filter_complex."""
+        ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
+
+        cv0 = VideoCodec(vcodec='libx264', vbitrate='700000', size='640x360')
+        ca0 = AudioCodec(acodec='aac', abitrate='128000')
+        out0 = Muxer('flv', '/tmp/out.flv')
+        ff.add_output(out0, cv0, ca0)
+
+        expected = [
+            'ffmpeg',
+            '-i', '/tmp/input.mp4',
+            '-f', 'flv',
+            '-map', '0:v', '-c:v', 'libx264', '-b:v', '700000',
             '-map', '0:a', '-c:a', 'aac', '-b:a', '128000',
             '/tmp/out.flv'
         ]

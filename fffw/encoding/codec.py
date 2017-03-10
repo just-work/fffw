@@ -1,7 +1,7 @@
 # coding: utf-8
 
 # $Id: $
-from fffw.graph.base import VIDEO, AUDIO, Dest
+from fffw.graph.base import VIDEO, AUDIO, Dest, Source, Node
 from fffw.wrapper import BaseWrapper
 
 __all__ = [
@@ -10,15 +10,22 @@ __all__ = [
 ]
 
 
-class BaseCodec(BaseWrapper):
+class BaseCodec(BaseWrapper, Node):
     codec_type = None
+
+    @property
+    def enabled(self):
+        return True
+
+    def render(self, namer, id=None, partial=False):
+        return []
 
     def __init__(self, **kw):
         super(BaseCodec, self).__init__(**kw)
         self.map = None
 
     def connect(self, dest):
-        assert isinstance(dest, Dest), "Codec must connect to Dest"
+        assert isinstance(dest, Dest), "Codec connects to Dest"
         self.map = '[%s]' % dest.id
 
     def __repr__(self):
@@ -27,6 +34,12 @@ class BaseCodec(BaseWrapper):
             ','.join('%s=%s' % (k, self._args[k]) for k in self._key_mapping
                      if self._args[k])
         )
+
+    def connect_edge(self, edge):
+        src = edge.input
+        assert isinstance(src, Source), "Codec connect edge only from Source"
+        assert src.id, "Source file has not stream of desired type"
+        self.map = src.id
 
     @property
     def codecname(self):
@@ -37,6 +50,7 @@ class VideoCodec(BaseCodec):
     codec_type = VIDEO
     arguments = [
         ('map', '-map '),
+        ('vbsf', '-bsf:v '),
         ('vcodec', '-c:v '),
         ('pass', '-pass '),
         ('pix_fmt', '-pix_fmt '),
@@ -63,7 +77,7 @@ class VideoCodec(BaseCodec):
     ]
 
     def __init__(self, **kw):
-        kw.setdefault('map', '0:v')
+        kw.setdefault('map', '0:v:0')
         super(VideoCodec, self).__init__(**kw)
 
     @property
@@ -75,6 +89,7 @@ class AudioCodec(BaseCodec):
     codec_type = AUDIO
     arguments = [
         ('map', '-map '),
+        ('absf', '-bsf:a '),
         ('acodec', '-c:a '),
         ('aprofile', '-profile:a '),
         ('abitrate', '-b:a '),
@@ -83,7 +98,7 @@ class AudioCodec(BaseCodec):
     ]
 
     def __init__(self, **kw):
-        kw.setdefault('map', '0:a')
+        kw.setdefault('map', '0:a:0')
         super(AudioCodec, self).__init__(**kw)
 
     @property
