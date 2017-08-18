@@ -10,12 +10,12 @@ __all__ = [
 
 
 class Muxer(BaseWrapper):
+    format = None
 
     # noinspection PyShadowingBuiltins
-    def __init__(self, format, output, **kw):
+    def __init__(self, output, **kw):
         self.output = output
-        self.format = format
-        super(Muxer, self).__init__(format=format, **kw)
+        super(Muxer, self).__init__(**kw)
 
     def __repr__(self):
         return "<%s>(%s)" % (
@@ -28,11 +28,16 @@ class Muxer(BaseWrapper):
 
     def get_opts(self):
         """ Возвращает настройки муксера в виде опций через двоеточие"""
-        return ':'.join('%s=%s' % (self._key_mapping[k].strip('- '), self._args[k]) for k in self._key_mapping
-                        if self._args[k])
+        return ':'.join('%s=%s' % (self.key_to_opt(k), self._args[k])
+                        for k in self._key_mapping if self._args[k])
+
+    def key_to_opt(self, k):
+        return self._key_mapping[k].strip('- ')
 
 
 class HLSMuxer(Muxer):
+    format = 'hls'
+
     arguments = Muxer.arguments + [
         ('method', '-method '),
         ('segment_size', '-hls_time '),
@@ -41,9 +46,11 @@ class HLSMuxer(Muxer):
 
 
 class TeeMuxer(Muxer):
+    format = 'tee'
+
     def __init__(self, *muxers):
         self.muxers = []
-        super(TeeMuxer, self).__init__('tee', muxers)
+        super(TeeMuxer, self).__init__(muxers)
 
     @property
     def output(self):
@@ -59,5 +66,3 @@ class TeeMuxer(Muxer):
 
     def get_args(self):
         return super(TeeMuxer, self).get_args()
-
-
