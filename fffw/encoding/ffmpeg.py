@@ -12,6 +12,17 @@ from fffw.wrapper import BaseWrapper, ensure_binary
 __all__ = ['FFMPEG']
 
 
+class InputList(list):
+    def __call__(self):
+        """ Делегирует форматирование аргументов объектам источника сигнала."""
+        result = []
+        for src in self:
+            if hasattr(src, 'get_args') and callable(src.get_args):
+                result.extend(src.get_args())
+            else:
+                result.append(str(src))
+        return result
+
 class FFMPEG(BaseWrapper):
     command = 'ffmpeg'
 
@@ -45,14 +56,14 @@ class FFMPEG(BaseWrapper):
 
     def __init__(self, inputfile=None, **kw):
         super(FFMPEG, self).__init__(**kw)
-        self._args['inputfile'] = self.__inputs = []
+        self._args['inputfile'] = self.__inputs = InputList()
         self.__outputs = []
         self.__vdest = self.__adest = 0
 
         self.__video = base.Input(kind=base.VIDEO)
         self.__audio = base.Input(kind=base.AUDIO)
 
-        if isinstance(inputfile, base.SourceFile):
+        if isinstance(inputfile, base.BaseSource):
             self.add_input(inputfile)
         elif isinstance(inputfile, (list, tuple)):
             for i in inputfile:
@@ -94,7 +105,7 @@ class FFMPEG(BaseWrapper):
         :type inputfile: graph.base.SourceFile
         """
         assert not self.filter_complex, "filter complex already initialized"
-        assert isinstance(inputfile, base.SourceFile)
+        assert isinstance(inputfile, base.BaseSource)
         self.__inputs.append(inputfile)
 
         for _ in range(inputfile.video_streams):

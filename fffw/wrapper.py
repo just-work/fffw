@@ -68,7 +68,13 @@ class BaseWrapper(object):
             v = self._args[k]
             if v is not None and v is not False:
                 param = self._key_mapping[k]
-                if type(v) is list:
+                if callable(v):
+                    value = v()
+                    if isinstance(value, list):
+                        result.extend(value)
+                    else:
+                        result.append(value)
+                elif type(v) is list:
                     for item in v:
                         result.extend([param.strip(), item])
                 elif v is True:

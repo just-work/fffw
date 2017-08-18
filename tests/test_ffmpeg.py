@@ -5,7 +5,7 @@ from unittest import TestCase
 
 from fffw.encoding import FFMPEG, Muxer, VideoCodec, AudioCodec
 from fffw.graph import filters
-from fffw.graph.base import SourceFile
+from fffw.graph.base import SourceFile, LavfiSource, VIDEO, AUDIO
 from fffw.wrapper import ensure_binary
 
 
@@ -129,7 +129,6 @@ class FFMPEGTestCase(TestCase):
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
-
     def testCodecCopy(self):
         """ Проверяется корректность использования vcodec=copy совместно с
         фильтрами для аудио."""
@@ -155,3 +154,21 @@ class FFMPEGTestCase(TestCase):
             '/tmp/out.flv'
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
+
+    def testLavfiSources(self):
+        vsrc = LavfiSource('testsrc', VIDEO, duration=5.3, rate=10)
+        asrc = LavfiSource('sine', AUDIO, d=5, b=4)
+        ff = FFMPEG(inputfile=[vsrc, asrc])
+        ff.add_output(Muxer('null', '/dev/null'))
+        expected = [
+            'ffmpeg',
+            '-f', 'lavfi',
+            '-i', 'testsrc=duration=5.3:rate=10',
+            '-f', 'lavfi',
+            '-i', 'sine=b=4:d=5',
+            '-f', 'null',
+            '/dev/null'
+        ]
+        self.assertEqual(ff.get_args(), ensure_binary(expected))
+
+
