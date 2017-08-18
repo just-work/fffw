@@ -23,6 +23,8 @@ __all__ = [
     'Volume',
     'Rotate',
     'Drawtext',
+    'HWUpload',
+    'ScaleNPP',
 ]
 
 
