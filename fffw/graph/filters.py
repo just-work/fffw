@@ -22,6 +22,7 @@ __all__ = [
     'Overlay',
     'Volume',
     'Rotate',
+    'Drawtext',
 ]
 
 
@@ -45,7 +46,7 @@ class Deint(Node):
 
     @property
     def args(self):
-        return "=%s" % self.mode
+        return "%s" % self.mode
 
 
 class Scale(Node):
@@ -59,7 +60,15 @@ class Scale(Node):
 
     @property
     def args(self):
-        return "=%sx%s" % (self.width, self.height)
+        return "%sx%s" % (self.width, self.height)
+
+
+class ScaleNPP(Scale):
+    name = 'scale_npp'
+
+    @property
+    def args(self):
+        return "w=%s:h=%s" % (self.width, self.height)
 
 
 class SetSAR(Node):
@@ -72,7 +81,7 @@ class SetSAR(Node):
 
     @property
     def args(self):
-        return "=%s" % self.sar
+        return "%s" % self.sar
 
 
 class Crop(Node):
@@ -88,7 +97,7 @@ class Crop(Node):
 
     @property
     def args(self):
-        return "=%s:%s:%s:%s" % (self.width, self.height, self.left, self.top)
+        return "%s:%s:%s:%s" % (self.width, self.height, self.left, self.top)
 
 
 class Split(Node):
@@ -108,7 +117,12 @@ class Split(Node):
     def args(self):
         if self._output_count == 2:
             return ''
-        return '=%s' % self._output_count
+        return '%s' % self._output_count
+
+
+class HWUpload(Node):
+    kind = VIDEO
+    name = 'hwupload_cuda'
 
 
 class Concat(Node):
@@ -124,7 +138,7 @@ class Concat(Node):
     def args(self):
         if self.input_count == 2:
             return ''
-        return '=n=%s' % self.input_count
+        return 'n=%s' % self.input_count
 
 
 class AudioConcat(Node):
@@ -138,7 +152,7 @@ class AudioConcat(Node):
 
     @property
     def args(self):
-        return '=v=0:a=1:n=%s' % self.input_count
+        return 'v=0:a=1:n=%s' % self.input_count
 
 
 class Trim(Node):
@@ -152,7 +166,7 @@ class Trim(Node):
 
     @property
     def args(self):
-        return '=start=%s:end=%s' % (self.start, self.end)
+        return 'start=%s:end=%s' % (self.start, self.end)
 
 
 class AudioTrim(Node):
@@ -166,7 +180,7 @@ class AudioTrim(Node):
 
     @property
     def args(self):
-        return '=start=%s:end=%s' % (self.start, self.end)
+        return 'start=%s:end=%s' % (self.start, self.end)
 
 
 class SetPTS(Node):
@@ -179,7 +193,7 @@ class SetPTS(Node):
 
     @property
     def args(self):
-        return '=%s' % self.mode
+        return '%s' % self.mode
 
 
 class AudioSetPTS(Node):
@@ -193,9 +207,6 @@ class AudioSetPTS(Node):
     @property
     def args(self):
         return '=%s' % self.mode
-
-
-
 
 
 class AudioSplit(Node):
@@ -215,7 +226,7 @@ class AudioSplit(Node):
     def args(self):
         if self._output_count == 2:
             return ''
-        return '=%s' % self._output_count
+        return '%s' % self._output_count
 
 
 class Overlay(Node):
@@ -230,12 +241,12 @@ class Overlay(Node):
 
     @property
     def args(self):
-        return "=x=%s:y=%s" % (self.left, self.top)
+        return "x=%s:y=%s" % (self.left, self.top)
 
 
 class Volume(Node):
     kind = AUDIO
-    name='volume'
+    name = 'volume'
 
     def __init__(self, volume, enabled=True):
         super(Volume, self).__init__(enabled=enabled)
@@ -243,7 +254,7 @@ class Volume(Node):
 
     @property
     def args(self):
-        return "=%.2f" % self.volume
+        return "%.2f" % self.volume
 
 
 class Rotate(Node):
@@ -258,10 +269,27 @@ class Rotate(Node):
     @property
     def args(self):
         if self.degrees is not None:
-            result = "=%s*PI/180" % self.degrees
+            result = "%s*PI/180" % self.degrees
             if self.output_size:
                 w, h = self.output_size
                 result += ':ow=%s:oh=%s' % (w, h)
             return result
         else:
             raise ValueError(self.degrees)
+
+
+class Drawtext(Node):
+    kind = VIDEO
+    name = 'drawtext'
+
+    def __init__(self, text, enabled=True,
+                 fontfile='font.ttf',
+                 x='(w-text_w)/2',
+                 y='(h-text_h)/2',
+                 **opts):
+        super(Drawtext, self).__init__(enabled=enabled)
+        self.opts = dict(opts, fontfile=fontfile, text=text, x=x, y=y)
+
+    @property
+    def args(self):
+        return ':'.join('%s=%s' % t for t in sorted(self.opts.items()))

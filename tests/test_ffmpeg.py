@@ -40,12 +40,15 @@ class FFMPEGTestCase(TestCase):
             '-i', '/tmp/input.mp4',
             '-filter_complex',
                 '[0:v]scale=640x360[vout0];[0:a]asplit[aout0][aout1]',
-            '-f', 'flv',
+
                 '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '700000',
                 '-map', '[aout0]', '-c:a', 'aac', '-b:a', '128000',
+
+            '-f', 'flv',
             '/tmp/out.flv',
-            '-f', 'mp3',
+
                 '-map', '[aout1]', '-c:a', 'libmp3lame', '-b:a', '394000',
+            '-f', 'mp3',
             '/tmp/out.mp3'
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
@@ -68,9 +71,9 @@ class FFMPEGTestCase(TestCase):
             '-i', '/tmp/input.mp4',
             '-filter_complex',
             '[0:v]scale=640x360[vout0]',
-            '-f', 'flv',
             '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '700000',
             '-map', '0:a', '-c:a', 'aac', '-b:a', '128000',
+            '-f', 'flv',
             '/tmp/out.flv'
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
@@ -87,9 +90,9 @@ class FFMPEGTestCase(TestCase):
         expected = [
             'ffmpeg',
             '-i', '/tmp/input.mp4',
-            '-f', 'flv',
             '-map', '0:v', '-c:v', 'libx264', '-b:v', '700000',
             '-map', '0:a', '-c:a', 'aac', '-b:a', '128000',
+            '-f', 'flv',
             '/tmp/out.flv'
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
@@ -122,9 +125,9 @@ class FFMPEGTestCase(TestCase):
                 '[v:scale0][v:overlay0]overlay=x=0:y=0[vout0];'
                 '[1:v]scale=1280x720[v:overlay0];'
                 '[1:a]volume=-20.00[aout0]'),
-            '-f', 'flv',
             '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '700000',
             '-map', '[aout0]', '-c:a', 'aac', '-b:a', '128000',
+            '-f', 'flv',
             '/tmp/out.flv'
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
@@ -147,10 +150,11 @@ class FFMPEGTestCase(TestCase):
             '-i', '/tmp/input.mp4',
             '-filter_complex',
             '[0:a]volume=20.00[aout0]',
-            '-f', 'flv',
             '-map', '0:v',
             '-c:v', 'copy',
-            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '128000',
+            '-map', '[aout0]',
+            '-c:a', 'aac', '-b:a', '128000',
+            '-f', 'flv',
             '/tmp/out.flv'
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))

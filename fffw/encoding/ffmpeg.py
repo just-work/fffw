@@ -28,6 +28,7 @@ class FFMPEG(BaseWrapper):
 
     # noinspection SpellCheckingInspection
     arguments = [
+        ('loglevel', '-loglevel '),
         ('strict', '-strict '),
         ('realtime', '-re '),
         ('threads', '-threads '),
@@ -96,7 +97,7 @@ class FFMPEG(BaseWrapper):
         result = []
         for codecs, muxer in self.__outputs:
             args = list(chain.from_iterable(c.get_args() for c in codecs))
-            result.extend(muxer.get_args() + args + [muxer.output])
+            result.extend(args + muxer.get_args() + [muxer.output])
         return result
 
     def add_input(self, inputfile):

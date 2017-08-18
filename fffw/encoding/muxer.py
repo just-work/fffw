@@ -14,6 +14,7 @@ class Muxer(BaseWrapper):
         ('format', '-f '),
     ]
 
+    # noinspection PyShadowingBuiltins
     def __init__(self, format, output, **kw):
         self.output = output
         super(Muxer, self).__init__(format=format, **kw)
@@ -26,3 +27,10 @@ class Muxer(BaseWrapper):
         )
 
 
+class HLSMuxer(Muxer):
+    arguments = Muxer.arguments + [
+        ('method', '-method '),
+        ('segment_size', '-hls_time '),
+        ('manifest_size', '-hls_list_size '),
+        ('segment_list_flags', '-segment_list_flags '),
+    ]
