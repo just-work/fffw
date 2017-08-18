@@ -53,6 +53,7 @@ class FFMPEG(BaseWrapper):
         ('vbsf', '-bsf:v '),
         ('absf', '-bsf:a '),
         ('format', '-f '),
+        ('segment_list_flags', '-segment_list_flags '),
     ]
 
     def __init__(self, inputfile=None, **kw):
