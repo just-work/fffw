@@ -29,7 +29,7 @@ class Muxer(BaseWrapper):
     def get_opts(self):
         """ Возвращает настройки муксера в виде опций через двоеточие"""
         return ':'.join('%s=%s' % (self.key_to_opt(k), self._args[k])
-                        for k in self._key_mapping if self._args[k])
+                        for k in self._args_order if self._args[k])
 
     def key_to_opt(self, k):
         return self._key_mapping[k].strip('- ')
