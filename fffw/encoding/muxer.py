@@ -38,7 +38,7 @@ class Muxer(BaseWrapper):
 class HLSMuxer(Muxer):
     format = 'hls'
 
-    arguments = Muxer.arguments + [
+    arguments = [
         ('method', '-method '),
         ('segment_size', '-hls_time '),
         ('manifest_size', '-hls_list_size '),
@@ -54,9 +54,9 @@ class TeeMuxer(Muxer):
 
     @property
     def output(self):
-        return '|'.join(['[f={format}:{args}]{output}'.format(
-            format=m.format, args=m.get_opts(), output=m.output)
-            for m in self.muxers])
+        return '|'.join(['[f={format}{opts}]{output}'.format(
+            format=m.format, opts=self._format_opts(m.get_opts()),
+            output=m.output) for m in self.muxers])
 
     @output.setter
     def output(self, muxers):
@@ -66,3 +66,7 @@ class TeeMuxer(Muxer):
 
     def get_args(self):
         return super(TeeMuxer, self).get_args()
+
+    @staticmethod
+    def _format_opts(opts):
+        return (':' + opts) if opts else ''
