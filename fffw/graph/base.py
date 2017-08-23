@@ -50,7 +50,7 @@ class Dest(object):
     def __repr__(self):
         return "Dest('[%s]')" % self.id
 
-    # noinspection PyMethodMayBeStatic,PyUnusedLocal
+    # noinspection PyMethodMayBeStatic,PyUnusedLocal,PyShadowingBuiltins
     def render(self, namer, id=None, partial=False):
         # за него уже все отрендерели
         return []
@@ -115,11 +115,16 @@ class Edge(object):
         self._output = dest
         return dest
 
+    # noinspection PyShadowingBuiltins
     def render(self, namer, id=None, partial=False):
         """ Возвращает список описаний ребер графа в виде строк
 
         :param namer: функция, генерирующая уникальные идентификаторы ребер
         :type namer: (name: str) -> str
+        :param id: иденитификатор ребра
+        :type id: str
+        :param partial: флаг режима вывода частично сформированного графа
+        :type partial: bool
         :return: список описаний вида "[v:0]yadif[v:t1]", "[v:t1]scale[out]"
         :rtype: List[str]
         """
@@ -151,6 +156,7 @@ class Node(object):
         outputs = [('[%s]' % str(i.id if i else '---')) for i in self.outputs]
         return '%s%s%s' % (''.join(inputs), self.name, ''.join(outputs))
 
+    # noinspection PyShadowingBuiltins
     def render(self, namer, id=None, partial=False):
         """ Возвращает список описаний ребер графа в виде строк
 
@@ -159,6 +165,10 @@ class Node(object):
 
         :param namer: функция, генерирующая уникальные идентификаторы ребер
         :type namer: (name: str) -> str
+        :param id: иденитификатор ребра
+        :type id: str
+        :param partial: флаг режима вывода частично сформированного графа
+        :type partial: bool
         :return: список описаний вида "[v:0]yadif[v:t1]", "[v:t1]scale[out]"
         :rtype: List[str]
         """
@@ -180,7 +190,8 @@ class Node(object):
             result.extend(dest.render(namer, partial=partial))
         return result
 
-    def get_filter_cmd(self, namer, id=id, partial=False):
+    # noinspection PyShadowingBuiltins
+    def get_filter_cmd(self, namer, id=None, partial=False):
         """ Возвращает строку-описание фильтра.
 
         Возвращаемое значение имеет формат [IN] FILTER ARGS [OUT]
@@ -189,6 +200,10 @@ class Node(object):
 
         :param namer: функция, генерирующая уникальные идентификаторы ребер
         :type namer: (str) -> str
+        :param id: иденитификатор ребра
+        :type id: str
+        :param partial: флаг режима вывода частично сформированного графа
+        :type partial: bool
         :return: строка-описание текущего фильтра
         :rtype: str
         """
@@ -323,11 +338,14 @@ class Source(object):
             return NotImplemented
         return self.connect(other)
 
+    # noinspection PyShadowingBuiltins
     def render(self, namer, partial=False):
         """ Возвращает список описаний ребер графа в виде строк
 
         :param namer: функция, генерирующая уникальные идентификаторы ребер
         :type namer: (name: str) -> str
+        :param partial: флаг режима вывода частично сформированного графа
+        :type partial: bool
         :return: список описаний вида "[v:0]yadif[v:t1]", "[v:t1]scale[out]"
         :rtype: List[str]
         """
@@ -393,14 +411,43 @@ class Input(object):
         return self.connect_source(other)
 
 
+class BaseSource(object):
+    """ Базовый класс для источников сигнала."""
 
-class SourceFile(object):
-    """ Описывает видео/аудиопотоки в исходном файле."""
-
-    def __init__(self, filename, video_streams=1, audio_streams=1):
-        self.filename = filename
+    def __init__(self, video_streams=1, audio_streams=1):
         self.video_streams = video_streams
         self.audio_streams = audio_streams
 
+
+class SourceFile(BaseSource):
+    """ Описывает видео/аудиопотоки в исходном файле."""
+
+    def __init__(self, filename, video_streams=1, audio_streams=1):
+        super(SourceFile, self).__init__(video_streams=video_streams,
+                                         audio_streams=audio_streams)
+        self.filename = filename
+
     def __str__(self):
         return self.filename
+
+    def get_args(self):
+        return ['-i', str(self)]
+
+
+class LavfiSource(BaseSource):
+    """ Описывает входной сигнал, генерируемый библиотекой lavfi."""
+    def __init__(self, name, kind, **opts):
+        video_streams = opts.pop('video_streams', int(kind == VIDEO))
+        audio_streams = opts.pop('audio_streams', int(kind == AUDIO))
+        super(LavfiSource, self).__init__(video_streams, audio_streams)
+        self.name = name
+        self.opts = opts
+
+    def __str__(self):
+        if not self.opts:
+            return self.name
+        opts = ':'.join('%s=%s' % t for t in sorted(self.opts.items()))
+        return '%s=%s' % (self.name, opts)
+
+    def get_args(self):
+        return ['-f', 'lavfi', '-i', str(self)]
