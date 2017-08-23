@@ -5,10 +5,10 @@
 
 from .complex import *
 from .filters import *
-from .base import SourceFile
+from .base import *
 
 __all__ = (
     complex.__all__ +
     filters.__all__ +
-    ['SourceFile']
+    base.__all__
 )

@@ -3,6 +3,14 @@
 # $Id: $
 
 
+__all__ = [
+    'VIDEO',
+    'AUDIO',
+    'SourceFile',
+    'LavfiSource',
+]
+
+
 VIDEO, AUDIO = object(), object()
 
 
@@ -229,7 +237,8 @@ class Node(object):
             if not edge.id:
                 edge.id = namer(self.name)
             outputs.append("[%s]" % edge.id)
-        return ''.join(inputs) + self.name + self.args + ''.join(outputs)
+        args = '=' + self.args if self.args else ''
+        return ''.join(inputs) + self.name + args + ''.join(outputs)
 
     @property
     def args(self):
