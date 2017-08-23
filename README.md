@@ -1,5 +1,7 @@
 # fffw
 ## FFMPEG filter wrapper
+[![Build Status](https://travis-ci.org/rutube/fffw.svg?branch=master)](https://travis-ci.org/rutube/fffw)
+
 
 Набор инструментов для генерации командной строки [FFMPEG](https://github.com/FFmpeg/FFmpeg).
 
