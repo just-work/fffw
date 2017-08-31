@@ -195,7 +195,7 @@ class SetPTS(Node):
 
     @property
     def args(self):
-        return '%s' % self.mode
+        return self.mode
 
 
 class AudioSetPTS(Node):
@@ -208,7 +208,7 @@ class AudioSetPTS(Node):
 
     @property
     def args(self):
-        return '=%s' % self.mode
+        return self.mode
 
 
 class AudioSplit(Node):
