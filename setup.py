@@ -13,7 +13,7 @@ except ImportError:
 
 setup(
     name='fffw',
-    version='0.4.0',
+    version='0.4.1',
     packages=find_packages(exclude=["tests"]),
     url='http://github.com/rutube/fffw',
     license='Beer License',
