@@ -80,6 +80,10 @@ class Edge(object):
         self._input = input
         self._output = output
 
+    def __repr__(self):
+        return 'Edge#{id}[{input}, {output}]'.format(
+            id=self._id, input=self._input,output=self._output)
+
     @property
     def id(self):
         return self._id
