@@ -4,10 +4,9 @@
 from itertools import chain
 
 from fffw.encoding import Muxer
-from fffw.encoding.codec import BaseCodec
+from fffw.encoding.codec import BaseCodec, VideoCopy, AudioCopy
 from fffw.graph import FilterComplex, base
 from fffw.wrapper import BaseWrapper, ensure_binary
-
 
 __all__ = ['FFMPEG']
 
@@ -22,6 +21,7 @@ class InputList(list):
             else:
                 result.append(str(src))
         return result
+
 
 class FFMPEG(BaseWrapper):
     command = 'ffmpeg'
@@ -126,6 +126,8 @@ class FFMPEG(BaseWrapper):
         assert isinstance(muxer, Muxer)
         for c in codecs:
             assert isinstance(c, BaseCodec)
+            if isinstance(c, VideoCopy) or isinstance(c, AudioCopy):
+                continue
             fc = self.filter_complex
             if not fc:
                 if c.codec_type == base.VIDEO:

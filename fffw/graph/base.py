@@ -293,7 +293,7 @@ class Source(object):
     def __init__(self, name, kind):
         """
         :param name: внутреннее имя потока ("v:0", "a:1")
-        :type name: str
+        :type name: str|None
         :param kind: тип потока VIDEO или AUDIO
         :type kind: object
         """
@@ -334,7 +334,7 @@ class Source(object):
                                % (self.id, self._edge))
         self._edge = Edge(input=self, output=other)
         self._edge.id = self.id
-        other.connect_edge(self._edge)
+        other.connect_edge(self.edge)
         return other
 
     def __or__(self, other):

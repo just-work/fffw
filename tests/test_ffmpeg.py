@@ -3,7 +3,8 @@
 # $Id: $
 from unittest import TestCase
 
-from fffw.encoding import FFMPEG, Muxer, VideoCodec, AudioCodec
+from fffw.encoding import FFMPEG, Muxer, VideoCodec, AudioCodec, AudioCopy, \
+    VideoCopy
 from fffw.encoding.muxer import HLSMuxer, TeeMuxer
 from fffw.graph import filters
 from fffw.graph.base import SourceFile, LavfiSource, VIDEO, AUDIO
@@ -165,6 +166,48 @@ class FFMPEGTestCase(TestCase):
             '-f', 'flv',
             '/tmp/out.flv'
         ]
+        self.assertEqual(ff.get_args(), ensure_binary(expected))
+
+    def testCodecCopyWithSplit(self):
+        """ Проверяется корректность использования vcodec=copy совместно
+        фильтрами для видео."""
+        ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
+
+        fc = ff.init_filter_complex()
+
+        fc.video | filters.Scale(640, 360) | fc.get_video_dest(0)
+
+        cv0 = VideoCopy(map='0:v')
+        ca0 = AudioCopy(map='0:a')
+        out0 = SimpleMuxer('flv')('/tmp/copy.flv')
+        ff.add_output(out0, cv0, ca0)
+
+        cv1 = VideoCodec(vcodec='libx264')
+        ca1 = AudioCodec(acodec='aac')
+        out1 = SimpleMuxer('flv')('/tmp/out.flv')
+        ff.add_output(out1, cv1, ca1)
+
+        expected = [
+            'ffmpeg',
+            '-i', '/tmp/input.mp4',
+            '-filter_complex',
+            '[0:v]scale=640x360[vout0]',
+            '-map', '0:v',
+            '-c:v', 'copy',
+            '-map', '0:a',
+            '-c:a', 'copy',
+            '-f', 'flv',
+            '/tmp/copy.flv',
+            '-map', '[vout0]',
+            '-c:v', 'libx264',
+            '-map', '0:a',
+            '-c:a', 'aac',
+            '-f', 'flv',
+            '/tmp/out.flv'
+
+        ]
+        print(ff.get_args())
+        print(expected)
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
     def testLavfiSources(self):

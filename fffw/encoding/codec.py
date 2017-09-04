@@ -1,12 +1,13 @@
 # coding: utf-8
 
-# $Id: $
 from fffw.graph.base import VIDEO, AUDIO, Dest, Source, Node
 from fffw.wrapper import BaseWrapper
 
 __all__ = [
     'VideoCodec',
-    'AudioCodec'
+    'AudioCodec',
+    'VideoCopy',
+    'AudioCopy',
 ]
 
 
@@ -17,6 +18,7 @@ class BaseCodec(BaseWrapper, Node):
     def enabled(self):
         return True
 
+    # noinspection PyShadowingBuiltins
     def render(self, namer, id=None, partial=False):
         return []
 
@@ -104,3 +106,39 @@ class AudioCodec(BaseCodec):
     @property
     def codecname(self):
         return self._args['acodec']
+
+
+class VideoCopy(BaseCodec):
+    codec_type = VIDEO
+    arguments = [
+        ('map', '-map '),
+        ('vcodec', '-c:v '),
+    ]
+
+    # noinspection PyShadowingBuiltins
+    def __init__(self, map, **kw):
+        kw['vcodec'] = 'copy'
+        super(VideoCopy, self).__init__(**kw)
+        self.map = map
+
+    @property
+    def codecname(self):
+        return 'copy'
+
+
+class AudioCopy(BaseCodec):
+    codec_type = AUDIO
+    arguments = [
+        ('map', '-map '),
+        ('acodec', '-c:a '),
+    ]
+
+    # noinspection PyShadowingBuiltins
+    def __init__(self, map, **kw):
+        kw['acodec'] = 'copy'
+        super(AudioCopy, self).__init__(**kw)
+        self.map = map
+
+    @property
+    def codecname(self):
+        return 'copy'
