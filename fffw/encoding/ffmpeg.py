@@ -1,13 +1,11 @@
 # coding: utf-8
 
-# $Id: $
 from itertools import chain
 
 from fffw.encoding import Muxer
 from fffw.encoding.codec import BaseCodec
 from fffw.graph import FilterComplex, base
 from fffw.wrapper import BaseWrapper, ensure_binary
-
 
 __all__ = ['FFMPEG']
 
@@ -22,6 +20,7 @@ class InputList(list):
             else:
                 result.append(str(src))
         return result
+
 
 class FFMPEG(BaseWrapper):
     command = 'ffmpeg'
@@ -74,9 +73,8 @@ class FFMPEG(BaseWrapper):
             assert inputfile is None, "invalid inputfile type"
 
     def init_filter_complex(self):
-        # assert self.__inputs, "no inputs defined yet"
-        # assert not self.__outputs, "outputs already defined"
-        #
+        assert self.__inputs, "no inputs defined yet"
+        assert not self.__outputs, "outputs already defined"
         self._args['filter_complex'] = fc = FilterComplex(
             video=self.__video,
             audio=self.__audio
@@ -127,7 +125,9 @@ class FFMPEG(BaseWrapper):
         for c in codecs:
             assert isinstance(c, BaseCodec)
             fc = self.filter_complex
-            if not fc:
+            if not fc or getattr(c, 'map', None):
+                # если нет filter_complex или для кодека явно указан источник,
+                # подключаем кодек напрямую ко входным файлам
                 if c.codec_type == base.VIDEO:
                     self.__video | c
                 if c.codec_type == base.AUDIO:

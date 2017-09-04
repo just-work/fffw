@@ -16,7 +16,6 @@ def SimpleMuxer(name):
     return muxer_type
 
 
-
 class FFMPEGTestCase(TestCase):
 
     def testFFMPEG(self):
@@ -164,6 +163,76 @@ class FFMPEGTestCase(TestCase):
             '-c:a', 'aac', '-b:a', '128000',
             '-f', 'flv',
             '/tmp/out.flv'
+        ]
+        self.assertEqual(ff.get_args(), ensure_binary(expected))
+
+    def testReuseInputFiles(self):
+        """ Проверяет что входные файлы можно использовать несколько раз."""
+        ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
+        cv0 = VideoCodec(map='0:v', vcodec='copy')
+        ca0 = AudioCodec(map='0:a', acodec='copy')
+        out0 = SimpleMuxer('flv')('/tmp/out0.flv')
+        ff.add_output(out0, cv0, ca0)
+
+        cv1 = VideoCodec(map='0:v', vcodec='copy')
+        ca1 = AudioCodec(map='0:a', acodec='copy')
+        out1 = SimpleMuxer('flv')('/tmp/out1.flv')
+        ff.add_output(out1, cv1, ca1)
+        expected = [
+            'ffmpeg',
+            '-i', '/tmp/input.mp4',
+            '-map', '0:v',
+            '-c:v', 'copy',
+            '-map', '0:a',
+            '-c:a', 'copy',
+            '-f', 'flv',
+            '/tmp/out0.flv',
+            '-map', '0:v',
+            '-c:v', 'copy',
+            '-map', '0:a',
+            '-c:a', 'copy',
+            '-f', 'flv',
+            '/tmp/out1.flv',
+        ]
+        self.assertEqual(ff.get_args(), ensure_binary(expected))
+
+    def testCodecCopyWithSplit(self):
+        """ Проверяется корректность использования vcodec=copy совместно
+        фильтрами для видео."""
+        ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
+
+        fc = ff.init_filter_complex()
+
+        fc.video | filters.Scale(640, 360) | fc.get_video_dest(0)
+
+        cv0 = VideoCodec(map='0:v', vcodec='copy')
+        ca0 = AudioCodec(map='0:a', acodec='copy')
+        out0 = SimpleMuxer('flv')('/tmp/copy.flv')
+        ff.add_output(out0, cv0, ca0)
+
+        cv1 = VideoCodec(vcodec='libx264')
+        ca1 = AudioCodec(acodec='aac')
+        out1 = SimpleMuxer('flv')('/tmp/out.flv')
+        ff.add_output(out1, cv1, ca1)
+
+        expected = [
+            'ffmpeg',
+            '-i', '/tmp/input.mp4',
+            '-filter_complex',
+            '[0:v]scale=640x360[vout0]',
+            '-map', '0:v',
+            '-c:v', 'copy',
+            '-map', '0:a',
+            '-c:a', 'copy',
+            '-f', 'flv',
+            '/tmp/copy.flv',
+            '-map', '[vout0]',
+            '-c:v', 'libx264',
+            '-map', '0:a',
+            '-c:a', 'aac',
+            '-f', 'flv',
+            '/tmp/out.flv'
+
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 

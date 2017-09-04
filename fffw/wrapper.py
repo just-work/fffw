@@ -1,6 +1,5 @@
 # coding: utf-8
 
-# $Id: $
 import re
 
 import six
@@ -8,7 +7,7 @@ import six
 
 def quote(token):
     token = ensure_text(token)
-    if re.search(r'[ \(\)\[\]\;]', token):
+    if re.search(r'[ ()[\];]', token):
         return '"%s"' % token.replace('\"', '\\"')
     return token
 
@@ -81,7 +80,7 @@ class BaseWrapper(object):
                     result.append(param.strip())
                 else:
                     if param.endswith(' '):
-                        result.extend([param.strip(), v])
+                        result.extend([param.strip(), str(v)])
                     else:
                         result.append("%s%s" % (param, v))
 

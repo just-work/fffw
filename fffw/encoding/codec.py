@@ -1,28 +1,26 @@
 # coding: utf-8
 
-# $Id: $
 from fffw.graph.base import VIDEO, AUDIO, Dest, Source, Node
 from fffw.wrapper import BaseWrapper
 
 __all__ = [
     'VideoCodec',
-    'AudioCodec'
+    'AudioCodec',
 ]
 
 
 class BaseCodec(BaseWrapper, Node):
     codec_type = None
 
+    arguments = [('map', '-map ')]
+
     @property
     def enabled(self):
         return True
 
+    # noinspection PyShadowingBuiltins
     def render(self, namer, id=None, partial=False):
         return []
-
-    def __init__(self, **kw):
-        super(BaseCodec, self).__init__(**kw)
-        self.map = None
 
     def connect(self, dest):
         assert isinstance(dest, Dest), "Codec connects to Dest"
@@ -39,11 +37,24 @@ class BaseCodec(BaseWrapper, Node):
         src = edge.input
         assert isinstance(src, Source), "Codec connect edge only from Source"
         assert src.id, "Source file has not stream of desired type"
+        if self.map:
+            # обычная Node может соединяться с источником ровно один раз,
+            # BaseCodec - сколько угодно за счет механизма map.
+            return None
         self.map = src.id
+        return edge
 
     @property
     def codecname(self):
         return self._args['codec']
+
+    @property
+    def map(self):
+        return self._args['map']
+
+    @map.setter
+    def map(self, value):
+        self._args['map'] = value
 
 
 class VideoCodec(BaseCodec):
@@ -76,10 +87,6 @@ class VideoCodec(BaseCodec):
         ('x265', '-x265-params '),
     ]
 
-    def __init__(self, **kw):
-        kw.setdefault('map', '0:v:0')
-        super(VideoCodec, self).__init__(**kw)
-
     @property
     def codecname(self):
         return self._args['vcodec']
@@ -96,10 +103,6 @@ class AudioCodec(BaseCodec):
         ('arate', '-ar '),
         ('achannels', '-ac '),
     ]
-
-    def __init__(self, **kw):
-        kw.setdefault('map', '0:a:0')
-        super(AudioCodec, self).__init__(**kw)
 
     @property
     def codecname(self):
