@@ -3,8 +3,7 @@
 # $Id: $
 from unittest import TestCase
 
-from fffw.encoding import FFMPEG, Muxer, VideoCodec, AudioCodec, AudioCopy, \
-    VideoCopy
+from fffw.encoding import FFMPEG, Muxer, VideoCodec, AudioCodec
 from fffw.encoding.muxer import HLSMuxer, TeeMuxer
 from fffw.graph import filters
 from fffw.graph.base import SourceFile, LavfiSource, VIDEO, AUDIO
@@ -15,7 +14,6 @@ from fffw.wrapper import ensure_binary
 def SimpleMuxer(name):
     muxer_type = type('%sMuxer' % name.upper(), (Muxer,), {'format': name})
     return muxer_type
-
 
 
 class FFMPEGTestCase(TestCase):
@@ -168,6 +166,36 @@ class FFMPEGTestCase(TestCase):
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
+    def testReuseInputFiles(self):
+        """ Проверяет что входные файлы можно использовать несколько раз."""
+        ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
+        cv0 = VideoCodec(map='0:v', vcodec='copy')
+        ca0 = AudioCodec(map='0:a', acodec='copy')
+        out0 = SimpleMuxer('flv')('/tmp/out0.flv')
+        ff.add_output(out0, cv0, ca0)
+
+        cv1 = VideoCodec(map='0:v', vcodec='copy')
+        ca1 = AudioCodec(map='0:a', acodec='copy')
+        out1 = SimpleMuxer('flv')('/tmp/out1.flv')
+        ff.add_output(out1, cv1, ca1)
+        expected = [
+            'ffmpeg',
+            '-i', '/tmp/input.mp4',
+            '-map', '0:v',
+            '-c:v', 'copy',
+            '-map', '0:a',
+            '-c:a', 'copy',
+            '-f', 'flv',
+            '/tmp/out0.flv',
+            '-map', '0:v',
+            '-c:v', 'copy',
+            '-map', '0:a',
+            '-c:a', 'copy',
+            '-f', 'flv',
+            '/tmp/out1.flv',
+        ]
+        self.assertEqual(ff.get_args(), ensure_binary(expected))
+
     def testCodecCopyWithSplit(self):
         """ Проверяется корректность использования vcodec=copy совместно
         фильтрами для видео."""
@@ -177,8 +205,8 @@ class FFMPEGTestCase(TestCase):
 
         fc.video | filters.Scale(640, 360) | fc.get_video_dest(0)
 
-        cv0 = VideoCopy(map='0:v')
-        ca0 = AudioCopy(map='0:a')
+        cv0 = VideoCodec(map='0:v', vcodec='copy')
+        ca0 = AudioCodec(map='0:a', acodec='copy')
         out0 = SimpleMuxer('flv')('/tmp/copy.flv')
         ff.add_output(out0, cv0, ca0)
 
@@ -206,8 +234,6 @@ class FFMPEGTestCase(TestCase):
             '/tmp/out.flv'
 
         ]
-        print(ff.get_args())
-        print(expected)
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
     def testLavfiSources(self):

@@ -54,6 +54,7 @@ class Dest(object):
             raise RuntimeError("Dest is already connected to %s" % self._edge)
         self._edge = edge
         self._edge.id = self.id
+        return edge
 
     def __repr__(self):
         return "Dest('[%s]')" % self.id
@@ -258,6 +259,7 @@ class Node(object):
         if not isinstance(edge, Edge):
             raise ValueError("only edge allowed")
         self.inputs[self.inputs.index(None)] = edge
+        return edge
 
     def connect_dest(self, other):
         """ Подключает другой фильтр или выходной поток к одному из выходов.
@@ -329,12 +331,12 @@ class Source(object):
         """
         if not isinstance(other, Node):
             raise ValueError("only node allowed")
-        if self._edge is not None:
+        if self._edge is not None and not getattr(other, 'map', None):
             raise RuntimeError("Source %s is already connected to %s"
                                % (self.id, self._edge))
-        self._edge = Edge(input=self, output=other)
-        self._edge.id = self.id
-        other.connect_edge(self.edge)
+        edge = Edge(input=self, output=other)
+        edge.id = self.id
+        self._edge = self._edge or other.connect_edge(edge)
         return other
 
     def __or__(self, other):
@@ -398,9 +400,12 @@ class Input(object):
         :rtype: Node
         """
 
+        input_map = getattr(other, 'map', None)
         for stream in self.streams:
             if stream.id is None:
                 continue
+            if input_map and input_map == stream.id:
+                return stream.connect(other)
             if stream.edge is None:
                 return stream.connect(other)
         raise IndexError("No free sources")
