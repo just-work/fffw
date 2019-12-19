@@ -297,3 +297,38 @@ class FFMPEGTestCase(TestCase):
             '[f=hls:hls_list_size=5]http://ya.ru/2.m3u8'
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
+
+    def testConcat(self):
+        ff = FFMPEG()
+        ff < SourceFile('preroll.mp4')
+        ff < SourceFile('input.mp4')
+
+        fc = ff.init_filter_complex()
+
+        preroll_ready = fc.video | filters.Scale(640, 480) | filters.SetSAR(1)
+        concat = filters.Concat()
+        preroll_ready | concat
+        fc.video | concat
+
+        concat | fc.get_video_dest(0)
+
+        aconcat = filters.AudioConcat()
+        fc.audio | aconcat
+        fc.audio | aconcat
+
+        aconcat | fc.get_audio_dest(0)
+        ff.add_output(SimpleMuxer('mp4')('output.mp4'))
+
+        expected = [
+            'ffmpeg',
+            '-i', 'preroll.mp4',
+            '-i', 'input.mp4',
+            '-filter_complex',
+            "[0:v]scale=640x480[v:scale0];"
+            "[v:scale0]setsar=1[v:setsar0];"
+            "[v:setsar0][1:v]concat[vout0];"
+            "[0:a][1:a]concat=v=0:a=1:n=2[aout0]",
+            '-f', 'mp4',
+            'output.mp4'
+        ]
+        self.assertEqual(ff.get_args(), ensure_binary(expected))
