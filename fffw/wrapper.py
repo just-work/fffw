@@ -1,6 +1,8 @@
 # coding: utf-8
 
 import re
+import subprocess
+from logging import getLogger
 
 import six
 
@@ -54,6 +56,9 @@ class BaseWrapper(object):
         self.__init_args()
         for k, v in kw.items():
             setattr(self, k, v)
+        self._output = ''
+        cls = self.__class__
+        self.logger = getLogger("%s.%s" % (cls.__module__, cls.__name__))
 
     def __setattr__(self, key, value):
         if key in getattr(self, '_key_mapping', {}):
@@ -73,7 +78,7 @@ class BaseWrapper(object):
                         result.extend(value)
                     else:
                         result.append(value)
-                elif type(v) is list:
+                elif isinstance(v, list):
                     for item in v:
                         result.extend([param.strip(), item])
                 elif v is True:
@@ -92,3 +97,22 @@ class BaseWrapper(object):
 
     def get_cmd(self):
         return ' '.join(map(quote, ensure_text(self.get_args())))
+
+    def handle_stderr(self, line):
+        self.logger.debug(line.strip())
+        self._output += line
+
+    def run(self):
+        self._output = ''
+        self.logger.info(self.get_cmd())
+        args = self.get_args()
+
+        with subprocess.Popen(args, stderr=subprocess.PIPE) as proc:
+            while True:
+                line = proc.stderr.readline()
+                if not line:
+                    break
+                line = ensure_text(line)
+                self.handle_stderr(line)
+        self.logger.info("%s return code is %s", args[0], proc.returncode)
+        return proc.returncode, self._output

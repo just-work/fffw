@@ -24,6 +24,7 @@ class InputList(list):
 
 class FFMPEG(BaseWrapper):
     command = 'ffmpeg'
+    stderr_markers = ['[error]', '[fatal]']
 
     # noinspection SpellCheckingInspection
     arguments = [
@@ -166,3 +167,8 @@ class FFMPEG(BaseWrapper):
         if key == 'inputfile':
             raise NotImplementedError("use add_input instead")
         return super(FFMPEG, self).__setattr__(key, value)
+
+    def handle_stderr(self, line):
+        for marker in self.stderr_markers:
+            if marker in line:
+                super().handle_stderr(line)
