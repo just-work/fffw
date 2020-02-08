@@ -1,8 +1,3 @@
-# coding: utf-8
-
-# $Id: $
-
-
 __all__ = [
     'VIDEO',
     'AUDIO',
@@ -14,17 +9,18 @@ __all__ = [
 VIDEO, AUDIO = object(), object()
 
 
-class Dest(object):
-    """ Вершина, соответстсвующая выходному аудио или видео потоку.
+class Dest:
+    """
+    Audio/video output stream node.
 
-    Должна подключаться ровно к одному выводу фильтра
+    Must connect to single filter output only.
     """
 
     def __init__(self, name, kind):
         """
-        :param name: внутреннее имя потока ("v:0", "a:1")
+        :param name: internal ffmpeg stream name ("v:0", "a:1")
         :type name: str
-        :param kind: тип потока VIDEO или AUDIO
+        :param kind: stream kind (VIDEO/AUDIO)
         :type kind: object
         """
 
@@ -34,17 +30,15 @@ class Dest(object):
 
     @property
     def id(self):
-        """ Возвращает идентификатор вершины для использования в описании
-        filter_graph."""
+        """ Returns node identifier used in filter_graph description."""
         return self._name
 
     def connect_edge(self, edge):
-        """ Подсоединяет к выходному потоку ребро графа.
+        """ Connects and edge to output stream.
 
-        Должна вызываться только из методов Node.
-        При подсоединении присваивает ребру идентификатор.
+        Should be called only from Node methods. Initializes edge identifier.
 
-        :param edge: ребро, к которому необходимо подсоединить выходной поток
+        :param edge: edge to connect output stream to.
         :type edge: Edge
         :return None
         """
@@ -61,19 +55,19 @@ class Dest(object):
 
     # noinspection PyMethodMayBeStatic,PyUnusedLocal,PyShadowingBuiltins
     def render(self, namer, id=None, partial=False):
-        # за него уже все отрендерели
+        # Previous nodes/edges rendered this already.
         return []
 
 
-class Edge(object):
-    """ Ребро графа, описывающее поток данных внутри ffmpeg."""
+class Edge:
+    """ Internal ffmpeg data stream graph."""
 
     # noinspection PyShadowingBuiltins
     def __init__(self, input=None, output=None):
         """
-        :param input: входная вершина
+        :param input: input node
         :type input: Source|Node
-        :param output: выходная вершина
+        :param output: output node
         :type output: Dest|Node
         """
         self._id = None
@@ -82,7 +76,7 @@ class Edge(object):
 
     def __repr__(self):
         return 'Edge#{id}[{input}, {output}]'.format(
-            id=self._id, input=self._input,output=self._output)
+            id=self._id, input=self._input, output=self._output)
 
     @property
     def id(self):
@@ -104,9 +98,9 @@ class Edge(object):
             raise RuntimeError("id already set")
 
     def _connect_source(self, src):
-        """ Подключает вершину к ребру в качестве источника.
+        """ Connects input node to the edge.
 
-        :param src: подключаемый исходный поток или фильтр
+        :param src: source stream or filter output node.
         :type src: Source|Node
         :return: None
         """
@@ -115,11 +109,11 @@ class Edge(object):
         self._input = src
 
     def _connect_dest(self, dest):
-        """ Подключает вершину к ребру в качестве выходного потока.
+        """ Connects output node to the edge.
 
-        :param dest: подключаемый выходной поток или фильтр
+        :param dest: output stream or filter input node
         :type dest: Dest|Node
-        :return: возвращает подключенную вершину
+        :return: connected node
         :rtype: Dest|Node
         """
         if self._output is not None:
@@ -130,15 +124,15 @@ class Edge(object):
 
     # noinspection PyShadowingBuiltins
     def render(self, namer, id=None, partial=False):
-        """ Возвращает список описаний ребер графа в виде строк
+        """ Returns a list of edge descriptions.
 
-        :param namer: функция, генерирующая уникальные идентификаторы ребер
+        :param namer: callable used to generate unique edge identifiers
         :type namer: (name: str) -> str
-        :param id: иденитификатор ребра
+        :param id: edge identifier
         :type id: str
-        :param partial: флаг режима вывода частично сформированного графа
+        :param partial: partially formatted graph render mode floag
         :type partial: bool
-        :return: список описаний вида "[v:0]yadif[v:t1]", "[v:t1]scale[out]"
+        :return: edge description list ["[v:0]yadif[v:t1]", "[v:t1]scale[out]"]
         :rtype: List[str]
         """
         if not self.id:
@@ -148,13 +142,13 @@ class Edge(object):
         return self._output.render(namer, id=id, partial=partial)
 
 
-class Node(object):
-    """ Вершина графа, описывающая фильтр ffmpeg."""
+class Node:
+    """ Graph node describing ffmpeg filter."""
 
-    kind = None  # тип фильтра
-    name = None  # название фильтра
-    input_count = 1  # количество входов
-    output_count = 1  # количество выходов
+    kind = None  # filter type (VIDEO/AUDIO)
+    name = None  # filter name
+    input_count = 1  # number of inputs
+    output_count = 1  # number of outputs
 
     def __init__(self, enabled=True):
         if not enabled:
@@ -171,23 +165,21 @@ class Node(object):
 
     # noinspection PyShadowingBuiltins
     def render(self, namer, id=None, partial=False):
-        """ Возвращает список описаний ребер графа в виде строк
+        """ Returns a list of edge descriptions.
 
-        Первым элементом списка является строка, соответствующая текущему
-        фильтру (см. get_filter_cmd)
+        First element is a current filter description (see get_filter_cmd)
 
-        :param namer: функция, генерирующая уникальные идентификаторы ребер
+        :param namer: callable used to generate unique edge identifiers
         :type namer: (name: str) -> str
-        :param id: иденитификатор ребра
+        :param id: edge identifier
         :type id: str
-        :param partial: флаг режима вывода частично сформированного графа
+        :param partial: partially formatted graph render mode floag
         :type partial: bool
-        :return: список описаний вида "[v:0]yadif[v:t1]", "[v:t1]scale[out]"
+        :return: edge description list ["[v:0]yadif[v:t1]", "[v:t1]scale[out]"]
         :rtype: List[str]
         """
         if not self.enabled:
-            # id входного ребра/потока переносится на выходно
-
+            # filter skipped, input is connected to output directly
             next_edge = self.outputs[0]
             if partial and not next_edge:
                 return []
@@ -205,19 +197,20 @@ class Node(object):
 
     # noinspection PyShadowingBuiltins
     def get_filter_cmd(self, namer, id=None, partial=False):
-        """ Возвращает строку-описание фильтра.
+        """
+        Returns filter description.
 
-        Возвращаемое значение имеет формат [IN] FILTER ARGS [OUT]
-        где IN, OUT - списки id ребер входов и выходов соответственно,
-        FILTER - название фильтра, ARGS - параметры фильтра
+        output format is like [IN] FILTER ARGS [OUT]
+        where IN, OUT - lists of input/output edge id,
+        FILTER - fiter name, ARGS - filter params
 
-        :param namer: функция, генерирующая уникальные идентификаторы ребер
-        :type namer: (str) -> str
-        :param id: иденитификатор ребра
+        :param namer: callable used to generate unique edge identifiers
+        :type namer: (name: str) -> str
+        :param id: edge identifier
         :type id: str
-        :param partial: флаг режима вывода частично сформированного графа
+        :param partial: partially formatted graph render mode floag
         :type partial: bool
-        :return: строка-описание текущего фильтра
+        :return: current description string like "[v:0]yadif[v:t1]"
         :rtype: str
         """
         inputs = []
@@ -233,8 +226,7 @@ class Node(object):
                 continue
             node = edge.output
             while isinstance(node, Node) and not node.enabled:
-                # если следующая вершина у графа выключена, используем
-                # id ребра, следующего за ней
+                # if next node is disabled, use next edge id
                 if node.outputs[0] is None and partial:
                     break
                 edge = node.outputs[0]
@@ -247,16 +239,16 @@ class Node(object):
 
     @property
     def args(self):
-        """ Генерирует список параметров фильтра в виде строки.
+        """ Generates filter params as a string
 
         :rtype: str
         """
         return ''
 
     def connect_edge(self, edge):
-        """ Подключает ребро к одному из своих входов
+        """ Connects and edge to one of filter inputs
 
-        :param edge: ребро, соответствующее источнику данных
+        :param edge: input stream edge
         :type edge: Edge
         :return: None
         """
@@ -266,11 +258,11 @@ class Node(object):
         return edge
 
     def connect_dest(self, other):
-        """ Подключает другой фильтр или выходной поток к одному из выходов.
+        """ Connects next filter or output to one of filter outputs.
 
-        :param other: следующий по цепочке фильтр или выходной поток
+        :param other: next filter or output stream
         :type other: Node|Dest
-        :return: фильтр, подключенный к текущему
+        :return: next filter or output stream, connected to current stream
         :rtype: Node|Dest
         """
         if not isinstance(other, (Node, Dest)):
@@ -291,16 +283,16 @@ class Node(object):
         return self.connect_dest(other)
 
 
-class Source(object):
-    """ Вершина, соответствующая исходному потоку аудио или видео данных.
+class Source:
+    """ Graph node containing audio or video input.
 
-    Должен подключаться ровно к одному ребру графа
+    Must connect to single graph edge only as a source
     """
     def __init__(self, name, kind):
         """
-        :param name: внутреннее имя потока ("v:0", "a:1")
+        :param name: ffmpeg internal input stream name ("v:0", "a:1")
         :type name: str|None
-        :param kind: тип потока VIDEO или AUDIO
+        :param kind: stream type (VIDEO/AUDIO)
         :type kind: object
         """
         self._name = name
@@ -309,28 +301,27 @@ class Source(object):
 
     @property
     def id(self):
-        """ Возвращает идентификатор вершины для использования в описании
-        filter_graph."""
+        """ Returns node identifier used in filter_graph description."""
         return self._name
 
     @property
     def edge(self):
-        """ Возвращает ребро, подключенное к источнику
+        """ Returns an edge connected to current source.
         :rtype: fffw.graph.base.Edge|NoneType
         """
         return self._edge
 
     @property
     def kind(self):
-        """ Возвращает тип потока """
+        """ Returns stream type."""
         return self._kind
 
     def connect(self, other):
-        """ Подсоединяет источник к входу фильтра
+        """ Connects a source to a filter or output
 
-        :param other: фильтр, потребляющий данный источник
+        :param other: filter consuming current input stream
         :type other: fffw.graph.base.Node
-        :return возвращает фильтр, к которому подсоединен источник
+        :return filter connected to current stream
         :rtype: fffw.graph.base.Node
         """
         if not isinstance(other, Node):
@@ -355,13 +346,17 @@ class Source(object):
 
     # noinspection PyShadowingBuiltins
     def render(self, namer, partial=False):
-        """ Возвращает список описаний ребер графа в виде строк
+        """ Returns a list of edge descriptions.
 
-        :param namer: функция, генерирующая уникальные идентификаторы ребер
+        First element is a current filter description (see get_filter_cmd)
+
+        :param namer: callable used to generate unique edge identifiers
         :type namer: (name: str) -> str
-        :param partial: флаг режима вывода частично сформированного графа
+        :param id: edge identifier
+        :type id: str
+        :param partial: partially formatted graph render mode floag
         :type partial: bool
-        :return: список описаний вида "[v:0]yadif[v:t1]", "[v:t1]scale[out]"
+        :return: edge description list ["[v:0]yadif[v:t1]", "[v:t1]scale[out]"]
         :rtype: List[str]
         """
         edge = self._edge
@@ -370,8 +365,7 @@ class Source(object):
 
         id = edge.id
         node = edge.output
-        # если следующая вершина отключена, используем ID ребра, следующего
-        # за ней
+        # if output node is disabled, use next edge identifier.
         if isinstance(node, Node) and not node.enabled:
             edge = node.outputs[0]
         else:
@@ -382,8 +376,8 @@ class Source(object):
         return "Source('[%s]')" % self.id
 
 
-class Input(object):
-    """ Хелпер для группировки входных потоков по типам."""
+class Input:
+    """ Input streams grouper helpers."""
     def __init__(self, streams=(), kind=None):
         """
         :type streams: List[Source]
@@ -397,10 +391,10 @@ class Input(object):
         self.streams.append(other)
 
     def connect_dest(self, other):
-        """ Подключает первый неподключенный источник к фильтру
-        :param other: фильтр
+        """ Connects first free input to a filter
+        :param other: filter
         :type other: Node
-        :return подключенный фильтр
+        :return filter connected to an input
         :rtype: Node
         """
 
@@ -429,8 +423,8 @@ class Input(object):
         return self.connect_source(other)
 
 
-class BaseSource(object):
-    """ Базовый класс для источников сигнала."""
+class BaseSource:
+    """ Source signal base class."""
 
     def __init__(self, video_streams=1, audio_streams=1):
         self.video_streams = video_streams
@@ -438,7 +432,7 @@ class BaseSource(object):
 
 
 class SourceFile(BaseSource):
-    """ Описывает видео/аудиопотоки в исходном файле."""
+    """ Describes video/audio streams in an input file."""
 
     def __init__(self, filename, video_streams=1, audio_streams=1):
         super(SourceFile, self).__init__(video_streams=video_streams,
@@ -453,7 +447,7 @@ class SourceFile(BaseSource):
 
 
 class LavfiSource(BaseSource):
-    """ Описывает входной сигнал, генерируемый библиотекой lavfi."""
+    """ Describes video or audio stream generated by lavfi library."""
     def __init__(self, name, kind, **opts):
         video_streams = opts.pop('video_streams', int(kind == VIDEO))
         audio_streams = opts.pop('audio_streams', int(kind == AUDIO))

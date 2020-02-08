@@ -1,8 +1,3 @@
-# coding: utf-8
-
-# $Id: $
-
-
 from .codec import *
 from .muxer import *
 from .ffmpeg import *

@@ -1,6 +1,4 @@
-# coding: utf-8
-
-from fffw.graph.base import VIDEO, AUDIO, Dest, Source, Node
+from fffw.graph import base
 from fffw.wrapper import BaseWrapper
 
 __all__ = [
@@ -9,7 +7,7 @@ __all__ = [
 ]
 
 
-class BaseCodec(BaseWrapper, Node):
+class BaseCodec(BaseWrapper, base.Node):
     codec_type = None
 
     arguments = [('map', '-map ')]
@@ -23,29 +21,29 @@ class BaseCodec(BaseWrapper, Node):
         return []
 
     def connect(self, dest):
-        assert isinstance(dest, Dest), "Codec connects to Dest"
+        assert isinstance(dest, base.Dest), "Codec connects to Dest"
         self.map = '[%s]' % dest.id
 
     def __repr__(self):
         return "<%s>(%s)" % (
-            self.codecname,
+            self.codec_name,
             ','.join('%s=%s' % (k, self._args[k]) for k in self._key_mapping
                      if self._args[k])
         )
 
     def connect_edge(self, edge):
         src = edge.input
-        assert isinstance(src, Source), "Codec connect edge only from Source"
+        assert isinstance(src, base.Source), "Codec connects to Source"
         assert src.id, "Source file has not stream of desired type"
         if self.map:
-            # обычная Node может соединяться с источником ровно один раз,
-            # BaseCodec - сколько угодно за счет механизма map.
+            # normal Node can connect with source single time only,
+            # BaseCodec can connect multiple times via "-map" arguments
             return None
         self.map = src.id
         return edge
 
     @property
-    def codecname(self):
+    def codec_name(self):
         return self._args['codec']
 
     @property
@@ -58,7 +56,7 @@ class BaseCodec(BaseWrapper, Node):
 
 
 class VideoCodec(BaseCodec):
-    codec_type = VIDEO
+    codec_type = base.VIDEO
     arguments = [
         ('map', '-map '),
         ('vbsf', '-bsf:v '),
@@ -88,12 +86,12 @@ class VideoCodec(BaseCodec):
     ]
 
     @property
-    def codecname(self):
+    def codec_name(self):
         return self._args['vcodec']
 
 
 class AudioCodec(BaseCodec):
-    codec_type = AUDIO
+    codec_type = base.AUDIO
     arguments = [
         ('map', '-map '),
         ('absf', '-bsf:a '),
@@ -105,5 +103,5 @@ class AudioCodec(BaseCodec):
     ]
 
     @property
-    def codecname(self):
+    def codec_name(self):
         return self._args['acodec']

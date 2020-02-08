@@ -1,18 +1,16 @@
-# coding: utf-8
-
-# $Id: $
 from fffw.wrapper import BaseWrapper
 
 
 __all__ = [
-    'Muxer'
+    'Muxer',
+    'HLSMuxer',
+    'TeeMuxer',
 ]
 
 
 class Muxer(BaseWrapper):
     format = None
 
-    # noinspection PyShadowingBuiltins
     def __init__(self, output, **kw):
         self.output = output
         super(Muxer, self).__init__(**kw)
@@ -27,7 +25,7 @@ class Muxer(BaseWrapper):
         return ['-f', self.format] + super(Muxer, self).get_args()
 
     def get_opts(self):
-        """ Возвращает настройки муксера в виде опций через двоеточие"""
+        """ Returns muxer options formatted with ':' delimiter."""
         return ':'.join('%s=%s' % (self.key_to_opt(k), self._args[k])
                         for k in self._args_order if self._args[k])
 
