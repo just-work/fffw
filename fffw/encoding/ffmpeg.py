@@ -1,5 +1,6 @@
 from itertools import chain
 
+import fffw.graph.sources
 from fffw.encoding import Muxer
 from fffw.encoding import codec
 from fffw.graph import FilterComplex, base
@@ -59,10 +60,10 @@ class FFMPEG(BaseWrapper):
         self.__outputs = []
         self.__vdest = self.__adest = 0
 
-        self.__video = base.Input(kind=base.VIDEO)
-        self.__audio = base.Input(kind=base.AUDIO)
+        self.__video = fffw.graph.sources.Input(kind=base.VIDEO)
+        self.__audio = fffw.graph.sources.Input(kind=base.AUDIO)
 
-        if isinstance(inputfile, base.BaseSource):
+        if isinstance(inputfile, fffw.graph.sources.BaseSource):
             self.add_input(inputfile)
         elif isinstance(inputfile, (list, tuple)):
             for i in inputfile:
@@ -103,7 +104,7 @@ class FFMPEG(BaseWrapper):
         :type inputfile: graph.base.SourceFile
         """
         assert not self.filter_complex, "filter complex already initialized"
-        assert isinstance(inputfile, base.BaseSource)
+        assert isinstance(inputfile, fffw.graph.sources.BaseSource)
         self.__inputs.append(inputfile)
 
         for _ in range(inputfile.video_streams):

@@ -1,5 +1,6 @@
 import collections
 
+import fffw.graph.sources
 from fffw.graph import base
 
 
@@ -14,8 +15,8 @@ class FilterComplex:
     def __init__(self, video=None, audio=None):
         """
         """
-        self.video = video or base.Input(kind=base.VIDEO)
-        self.audio = audio or base.Input(kind=base.AUDIO)
+        self.video = video or fffw.graph.sources.Input(kind=base.VIDEO)
+        self.audio = audio or fffw.graph.sources.Input(kind=base.AUDIO)
         self.__video_outputs = {}
         self.__audio_outputs = {}
         self._video_tmp = collections.Counter()

@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from fffw.graph import FilterComplex, filters, base
+from fffw.graph import FilterComplex, filters, base, sources
 from fffw.graph.base import VIDEO, AUDIO
 
 
@@ -21,8 +21,8 @@ class FilterGraphTestCase(TestCase):
         video_streams = [base.Source("%i:v" % i, VIDEO) for i in range(inputs)]
         audio_streams = [base.Source("0:a", AUDIO)]
 
-        fc = FilterComplex(video=base.Input(video_streams, VIDEO),
-                           audio=base.Input(audio_streams, AUDIO))
+        fc = FilterComplex(video=sources.Input(video_streams, VIDEO),
+                           audio=sources.Input(audio_streams, AUDIO))
 
         deint = filters.Deint(enabled=True)  # deinterlace is disabled
 
@@ -86,26 +86,26 @@ class FilterGraphTestCase(TestCase):
 
     def test_disabled_filters(self):
         """ Filter skipping."""
-        fc = FilterComplex(video=base.Input([base.Source("0:v", VIDEO)], VIDEO))
+        fc = FilterComplex(video=sources.Input([base.Source("0:v", VIDEO)], VIDEO))
 
         dest = fc.get_video_dest(0)
         fc.video | filters.Scale(640, 360) | filters.Deint(enabled=False) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
-        fc = FilterComplex(video=base.Input([base.Source("0:v", VIDEO)], VIDEO))
+        fc = FilterComplex(video=sources.Input([base.Source("0:v", VIDEO)], VIDEO))
 
         dest = fc.get_video_dest(0)
         fc.video | filters.Deint(enabled=False) | filters.Scale(640, 360) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
-        fc = FilterComplex(video=base.Input([base.Source("0:v", VIDEO)], VIDEO))
+        fc = FilterComplex(video=sources.Input([base.Source("0:v", VIDEO)], VIDEO))
         dest = fc.get_video_dest(0)
         tmp = fc.video | filters.Deint(enabled=False)
         tmp = tmp | filters.Deint(enabled=False)
         tmp | filters.Scale(640, 360) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
-        fc = FilterComplex(video=base.Input([base.Source("0:v", VIDEO)], VIDEO))
+        fc = FilterComplex(video=sources.Input([base.Source("0:v", VIDEO)], VIDEO))
         dest = fc.get_video_dest(0)
         tmp = fc.video | filters.Scale(640, 360)
         tmp = tmp | filters.Deint(enabled=False)
@@ -115,8 +115,8 @@ class FilterGraphTestCase(TestCase):
     def test_skip_not_connected_sources(self):
         """ Skip unused sources in filter complex.
         """
-        fc = FilterComplex(video=base.Input([base.Source("0:v", VIDEO)], VIDEO),
-                           audio=base.Input([base.Source("0:a", AUDIO)], AUDIO))
+        fc = FilterComplex(video=sources.Input([base.Source("0:v", VIDEO)], VIDEO),
+                           audio=sources.Input([base.Source("0:a", AUDIO)], AUDIO))
         dest = fc.get_video_dest(0)
         fc.video | filters.Scale(640, 360) | dest
 

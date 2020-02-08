@@ -3,7 +3,8 @@ from unittest import TestCase
 from fffw.encoding import FFMPEG, VideoCodec, AudioCodec
 from fffw.encoding.muxer import *
 from fffw.graph import filters
-from fffw.graph.base import SourceFile, LavfiSource, VIDEO, AUDIO
+from fffw.graph.base import VIDEO, AUDIO
+from fffw.graph.sources import SourceFile, LavfiSource
 from fffw.wrapper import ensure_binary
 
 
