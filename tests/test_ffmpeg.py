@@ -14,9 +14,9 @@ class FFMPEGTestCase(TestCase):
 
         fc = ff.init_filter_complex()
 
-        asplit = fc.audio | filters.AudioSplit()
+        asplit = fc.audio | AudioSplit()
 
-        fc.video | filters.Scale(640, 360) | fc.get_video_dest(0)
+        fc.video | Scale(640, 360) | fc.get_video_dest(0)
 
         asplit.connect_dest(fc.get_audio_dest(0))
         asplit.connect_dest(fc.get_audio_dest(1))
@@ -54,7 +54,7 @@ class FFMPEGTestCase(TestCase):
         ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
 
         fc = ff.init_filter_complex()
-        fc.video | filters.Scale(640, 360) | fc.get_video_dest(0)
+        fc.video | Scale(640, 360) | fc.get_video_dest(0)
 
         cv0 = VideoCodec(vcodec='libx264', vbitrate='700000', size='640x360')
         ca0 = AudioCodec(acodec='aac', abitrate='128000')
@@ -99,10 +99,10 @@ class FFMPEGTestCase(TestCase):
         ff < SourceFile('/tmp/input.jpg', audio_streams=0)
         ff < SourceFile('/tmp/input.mp4')
         fc = ff.init_filter_complex()
-        overlay = filters.Overlay(0, 0)
-        fc.video | filters.Scale(640, 360) | overlay
-        fc.video | filters.Scale(1280, 720) | overlay
-        fc.audio | filters.Volume(-20) | fc.get_audio_dest(0)
+        overlay = Overlay(0, 0)
+        fc.video | Scale(640, 360) | overlay
+        fc.video | Scale(1280, 720) | overlay
+        fc.audio | Volume(-20) | fc.get_audio_dest(0)
         overlay | fc.get_video_dest(0)
 
         cv0 = VideoCodec(vcodec='libx264', vbitrate='700000', size='640x360')
@@ -133,7 +133,7 @@ class FFMPEGTestCase(TestCase):
 
         fc = ff.init_filter_complex()
 
-        fc.audio | filters.Volume(20) | fc.get_audio_dest(0)
+        fc.audio | Volume(20) | fc.get_audio_dest(0)
 
         cv0 = VideoCodec(vcodec='copy')
         ca0 = AudioCodec(acodec='aac', abitrate='128000')
@@ -189,7 +189,7 @@ class FFMPEGTestCase(TestCase):
 
         fc = ff.init_filter_complex()
 
-        fc.video | filters.Scale(640, 360) | fc.get_video_dest(0)
+        fc.video | Scale(640, 360) | fc.get_video_dest(0)
 
         cv0 = VideoCodec(map='0:v', vcodec='copy')
         ca0 = AudioCodec(map='0:a', acodec='copy')
@@ -295,14 +295,14 @@ class FFMPEGTestCase(TestCase):
 
         fc = ff.init_filter_complex()
 
-        preroll_ready = fc.video | filters.Scale(640, 480) | filters.SetSAR(1)
-        concat = filters.Concat()
+        preroll_ready = fc.video | Scale(640, 480) | SetSAR(1)
+        concat = Concat()
         preroll_ready | concat
         fc.video | concat
 
         concat | fc.get_video_dest(0)
 
-        aconcat = filters.AudioConcat()
+        aconcat = AudioConcat()
         fc.audio | aconcat
         fc.audio | aconcat
 

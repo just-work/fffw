@@ -1,6 +1,7 @@
 from unittest import TestCase
 
 from fffw.graph import *
+from fffw.graph import base, sources
 
 
 class FilterGraphTestCase(TestCase):
@@ -23,7 +24,7 @@ class FilterGraphTestCase(TestCase):
         fc = FilterComplex(video=sources.Input(video_streams, VIDEO),
                            audio=sources.Input(audio_streams, AUDIO))
 
-        deint = filters.Deint(enabled=True)  # deinterlace is disabled
+        deint = Deint(enabled=True)  # deinterlace is disabled
 
         # first video stream is deinterlaced
         next_node = fc.video | deint
@@ -32,16 +33,16 @@ class FilterGraphTestCase(TestCase):
 
         # first overlay input is deinterlaced source (or source itself is
         # deint filter is disabled)
-        over = next_node | filters.Overlay(left, top)
+        over = next_node | Overlay(left, top)
 
         logo_width, logo_height = 200, 50  # logo scaled
 
         # second input stream is connected to logo scaler, followed by overlay
         # filter
-        next_node = fc.video | filters.Scale(logo_width, logo_height) | over
+        next_node = fc.video | Scale(logo_width, logo_height) | over
 
         # audio is split to two streams
-        asplit = fc.audio | filters.AudioSplit(2)
+        asplit = fc.audio | AudioSplit(2)
 
         for i in range(2):
             asplit.connect_dest(fc.get_audio_dest(i))
@@ -49,7 +50,7 @@ class FilterGraphTestCase(TestCase):
         # video split to two steams
 
         # connect split filter to overlayed video stream
-        split = next_node | filters.Split(2)
+        split = next_node | Split(2)
 
         # intermediate video stream scaling
         sizes = [(640, 480), (1280, 720)]
@@ -57,7 +58,7 @@ class FilterGraphTestCase(TestCase):
         for i, size in enumerate(sizes):
             # add scale filters to video streams
             w, h = size
-            scale = filters.Scale(w, h, enabled=size)
+            scale = Scale(w, h, enabled=size)
             # connect scaled streams to video destinations
             split | scale | fc.get_video_dest(i)
 
@@ -89,30 +90,30 @@ class FilterGraphTestCase(TestCase):
             [base.Source("0:v", VIDEO)], VIDEO))
 
         dest = fc.get_video_dest(0)
-        fc.video | filters.Scale(640, 360) | filters.Deint(enabled=False) | dest
+        fc.video | Scale(640, 360) | Deint(enabled=False) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
         fc = FilterComplex(video=sources.Input(
             [base.Source("0:v", VIDEO)], VIDEO))
 
         dest = fc.get_video_dest(0)
-        fc.video | filters.Deint(enabled=False) | filters.Scale(640, 360) | dest
+        fc.video | Deint(enabled=False) | Scale(640, 360) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
         fc = FilterComplex(video=sources.Input(
             [base.Source("0:v", VIDEO)], VIDEO))
         dest = fc.get_video_dest(0)
-        tmp = fc.video | filters.Deint(enabled=False)
-        tmp = tmp | filters.Deint(enabled=False)
-        tmp | filters.Scale(640, 360) | dest
+        tmp = fc.video | Deint(enabled=False)
+        tmp = tmp | Deint(enabled=False)
+        tmp | Scale(640, 360) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
         fc = FilterComplex(video=sources.Input(
             [base.Source("0:v", VIDEO)], VIDEO))
         dest = fc.get_video_dest(0)
-        tmp = fc.video | filters.Scale(640, 360)
-        tmp = tmp | filters.Deint(enabled=False)
-        tmp | filters.Deint(enabled=False) | dest
+        tmp = fc.video | Scale(640, 360)
+        tmp = tmp | Deint(enabled=False)
+        tmp | Deint(enabled=False) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
     def test_skip_not_connected_sources(self):
@@ -124,6 +125,6 @@ class FilterGraphTestCase(TestCase):
             audio=sources.Input(
                 [base.Source("0:a", AUDIO)], AUDIO))
         dest = fc.get_video_dest(0)
-        fc.video | filters.Scale(640, 360) | dest
+        fc.video | Scale(640, 360) | dest
 
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
