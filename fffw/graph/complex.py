@@ -1,8 +1,6 @@
-# coding: utf-8
-
-# $Id: $
 import collections
 
+import fffw.graph.sources
 from fffw.graph import base
 
 
@@ -11,24 +9,25 @@ __all__ = [
 ]
 
 
-class FilterComplex(object):
-    """ Описание графов конвертации для ffmpeg."""
+class FilterComplex:
+    """ ffmpeg filter graph wrapper."""
 
     def __init__(self, video=None, audio=None):
         """
         """
-        self.video = video or base.Input(kind=base.VIDEO)
-        self.audio = audio or base.Input(kind=base.AUDIO)
+        self.video = video or fffw.graph.sources.Input(kind=base.VIDEO)
+        self.audio = audio or fffw.graph.sources.Input(kind=base.AUDIO)
         self.__video_outputs = {}
         self.__audio_outputs = {}
         self._video_tmp = collections.Counter()
         self._audio_tmp = collections.Counter()
 
     def get_video_dest(self, index=0, create=True):
-        """ Возвращает выходной видеопоток по индексу.
-        :param index: номер видеопотока.
+        """ Returns video output by index.
+        :param index: video output index.
         :type index: int
-        :return: выходной видеопоток
+        :param create: create new video output flag
+        :return: output video stream
         :rtype: base.Dest
         """
         try:
@@ -36,14 +35,16 @@ class FilterComplex(object):
         except KeyError:
             if not create:
                 raise IndexError(index)
-            self.__video_outputs[index] = base.Dest('vout%s' % index, base.VIDEO)
+            self.__video_outputs[index] = base.Dest(
+                'vout%s' % index, base.VIDEO)
         return self.__video_outputs[index]
 
     def get_audio_dest(self, index=0, create=True):
-        """ Возвращает выходной аудиопоток по индексу.
-        :param index: номер аудиопотока.
+        """ Returns audio output by index.
+        :param index: audio output index.
         :type index: int
-        :return: выходной аудиопоток
+        :param create: create new audio output flag
+        :return: output audio stream
         :rtype: base.Dest
         """
         try:
@@ -51,35 +52,39 @@ class FilterComplex(object):
         except KeyError:
             if not create:
                 raise IndexError(index)
-            self.__audio_outputs[index] = base.Dest('aout%s' % index, base.AUDIO)
+            self.__audio_outputs[index] = base.Dest(
+                'aout%s' % index, base.AUDIO)
         return self.__audio_outputs[index]
 
     def render(self, partial=False):
-        """ Возвращает описание filter_graph в форме, понятной ffmpeg.
+        """
+        Returns filter_graph description in corresponding ffmpeg param syntax.
 
         :rtype: str
         """
         result = []
         for src in self.video.streams:
+            # noinspection PyProtectedMember
             if not src._edge:
                 continue
             result.extend(src.render(self.video_naming, partial=partial))
         for src in self.audio.streams:
+            # noinspection PyProtectedMember
             if not src._edge:
                 continue
             result.extend(src.render(self.audio_naming, partial=partial))
 
-        # При рекурсивном обходе графа не производится проверка посещений на
-        # лету, поэтому перед конкатенацией удаляем дубликаты (с учетом порядка)
+        # There are no visit checks in recurse graph traversing, so remove
+        # duplicates respecting order of appearance.
         return ';'.join(collections.OrderedDict.fromkeys(result))
 
     def __str__(self):
         return self.render()
 
     def video_naming(self, name='tmp'):
-        """ Функция, генерирующая уникальные идентификаторы ребер графа.
+        """ Unique video edge identifier generator.
 
-        :param name: префикс, используемый в идентификаторе
+        :param name: prefix used in name generation.
         :type name: str
         :rtype: str
         """
@@ -88,9 +93,9 @@ class FilterComplex(object):
         return res
 
     def audio_naming(self, name='tmp'):
-        """ Функция, генерирующая уникальные идентификаторы ребер графа.
+        """ Unique audio edge identifier generator.
 
-        :param name: префикс, используемый в идентификаторе
+        :param name: prefix used in name generation.
         :type name: str
         :rtype: str
         """

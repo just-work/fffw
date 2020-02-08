@@ -1,7 +1,5 @@
-# coding: utf-8
-
-# $Id: $
-from fffw.graph.base import Node, VIDEO, AUDIO
+from fffw.graph import base
+from fffw.graph.base import VIDEO, AUDIO
 
 
 __all__ = [
@@ -28,17 +26,17 @@ __all__ = [
 ]
 
 
-class Pass(Node):
+class Pass(base.Node):
     kind = VIDEO
     enabled = False
 
 
-class AudioPass(Node):
+class AudioPass(base.Node):
     kind = AUDIO
     enabled = False
 
 
-class Deint(Node):
+class Deint(base.Node):
     kind = VIDEO
     name = 'yadif'
 
@@ -51,7 +49,7 @@ class Deint(Node):
         return "%s" % self.mode
 
 
-class Scale(Node):
+class Scale(base.Node):
     kind = VIDEO
     name = "scale"
 
@@ -73,7 +71,7 @@ class ScaleNPP(Scale):
         return "w=%s:h=%s" % (self.width, self.height)
 
 
-class SetSAR(Node):
+class SetSAR(base.Node):
     kind = VIDEO
     name = "setsar"
 
@@ -86,7 +84,7 @@ class SetSAR(Node):
         return "%s" % self.sar
 
 
-class Crop(Node):
+class Crop(base.Node):
     kind = VIDEO
     name = "crop"
 
@@ -102,7 +100,7 @@ class Crop(Node):
         return "%s:%s:%s:%s" % (self.width, self.height, self.left, self.top)
 
 
-class Split(Node):
+class Split(base.Node):
     kind = VIDEO
     name = "split"
 
@@ -122,12 +120,12 @@ class Split(Node):
         return '%s' % self._output_count
 
 
-class HWUpload(Node):
+class HWUpload(base.Node):
     kind = VIDEO
     name = 'hwupload_cuda'
 
 
-class Concat(Node):
+class Concat(base.Node):
     kind = VIDEO
     name = 'concat'
 
@@ -143,7 +141,7 @@ class Concat(Node):
         return 'n=%s' % self.input_count
 
 
-class AudioConcat(Node):
+class AudioConcat(base.Node):
     kind = AUDIO
     name = 'concat'
 
@@ -157,7 +155,7 @@ class AudioConcat(Node):
         return 'v=0:a=1:n=%s' % self.input_count
 
 
-class Trim(Node):
+class Trim(base.Node):
     kind = VIDEO
     name = 'trim'
 
@@ -171,7 +169,7 @@ class Trim(Node):
         return 'start=%s:end=%s' % (self.start, self.end)
 
 
-class AudioTrim(Node):
+class AudioTrim(base.Node):
     kind = VIDEO
     name = 'atrim'
 
@@ -185,7 +183,7 @@ class AudioTrim(Node):
         return 'start=%s:end=%s' % (self.start, self.end)
 
 
-class SetPTS(Node):
+class SetPTS(base.Node):
     kind = VIDEO
     name = 'setpts'
 
@@ -198,7 +196,7 @@ class SetPTS(Node):
         return self.mode
 
 
-class AudioSetPTS(Node):
+class AudioSetPTS(base.Node):
     kind = VIDEO
     name = 'asetpts'
 
@@ -211,7 +209,7 @@ class AudioSetPTS(Node):
         return self.mode
 
 
-class AudioSplit(Node):
+class AudioSplit(base.Node):
     kind = AUDIO
     name = "asplit"
 
@@ -231,7 +229,7 @@ class AudioSplit(Node):
         return '%s' % self._output_count
 
 
-class Overlay(Node):
+class Overlay(base.Node):
     kind = VIDEO
     input_count = 2
     name = "overlay"
@@ -246,7 +244,7 @@ class Overlay(Node):
         return "x=%s:y=%s" % (self.left, self.top)
 
 
-class Volume(Node):
+class Volume(base.Node):
     kind = AUDIO
     name = 'volume'
 
@@ -259,7 +257,7 @@ class Volume(Node):
         return "%.2f" % self.volume
 
 
-class Rotate(Node):
+class Rotate(base.Node):
     kind = VIDEO
     name = "rotate"
 
@@ -280,7 +278,7 @@ class Rotate(Node):
             raise ValueError(self.degrees)
 
 
-class Drawtext(Node):
+class Drawtext(base.Node):
     kind = VIDEO
     name = 'drawtext'
 

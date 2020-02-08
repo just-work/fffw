@@ -1,13 +1,10 @@
-# coding: utf-8
-
 import re
 import subprocess
 from logging import getLogger
 
-import six
-
 
 def quote(token):
+    """ Escapes a token for command line."""
     token = ensure_text(token)
     if re.search(r'[ ()[\];]', token):
         return '"%s"' % token.replace('\"', '\\"')
@@ -15,31 +12,40 @@ def quote(token):
 
 
 def ensure_binary(x):
+    """ Recursively ensures that all values except collections are bytes."""
     if isinstance(x, tuple):
         return tuple(ensure_binary(y) for y in x)
     if isinstance(x, list):
         return list(ensure_binary(y) for y in x)
-    if isinstance(x, six.text_type):
+    if isinstance(x, str):
         return x.encode("utf-8")
-    if not isinstance(x, six.binary_type):
+    if not isinstance(x, bytes):
         return str(x).encode("utf-8")
     return x
 
 
 def ensure_text(x):
+    """ Recursively ensures that all values except collections are strings."""
     if isinstance(x, tuple):
         return tuple(ensure_text(y) for y in x)
     if isinstance(x, list):
         return list(ensure_text(y) for y in x)
-    if isinstance(x, six.binary_type):
+    if isinstance(x, bytes):
         return x.decode("utf-8")
-    return six.text_type(x)
+    return str(x)
 
 
-class BaseWrapper(object):
-    """ Базовый класс для генерации аргументов командной строки по заданным
-    параметрам"""
+class BaseWrapper:
+    """
+    Base class for generating command line arguments from params.
 
+    Values meanings:
+    * True: flag presense
+    * False/None: flag absense
+    * List/Tuple: param name is repeated multiple times with values
+    * Callable: function call result is added to result
+    * All other: param name and value are added to result
+    """
     arguments = []
     """type arguments: List[Tuple[str, str]]"""
 

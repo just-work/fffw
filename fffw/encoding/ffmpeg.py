@@ -1,9 +1,8 @@
-# coding: utf-8
-
 from itertools import chain
 
+import fffw.graph.sources
 from fffw.encoding import Muxer
-from fffw.encoding.codec import BaseCodec
+from fffw.encoding import codec
 from fffw.graph import FilterComplex, base
 from fffw.wrapper import BaseWrapper, ensure_binary
 
@@ -12,7 +11,7 @@ __all__ = ['FFMPEG']
 
 class InputList(list):
     def __call__(self):
-        """ Делегирует форматирование аргументов объектам источника сигнала."""
+        """ Delegates arguments formatting to Source objects."""
         result = []
         for src in self:
             if hasattr(src, 'get_args') and callable(src.get_args):
@@ -26,7 +25,6 @@ class FFMPEG(BaseWrapper):
     command = 'ffmpeg'
     stderr_markers = ['[error]', '[fatal]']
 
-    # noinspection SpellCheckingInspection
     arguments = [
         ('loglevel', '-loglevel '),
         ('strict', '-strict '),
@@ -62,10 +60,10 @@ class FFMPEG(BaseWrapper):
         self.__outputs = []
         self.__vdest = self.__adest = 0
 
-        self.__video = base.Input(kind=base.VIDEO)
-        self.__audio = base.Input(kind=base.AUDIO)
+        self.__video = fffw.graph.sources.Input(kind=base.VIDEO)
+        self.__audio = fffw.graph.sources.Input(kind=base.AUDIO)
 
-        if isinstance(inputfile, base.BaseSource):
+        if isinstance(inputfile, fffw.graph.sources.BaseSource):
             self.add_input(inputfile)
         elif isinstance(inputfile, (list, tuple)):
             for i in inputfile:
@@ -101,12 +99,12 @@ class FFMPEG(BaseWrapper):
         return result
 
     def add_input(self, inputfile):
-        """ Добавляет новый входящий файл.
+        """ Adds new source file to ffmpeg.
 
         :type inputfile: graph.base.SourceFile
         """
         assert not self.filter_complex, "filter complex already initialized"
-        assert isinstance(inputfile, base.BaseSource)
+        assert isinstance(inputfile, fffw.graph.sources.BaseSource)
         self.__inputs.append(inputfile)
 
         for _ in range(inputfile.video_streams):
@@ -124,11 +122,11 @@ class FFMPEG(BaseWrapper):
     def add_output(self, muxer, *codecs):
         assert isinstance(muxer, Muxer)
         for c in codecs:
-            assert isinstance(c, BaseCodec)
+            assert isinstance(c, codec.BaseCodec)
             fc = self.filter_complex
             if not fc or getattr(c, 'map', None):
-                # если нет filter_complex или для кодека явно указан источник,
-                # подключаем кодек напрямую ко входным файлам
+                # If filter_complex is not present or codec has source set,
+                # connect codec to inputd directly.
                 if c.codec_type == base.VIDEO:
                     self.__video | c
                 if c.codec_type == base.AUDIO:
@@ -155,7 +153,7 @@ class FFMPEG(BaseWrapper):
         return list(self.__outputs)
 
     def __lt__(self, other):
-        """ Добавляет новый входящий файл.
+        """ Adds new source file.
 
         :type other: graph.base.SourceFile
         """
@@ -169,6 +167,15 @@ class FFMPEG(BaseWrapper):
         return super(FFMPEG, self).__setattr__(key, value)
 
     def handle_stderr(self, line):
+        """
+        Handle ffmpeg output.
+
+        Capture only lines containing one of `stderr_markers`
+        """
+        if not self.stderr_markers:
+            # if no markers are defined, handle each line
+            return super().handle_stderr(line)
+        # capture only lines containing markers
         for marker in self.stderr_markers:
             if marker in line:
                 super().handle_stderr(line)

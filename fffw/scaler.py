@@ -1,22 +1,18 @@
-# coding: utf-8
-
 from math import floor, ceil
 
 
 def xround(val, div, how=None, quality=5):
-    """ Округление на стероидах.
+    """ Number rounding with steroids.
 
-    :param val: float, число которое округлять
-    :param div: int, точность округления
-    (результат будет нацело делиться на него)
-    :param how: (None|'ceil'|'floor'), режим округления
-        None - округление из школы (в обе стороны)
-        ceil - округление вверх
-        floor - округление вниз
+    :param val: float, a number to round
+    :param div: int, accuracy. Resulting value will be dividable to this.
+    :param how: (None|'ceil'|'floor'), round mode
+        None - classic rounding, up or down
+        ceil - round up
+        floor - round down
     :param quality:
-        число знаков после запятой, до которого происходит округление исходного
-        значения в десятичной СИ до основного округления. Используется для
-        борьбы с числами 503.9999999999999994
+        number of digits after comma used to truncate numbers like
+        503.9999999999999994 before main rounding.
     """
     val = round(val, quality)
     if how == 'floor':
@@ -26,8 +22,8 @@ def xround(val, div, how=None, quality=5):
     return (int(val + div / 2.0) // div) * div
 
 
-class Scaler(object):
-    """ Хелпер для учета трансформаций изображений и видео."""
+class Scaler:
+    """ Image and video dimensions transformation helpers."""
 
     def __init__(self, source_size, par=1.0, rotation=0, accuracy=2):
         self.rotation = rotation in (90, 270)
@@ -41,7 +37,7 @@ class Scaler(object):
                       accuracy=self.accuracy)
 
     def crop(self, left, top, width, height):
-        """ Учитывает фактический результат обрезки с указанными параметрами
+        """ Returns new scaler with cut dimensions.
         """
         s = self._clone()
         width = min(self.source_size[0] - left, width)
@@ -50,10 +46,10 @@ class Scaler(object):
         return s
 
     def rotate(self, rotation=90):
-        """ Учитывает поворот на углы, кратные 90 градусам."""
+        """ Retuns new scaler with 90-degree rotation."""
         s = self._clone()
         if rotation in (0, 180):
-            # поворот либо меняет местами высоту или ширину, либо не меняет
+            # width and height are swapped or not
             return s
         height, width = self.source_size
         s.source_size = (width, height)
@@ -62,7 +58,7 @@ class Scaler(object):
 
     @property
     def pixel_size(self):
-        """ Размер исходного изображения в квадратных пикселях."""
+        """ Source image size in square pixels."""
         sw, sh = self.source_size
         sw = int(sw * self.par)
         return sw, sh
@@ -75,7 +71,13 @@ class Scaler(object):
         return 0.0
 
     def scale_fit(self, target_size):
-        """ Масштабирует изображение "вписывая" его в target_size."""
+        """
+        Scales source image fitting it to
+        target_size.
+
+        One or both of resulting dimensions is equal to corresponding target
+        dimension, another is less.
+        """
 
         sw, sh = self.pixel_size
         tw, th = target_size
@@ -87,7 +89,11 @@ class Scaler(object):
         return self.scale(scale)
 
     def scale_crop(self, target_size):
-        """ Масштабирует изображение покрывая целиком target_size."""
+        """ Scales source image to target_size with cutting borders.
+
+        One of resulting dimensions is equal to corresponding target dimension,
+        another was greated initially, but was cut to target dimension.
+        """
 
         sw, sh = self.pixel_size
         tw, th = target_size
@@ -98,19 +104,23 @@ class Scaler(object):
 
         s = self.scale(scale)
 
-        # размер части исходного изображения, "влезшей" в результат
+        # source image part size, cut to target size
         cw, ch = int(tw / scale), int(th / scale)
         left = max(sw - cw, 0) / 2
         top = max(sh - ch, 0) / 2
         return s, (left, top, cw, ch)
 
     def scale(self, scale):
-        """ Масштабирует изображение кратно значению scale."""
+        """
+        Scales source image with a scale.
+
+        scaled dimension is source dimension multiplied by scale.
+        """
         sw, sh = self.pixel_size
 
-        # В ширину мы округляем "вверх", в высоту - "вниз". Для
-        # "нормальных" исходников при этом удастся избежать вертикальных
-        # черных полей, а для "повернутых" - не важно.
+        # Usually for horizontal video we round width "up" and height "down".
+        # For valid sources it eliminates thin black margins on top/down, for
+        # horizontal sources it is not so important.
         (width, height) = (xround(sw * scale, self.accuracy, how='ceil'),
                            xround(sh * scale, self.accuracy, how='floor'))
         s = self._clone()
