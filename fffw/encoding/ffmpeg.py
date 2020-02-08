@@ -171,6 +171,10 @@ class FFMPEG(BaseWrapper):
 
         Capture only lines containing one of `stderr_markers`
         """
+        if not self.stderr_markers:
+            # if no markers are defined, handle each line
+            return super().handle_stderr(line)
+        # capture only lines containing markers
         for marker in self.stderr_markers:
             if marker in line:
                 super().handle_stderr(line)
