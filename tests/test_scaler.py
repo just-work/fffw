@@ -3,8 +3,9 @@ from fffw.scaler import Scaler
 
 
 class ScalerTestCase(TestCase):
+    """ Tests for scaling helpers class."""
 
-    def testScaler(self):
+    def test_scaler(self):
         """ Scaler smoke test and feature demo
 
         * Source video 1280x960, square pixels
@@ -19,19 +20,19 @@ class ScalerTestCase(TestCase):
         self.assertTupleEqual(crop.source_size, (640, 480))
         self.assertTupleEqual(fields, (0, 120, 1280, 720))
 
-    def testAccuracy(self):
+    def test_accuracy(self):
         """ Resulting dimensions are dividable to 16."""
         scaler = Scaler((1280, 720), accuracy=16)
         fit = scaler.scale_fit((640, 360))
         self.assertTupleEqual(fit.source_size, (640, 352))
 
-    def testRotation(self):
+    def test_rotation(self):
         """ Rotation handling."""
         scaler = Scaler((1280, 720), rotation=90)
         fit = scaler.scale_fit((360, 640))
         self.assertTupleEqual(fit.source_size, (360, 640))
 
-    def testPixelAspectRatio(self):
+    def test_pixel_aspect_ratip(self):
         """ Non-square pixels support."""
         scaler = Scaler((720, 720), par=16./9.)
         fit = scaler.scale_fit((640, 360))

@@ -1,21 +1,15 @@
 from unittest import TestCase
 
-from fffw.encoding import FFMPEG, Muxer, VideoCodec, AudioCodec
-from fffw.encoding.muxer import HLSMuxer, TeeMuxer
+from fffw.encoding import FFMPEG, VideoCodec, AudioCodec
+from fffw.encoding.muxer import *
 from fffw.graph import filters
 from fffw.graph.base import SourceFile, LavfiSource, VIDEO, AUDIO
 from fffw.wrapper import ensure_binary
 
 
-# noinspection PyPep8Naming
-def SimpleMuxer(name):
-    muxer_type = type('%sMuxer' % name.upper(), (Muxer,), {'format': name})
-    return muxer_type
-
-
 class FFMPEGTestCase(TestCase):
 
-    def testFFMPEG(self):
+    def test_ffmpeg(self):
         """ Smoke test and feature demo."""
         ff = FFMPEG()
         ff < SourceFile('/tmp/input.mp4')
@@ -29,8 +23,8 @@ class FFMPEGTestCase(TestCase):
         asplit.connect_dest(fc.get_audio_dest(0))
         asplit.connect_dest(fc.get_audio_dest(1))
 
-        out0 = SimpleMuxer('flv')('/tmp/out.flv')
-        out1 = SimpleMuxer('mp3')('/tmp/out.mp3')
+        out0 = FLVMuxer('/tmp/out.flv')
+        out1 = MP3Muxer('/tmp/out.mp3')
 
         cv0 = VideoCodec(vcodec='libx264', vbitrate='700000', size='640x360')
         ca0 = AudioCodec(acodec='aac', abitrate='128000')
@@ -57,7 +51,7 @@ class FFMPEGTestCase(TestCase):
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
-    def testBypassWithFilterComplex(self):
+    def test_bypass_with_filter_complex(self):
         """ Audio stream bypass mode."""
         ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
 
@@ -66,7 +60,7 @@ class FFMPEGTestCase(TestCase):
 
         cv0 = VideoCodec(vcodec='libx264', vbitrate='700000', size='640x360')
         ca0 = AudioCodec(acodec='aac', abitrate='128000')
-        out0 = SimpleMuxer('flv')('/tmp/out.flv')
+        out0 = FLVMuxer('/tmp/out.flv')
         ff.add_output(out0, cv0, ca0)
 
         expected = [
@@ -81,13 +75,13 @@ class FFMPEGTestCase(TestCase):
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
-    def testBypassWithoutFilterComplex(self):
+    def test_bypass_without_filter_complex(self):
         """ Stream bypass with filter_complex missing."""
         ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
 
         cv0 = VideoCodec(vcodec='libx264', vbitrate='700000', size='640x360')
         ca0 = AudioCodec(acodec='aac', abitrate='128000')
-        out0 = SimpleMuxer('flv')('/tmp/out.flv')
+        out0 = FLVMuxer('/tmp/out.flv')
         ff.add_output(out0, cv0, ca0)
 
         expected = [
@@ -100,7 +94,7 @@ class FFMPEGTestCase(TestCase):
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
-    def testInputSkipStreams(self):
+    def test_input_stream_naming(self):
         """ Input stream naming test."""
 
         ff = FFMPEG()
@@ -115,7 +109,7 @@ class FFMPEGTestCase(TestCase):
 
         cv0 = VideoCodec(vcodec='libx264', vbitrate='700000', size='640x360')
         ca0 = AudioCodec(acodec='aac', abitrate='128000')
-        out0 = SimpleMuxer('flv')('/tmp/out.flv')
+        out0 = FLVMuxer('/tmp/out.flv')
         ff.add_output(out0, cv0, ca0)
 
         expected = [
@@ -135,7 +129,7 @@ class FFMPEGTestCase(TestCase):
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
-    def testCodecCopy(self):
+    def test_handle_codec_copy(self):
         """ vcodec=copy connects source directly to muxer."""
         ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
 
@@ -145,7 +139,7 @@ class FFMPEGTestCase(TestCase):
 
         cv0 = VideoCodec(vcodec='copy')
         ca0 = AudioCodec(acodec='aac', abitrate='128000')
-        out0 = SimpleMuxer('flv')('/tmp/out.flv')
+        out0 = FLVMuxer('/tmp/out.flv')
         ff.add_output(out0, cv0, ca0)
         expected = [
             'ffmpeg',
@@ -161,17 +155,17 @@ class FFMPEGTestCase(TestCase):
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
-    def testReuseInputFiles(self):
+    def test_reuse_input_files(self):
         """ Reuse input files multiple times."""
         ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
         cv0 = VideoCodec(map='0:v', vcodec='copy')
         ca0 = AudioCodec(map='0:a', acodec='copy')
-        out0 = SimpleMuxer('flv')('/tmp/out0.flv')
+        out0 = FLVMuxer('/tmp/out0.flv')
         ff.add_output(out0, cv0, ca0)
 
         cv1 = VideoCodec(map='0:v', vcodec='copy')
         ca1 = AudioCodec(map='0:a', acodec='copy')
-        out1 = SimpleMuxer('flv')('/tmp/out1.flv')
+        out1 = FLVMuxer('/tmp/out1.flv')
         ff.add_output(out1, cv1, ca1)
         expected = [
             'ffmpeg',
@@ -191,7 +185,7 @@ class FFMPEGTestCase(TestCase):
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
-    def testCodecCopyWithSplit(self):
+    def test_handle_codec_copy_with_other_filters(self):
         """ vcodec=copy with separate transcoded output."""
         ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
 
@@ -201,12 +195,12 @@ class FFMPEGTestCase(TestCase):
 
         cv0 = VideoCodec(map='0:v', vcodec='copy')
         ca0 = AudioCodec(map='0:a', acodec='copy')
-        out0 = SimpleMuxer('flv')('/tmp/copy.flv')
+        out0 = FLVMuxer('/tmp/copy.flv')
         ff.add_output(out0, cv0, ca0)
 
         cv1 = VideoCodec(vcodec='libx264')
         ca1 = AudioCodec(acodec='aac')
-        out1 = SimpleMuxer('flv')('/tmp/out.flv')
+        out1 = FLVMuxer('/tmp/out.flv')
         ff.add_output(out1, cv1, ca1)
 
         expected = [
@@ -230,12 +224,12 @@ class FFMPEGTestCase(TestCase):
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
-    def testLavfiSources(self):
+    def test_lavfi_sources(self):
         """ lavfi generated sources support."""
         vsrc = LavfiSource('testsrc', VIDEO, duration=5.3, rate=10)
         asrc = LavfiSource('sine', AUDIO, d=5, b=4)
         ff = FFMPEG(inputfile=[vsrc, asrc])
-        ff.add_output(SimpleMuxer('null')('/dev/null'))
+        ff.add_output(NullMuxer('/dev/null'))
         expected = [
             'ffmpeg',
             '-f', 'lavfi',
@@ -247,7 +241,7 @@ class FFMPEGTestCase(TestCase):
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
-    def testHLSMuxer(self):
+    def test_hls_muxer(self):
         """ hls muxer args."""
         ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
 
@@ -271,7 +265,7 @@ class FFMPEGTestCase(TestCase):
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
-    def testTeeMuxer(self):
+    def test_tee_muxer(self):
         """ tee muxer args."""
         ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
 
@@ -295,7 +289,7 @@ class FFMPEGTestCase(TestCase):
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
-    def testConcat(self):
+    def test_concat(self):
         """ Concat source files."""
         ff = FFMPEG()
         ff < SourceFile('preroll.mp4')
@@ -315,7 +309,7 @@ class FFMPEGTestCase(TestCase):
         fc.audio | aconcat
 
         aconcat | fc.get_audio_dest(0)
-        ff.add_output(SimpleMuxer('mp4')('output.mp4'))
+        ff.add_output(MP4Muxer('output.mp4'))
 
         expected = [
             'ffmpeg',

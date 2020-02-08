@@ -1,9 +1,12 @@
 from fffw.wrapper import BaseWrapper
 
-
 __all__ = [
-    'Muxer',
+    'FLVMuxer',
     'HLSMuxer',
+    'MP3Muxer',
+    'MP4Muxer',
+    'NullMuxer',
+    'Muxer',
     'TeeMuxer',
 ]
 
@@ -31,6 +34,22 @@ class Muxer(BaseWrapper):
 
     def key_to_opt(self, k):
         return self._key_mapping[k].strip('- ')
+
+
+class FLVMuxer(Muxer):
+    format = 'flv'
+
+
+class MP4Muxer(Muxer):
+    format = 'mp4'
+
+
+class MP3Muxer(Muxer):
+    format = 'mp3'
+
+
+class NullMuxer(Muxer):
+    format = 'null'
 
 
 class HLSMuxer(Muxer):

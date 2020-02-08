@@ -6,7 +6,7 @@ from fffw.graph.base import VIDEO, AUDIO
 
 class FilterGraphTestCase(TestCase):
 
-    def testFilterGraph(self):
+    def test_filter_graph(self):
         """ Filter complex smoke test and features demo.
 
         [I-1/Logo]---<Scale>-------
@@ -84,7 +84,7 @@ class FilterGraphTestCase(TestCase):
 
         self.assertEqual(result, expected)
 
-    def testDisableFilter(self):
+    def test_disabled_filters(self):
         """ Filter skipping."""
         fc = FilterComplex(video=base.Input([base.Source("0:v", VIDEO)], VIDEO))
 
@@ -112,7 +112,7 @@ class FilterGraphTestCase(TestCase):
         tmp | filters.Deint(enabled=False) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
-    def testDontUseNotConnectedSrc(self):
+    def test_skip_not_connected_sources(self):
         """ Skip unused sources in filter complex.
         """
         fc = FilterComplex(video=base.Input([base.Source("0:v", VIDEO)], VIDEO),
