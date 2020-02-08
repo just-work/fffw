@@ -1,7 +1,6 @@
 from unittest import TestCase
 
-from fffw.graph import FilterComplex, filters, base, sources
-from fffw.graph.base import VIDEO, AUDIO
+from fffw.graph import *
 
 
 class FilterGraphTestCase(TestCase):
@@ -86,26 +85,30 @@ class FilterGraphTestCase(TestCase):
 
     def test_disabled_filters(self):
         """ Filter skipping."""
-        fc = FilterComplex(video=sources.Input([base.Source("0:v", VIDEO)], VIDEO))
+        fc = FilterComplex(video=sources.Input(
+            [base.Source("0:v", VIDEO)], VIDEO))
 
         dest = fc.get_video_dest(0)
         fc.video | filters.Scale(640, 360) | filters.Deint(enabled=False) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
-        fc = FilterComplex(video=sources.Input([base.Source("0:v", VIDEO)], VIDEO))
+        fc = FilterComplex(video=sources.Input(
+            [base.Source("0:v", VIDEO)], VIDEO))
 
         dest = fc.get_video_dest(0)
         fc.video | filters.Deint(enabled=False) | filters.Scale(640, 360) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
-        fc = FilterComplex(video=sources.Input([base.Source("0:v", VIDEO)], VIDEO))
+        fc = FilterComplex(video=sources.Input(
+            [base.Source("0:v", VIDEO)], VIDEO))
         dest = fc.get_video_dest(0)
         tmp = fc.video | filters.Deint(enabled=False)
         tmp = tmp | filters.Deint(enabled=False)
         tmp | filters.Scale(640, 360) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
-        fc = FilterComplex(video=sources.Input([base.Source("0:v", VIDEO)], VIDEO))
+        fc = FilterComplex(video=sources.Input(
+            [base.Source("0:v", VIDEO)], VIDEO))
         dest = fc.get_video_dest(0)
         tmp = fc.video | filters.Scale(640, 360)
         tmp = tmp | filters.Deint(enabled=False)
@@ -115,8 +118,11 @@ class FilterGraphTestCase(TestCase):
     def test_skip_not_connected_sources(self):
         """ Skip unused sources in filter complex.
         """
-        fc = FilterComplex(video=sources.Input([base.Source("0:v", VIDEO)], VIDEO),
-                           audio=sources.Input([base.Source("0:a", AUDIO)], AUDIO))
+        fc = FilterComplex(
+            video=sources.Input(
+                [base.Source("0:v", VIDEO)], VIDEO),
+            audio=sources.Input(
+                [base.Source("0:a", AUDIO)], AUDIO))
         dest = fc.get_video_dest(0)
         fc.video | filters.Scale(640, 360) | dest
 

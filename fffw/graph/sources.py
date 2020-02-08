@@ -1,6 +1,11 @@
 from fffw.graph.base import VIDEO, AUDIO
 from fffw.graph import base
 
+__all__ = [
+    'SourceFile',
+    'LavfiSource',
+]
+
 
 class BaseSource:
     """ Source signal base class."""
