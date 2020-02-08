@@ -1,6 +1,6 @@
 # fffw
 ## FFMPEG filter wrapper
-[![Build Status](https://travis-ci.org/rutube/fffw.svg?branch=master)](https://travis-ci.org/tumb1er/fffw)
+[![Build Status](https://travis-ci.org/rutube/fffw.svg?branch=master)](https://travis-ci.org/rutube/fffw)
 [![PyPI version](https://badge.fury.io/py/fffw.svg)](http://badge.fury.io/py/fffw)
 
 
