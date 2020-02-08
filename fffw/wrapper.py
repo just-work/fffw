@@ -1,6 +1,7 @@
 import re
 import subprocess
 from logging import getLogger
+from typing import Tuple, List
 
 
 def quote(token):
@@ -46,8 +47,7 @@ class BaseWrapper:
     * Callable: function call result is added to result
     * All other: param name and value are added to result
     """
-    arguments = []
-    """type arguments: List[Tuple[str, str]]"""
+    arguments: List[Tuple[str, str]] = []
 
     def __init_args(self):
         self._key_mapping = {}

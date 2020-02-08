@@ -16,8 +16,7 @@ class BaseCodec(BaseWrapper, base.Node):
     def enabled(self):
         return True
 
-    # noinspection PyShadowingBuiltins
-    def render(self, namer, id=None, partial=False):
+    def render(self, namer, gid=None, partial=False):
         return []
 
     def connect(self, dest):

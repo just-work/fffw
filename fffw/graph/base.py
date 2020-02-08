@@ -1,25 +1,51 @@
 __all__ = [
-    'VIDEO',
+    'StreamType',
     'AUDIO',
+    'VIDEO',
 ]
 
+import abc
+from enum import Enum, auto
+from typing import Callable, Optional, List, Union
 
-VIDEO, AUDIO = object(), object()
+
+class StreamType(Enum):
+    VIDEO = auto()
+    AUDIO = auto()
 
 
-class Dest:
+VIDEO = StreamType.VIDEO
+AUDIO = StreamType.AUDIO
+
+
+class Renderable(metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def render(self,
+               namer: Callable[[str], str],
+               gid: Optional[str] = None,
+               partial: bool = False) -> List[str]:
+        """ Returns a list of filter_graph edge descriptions.
+
+        :param namer: callable used to generate unique edge identifiers
+        :param gid: edge identifier
+        :param partial: partially formatted graph render mode floag
+        :return: edge description list ["[v:0]yadif[v:t1]", "[v:t1]scale[out]"]
+        """
+
+        raise NotImplementedError()
+
+
+class Dest(Renderable):
     """
     Audio/video output stream node.
 
     Must connect to single filter output only.
     """
 
-    def __init__(self, name, kind):
+    def __init__(self, name: str, kind: StreamType) -> None:
         """
         :param name: internal ffmpeg stream name ("v:0", "a:1")
-        :type name: str
         :param kind: stream kind (VIDEO/AUDIO)
-        :type kind: object
         """
 
         self._name = name
@@ -27,11 +53,11 @@ class Dest:
         self.kind = kind
 
     @property
-    def id(self):
+    def id(self) -> str:
         """ Returns node identifier used in filter_graph description."""
         return self._name
 
-    def connect_edge(self, edge):
+    def connect_edge(self, edge: "Edge") -> "Edge":
         """ Connects and edge to output stream.
 
         Should be called only from Node methods. Initializes edge identifier.
@@ -48,27 +74,31 @@ class Dest:
         self._edge.id = self.id
         return edge
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Dest('[%s]')" % self.id
 
-    # noinspection PyMethodMayBeStatic,PyUnusedLocal,PyShadowingBuiltins
-    def render(self, namer, id=None, partial=False):
-        # Previous nodes/edges rendered this already.
+    def render(self, namer: Callable[[], str], gid: Optional[str] = None,
+               partial: bool = False) -> List[str]:
+        # Previous nodes/edges already rendered destination node.
         return []
 
 
-class Edge:
+InputType = Union[None, "Source", "Node"]
+OutputType = Union[None, "Dest", "Node"]
+
+
+class Edge(Renderable):
     """ Internal ffmpeg data stream graph."""
 
     # noinspection PyShadowingBuiltins
-    def __init__(self, input=None, output=None):
+    def __init__(self,
+                 input: InputType = None,
+                 output: OutputType = None) -> None:
         """
         :param input: input node
-        :type input: Source|Node
         :param output: output node
-        :type output: Dest|Node
         """
-        self._id = None
+        self._id: Optional[str] = None
         self._input = input
         self._output = output
 
@@ -95,24 +125,21 @@ class Edge:
         else:
             raise RuntimeError("id already set")
 
-    def _connect_source(self, src):
+    def _connect_source(self, src: Union["Source", "Node"]) -> None:
         """ Connects input node to the edge.
 
         :param src: source stream or filter output node.
-        :type src: Source|Node
-        :return: None
         """
         if self._input is not None:
             raise ValueError("edge already connected to input %s" % self._input)
         self._input = src
 
-    def _connect_dest(self, dest):
+    def _connect_dest(self,
+                      dest: Union["Dest", "Node"]) -> Union["Dest", "Node"]:
         """ Connects output node to the edge.
 
         :param dest: output stream or filter input node
-        :type dest: Dest|Node
         :return: connected node
-        :rtype: Dest|Node
         """
         if self._output is not None:
             raise ValueError("edge already connected to output %s"
@@ -120,70 +147,48 @@ class Edge:
         self._output = dest
         return dest
 
-    # noinspection PyShadowingBuiltins
-    def render(self, namer, id=None, partial=False):
-        """ Returns a list of edge descriptions.
-
-        :param namer: callable used to generate unique edge identifiers
-        :type namer: (name: str) -> str
-        :param id: edge identifier
-        :type id: str
-        :param partial: partially formatted graph render mode floag
-        :type partial: bool
-        :return: edge description list ["[v:0]yadif[v:t1]", "[v:t1]scale[out]"]
-        :rtype: List[str]
-        """
+    def render(self,
+               namer: Callable[[str], str],
+               gid: Optional[str] = None,
+               partial: bool = False) -> List[str]:
         if not self.id:
             self.id = namer(self._output.name)
         if not self._output and partial:
             return []
-        return self._output.render(namer, id=id, partial=partial)
+        return self._output.render(namer, gid=gid, partial=partial)
 
 
-class Node:
+class Node(Renderable):
     """ Graph node describing ffmpeg filter."""
 
-    kind = None  # filter type (VIDEO/AUDIO)
-    name = None  # filter name
-    input_count = 1  # number of inputs
-    output_count = 1  # number of outputs
+    kind: StreamType  # filter type (VIDEO/AUDIO)
+    name: str  # filter name
+    input_count: int = 1  # number of inputs
+    output_count: int = 1  # number of outputs
 
     def __init__(self, enabled=True):
         if not enabled:
             assert self.input_count == 1
             assert self.output_count == 1
         self.enabled = enabled
-        self.inputs = [None] * self.input_count
-        self.outputs = [None] * self.output_count
+        self.inputs: List[Optional[Edge]] = [None] * self.input_count
+        self.outputs: List[Optional[Edge]] = [None] * self.output_count
 
     def __repr__(self):
         inputs = [('[%s]' % str(i.id if i else '---')) for i in self.inputs]
         outputs = [('[%s]' % str(i.id if i else '---')) for i in self.outputs]
         return '%s%s%s' % (''.join(inputs), self.name, ''.join(outputs))
 
-    # noinspection PyShadowingBuiltins
-    def render(self, namer, id=None, partial=False):
-        """ Returns a list of edge descriptions.
-
-        First element is a current filter description (see get_filter_cmd)
-
-        :param namer: callable used to generate unique edge identifiers
-        :type namer: (name: str) -> str
-        :param id: edge identifier
-        :type id: str
-        :param partial: partially formatted graph render mode floag
-        :type partial: bool
-        :return: edge description list ["[v:0]yadif[v:t1]", "[v:t1]scale[out]"]
-        :rtype: List[str]
-        """
+    def render(self, namer: Callable[[str], str], gid: Optional[str] = None,
+               partial: bool = False) -> List[str]:
         if not self.enabled:
             # filter skipped, input is connected to output directly
             next_edge = self.outputs[0]
             if partial and not next_edge:
                 return []
-            return next_edge.render(namer, id=id, partial=partial)
+            return next_edge.render(namer, gid=gid, partial=partial)
 
-        result = [self.get_filter_cmd(namer, id=id, partial=partial)]
+        result = [self.get_filter_cmd(namer, gid=gid, partial=partial)]
 
         for dest in self.outputs:
             if dest is None and partial:
@@ -194,7 +199,9 @@ class Node:
         return result
 
     # noinspection PyShadowingBuiltins
-    def get_filter_cmd(self, namer, id=None, partial=False):
+    def get_filter_cmd(self, namer: Callable[[str], str],
+                       gid: Optional[str] = None,
+                       partial: bool = False) -> str:
         """
         Returns filter description.
 
@@ -203,20 +210,16 @@ class Node:
         FILTER - fiter name, ARGS - filter params
 
         :param namer: callable used to generate unique edge identifiers
-        :type namer: (name: str) -> str
-        :param id: edge identifier
-        :type id: str
+        :param gid: edge identifier
         :param partial: partially formatted graph render mode floag
-        :type partial: bool
         :return: current description string like "[v:0]yadif[v:t1]"
-        :rtype: str
         """
         inputs = []
         outputs = []
         for edge in self.inputs:
             if not edge.id:
                 edge.id = namer(self.name)
-            inputs.append("[%s]" % str(id or edge.id))
+            inputs.append("[%s]" % str(gid or edge.id))
 
         for edge in self.outputs:
             if edge is None and partial:
@@ -236,32 +239,29 @@ class Node:
         return ''.join(inputs) + self.name + args + ''.join(outputs)
 
     @property
-    def args(self):
-        """ Generates filter params as a string
-
-        :rtype: str
+    def args(self) -> str:
+        """
+        Generates filter params as a string
         """
         return ''
 
-    def connect_edge(self, edge):
+    def connect_edge(self, edge: "Edge") -> "Edge":
         """ Connects and edge to one of filter inputs
 
         :param edge: input stream edge
-        :type edge: Edge
-        :return: None
+        :returns: connected edge
         """
         if not isinstance(edge, Edge):
             raise ValueError("only edge allowed")
         self.inputs[self.inputs.index(None)] = edge
         return edge
 
-    def connect_dest(self, other):
+    def connect_dest(self,
+                     other: Union["Node", "Dest"]) -> Union["Node", "Dest"]:
         """ Connects next filter or output to one of filter outputs.
 
         :param other: next filter or output stream
-        :type other: Node|Dest
         :return: next filter or output stream, connected to current stream
-        :rtype: Node|Dest
         """
         if not isinstance(other, (Node, Dest)):
             raise ValueError("only node and dest allowed")
@@ -270,57 +270,53 @@ class Node:
         other.connect_edge(edge)
         return other
 
-    def __or__(self, other):
+    def __or__(self, other: Union["Node", "Dest"]) -> Union["Node", "Dest"]:
         """
-        :type other: Node | Dest
-        :return: other
-        :rtype: Node | Dest
+        connect output edge to node
+        :return: connected edge
         """
         if not isinstance(other, (Node, Dest)):
             return NotImplemented
         return self.connect_dest(other)
 
 
-class Source:
+class Source(Renderable):
     """ Graph node containing audio or video input.
 
     Must connect to single graph edge only as a source
     """
-    def __init__(self, name, kind):
+
+    def __init__(self, name: Optional[str], kind: StreamType) -> None:
         """
         :param name: ffmpeg internal input stream name ("v:0", "a:1")
-        :type name: str|None
         :param kind: stream type (VIDEO/AUDIO)
-        :type kind: object
         """
         self._name = name
-        self._edge = None
+        self._edge: Optional[Edge] = None
         self._kind = kind
 
     @property
-    def id(self):
+    def id(self) -> str:
         """ Returns node identifier used in filter_graph description."""
         return self._name
 
     @property
-    def edge(self):
+    def edge(self) -> Optional["Edge"]:
         """ Returns an edge connected to current source.
         :rtype: fffw.graph.base.Edge|NoneType
         """
         return self._edge
 
     @property
-    def kind(self):
+    def kind(self) -> StreamType:
         """ Returns stream type."""
         return self._kind
 
-    def connect(self, other):
+    def connect(self, other: Node) -> Node:
         """ Connects a source to a filter or output
 
         :param other: filter consuming current input stream
-        :type other: fffw.graph.base.Node
         :return filter connected to current stream
-        :rtype: fffw.graph.base.Node
         """
         if not isinstance(other, Node):
             raise ValueError("only node allowed")
@@ -332,43 +328,31 @@ class Source:
         self._edge = self._edge or other.connect_edge(edge)
         return other
 
-    def __or__(self, other):
+    def __or__(self, other: Node) -> Node:
         """
-        :type other: Node
-        :return: other
-        :rtype: Node
+        Connect a filter to a source
+        :return: connected filter
         """
         if not isinstance(other, Node):
             return NotImplemented
         return self.connect(other)
 
-    # noinspection PyShadowingBuiltins
-    def render(self, namer, partial=False):
-        """ Returns a list of edge descriptions.
-
-        First element is a current filter description (see get_filter_cmd)
-
-        :param namer: callable used to generate unique edge identifiers
-        :type namer: (name: str) -> str
-        :param id: edge identifier
-        :type id: str
-        :param partial: partially formatted graph render mode floag
-        :type partial: bool
-        :return: edge description list ["[v:0]yadif[v:t1]", "[v:t1]scale[out]"]
-        :rtype: List[str]
-        """
+    def render(self,
+               namer: Callable[[str], str],
+               gid: Optional[str] = None,
+               partial: bool = False) -> List[str]:
         edge = self._edge
         if partial and not edge:
             return []
 
-        id = edge.id
+        eid = edge.id
         node = edge.output
         # if output node is disabled, use next edge identifier.
         if isinstance(node, Node) and not node.enabled:
             edge = node.outputs[0]
         else:
-            id = None
-        return edge.render(namer, id=id, partial=partial)
+            eid = None
+        return edge.render(namer, gid=eid, partial=partial)
 
     def __repr__(self):
         return "Source('[%s]')" % self.id
