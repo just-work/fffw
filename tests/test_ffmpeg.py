@@ -1,6 +1,3 @@
-# coding: utf-8
-
-# $Id: $
 from unittest import TestCase
 
 from fffw.encoding import FFMPEG, Muxer, VideoCodec, AudioCodec
@@ -19,7 +16,7 @@ def SimpleMuxer(name):
 class FFMPEGTestCase(TestCase):
 
     def testFFMPEG(self):
-        """ Проверка работоспособности и демонстрация возможностей."""
+        """ Smoke test and feature demo."""
         ff = FFMPEG()
         ff < SourceFile('/tmp/input.mp4')
 
@@ -61,8 +58,7 @@ class FFMPEGTestCase(TestCase):
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
     def testBypassWithFilterComplex(self):
-        """ Проверка работы в режиме bypass, когда аудиопоток не проходит ни
-        через один фильтр."""
+        """ Audio stream bypass mode."""
         ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
 
         fc = ff.init_filter_complex()
@@ -86,7 +82,7 @@ class FFMPEGTestCase(TestCase):
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
     def testBypassWithoutFilterComplex(self):
-        """ Проверка работы в режиме bypass, когда вообще нет filter_complex."""
+        """ Stream bypass with filter_complex missing."""
         ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
 
         cv0 = VideoCodec(vcodec='libx264', vbitrate='700000', size='640x360')
@@ -105,7 +101,7 @@ class FFMPEGTestCase(TestCase):
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
     def testInputSkipStreams(self):
-        """ Проверка корректности наименования входных потоков в фильтрах."""
+        """ Input stream naming test."""
 
         ff = FFMPEG()
         ff < SourceFile('/tmp/input.jpg', audio_streams=0)
@@ -140,8 +136,7 @@ class FFMPEGTestCase(TestCase):
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
     def testCodecCopy(self):
-        """ Проверяется корректность использования vcodec=copy совместно с
-        фильтрами для аудио."""
+        """ vcodec=copy connects source directly to muxer."""
         ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
 
         fc = ff.init_filter_complex()
@@ -167,7 +162,7 @@ class FFMPEGTestCase(TestCase):
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
     def testReuseInputFiles(self):
-        """ Проверяет что входные файлы можно использовать несколько раз."""
+        """ Reuse input files multiple times."""
         ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
         cv0 = VideoCodec(map='0:v', vcodec='copy')
         ca0 = AudioCodec(map='0:a', acodec='copy')
@@ -197,8 +192,7 @@ class FFMPEGTestCase(TestCase):
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
     def testCodecCopyWithSplit(self):
-        """ Проверяется корректность использования vcodec=copy совместно
-        фильтрами для видео."""
+        """ vcodec=copy with separate transcoded output."""
         ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
 
         fc = ff.init_filter_complex()
@@ -237,6 +231,7 @@ class FFMPEGTestCase(TestCase):
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
     def testLavfiSources(self):
+        """ lavfi generated sources support."""
         vsrc = LavfiSource('testsrc', VIDEO, duration=5.3, rate=10)
         asrc = LavfiSource('sine', AUDIO, d=5, b=4)
         ff = FFMPEG(inputfile=[vsrc, asrc])
@@ -253,6 +248,7 @@ class FFMPEGTestCase(TestCase):
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
     def testHLSMuxer(self):
+        """ hls muxer args."""
         ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
 
         cv0 = VideoCodec(vcodec='libx264')
@@ -276,6 +272,7 @@ class FFMPEGTestCase(TestCase):
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
     def testTeeMuxer(self):
+        """ tee muxer args."""
         ff = FFMPEG(inputfile=SourceFile('/tmp/input.mp4'))
 
         cv0 = VideoCodec(vcodec='libx264')
@@ -299,6 +296,7 @@ class FFMPEGTestCase(TestCase):
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
     def testConcat(self):
+        """ Concat source files."""
         ff = FFMPEG()
         ff < SourceFile('preroll.mp4')
         ff < SourceFile('input.mp4')
