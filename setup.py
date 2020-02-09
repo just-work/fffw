@@ -21,7 +21,7 @@ def get_version() -> Optional[str]:
     """
     d: Path = Path(__file__).parent.absolute()
     git_dir = d.joinpath('.git')
-    version: Optional[str] = None
+    version: Optional[str]
     if git_dir.is_dir():
         # Get the version using "git describe".
         cmd = 'git describe --tags --match [0-9]*'.split()
@@ -63,7 +63,7 @@ def get_version() -> Optional[str]:
 
 setup(
     name='fffw',
-    version=get_version(),
+    version=get_version() or 'dev',
     packages=find_packages(exclude=["tests"]),
     url='http://github.com/tumb1er/fffw',
     license='MIT',
@@ -72,5 +72,15 @@ setup(
     description='FFMPEG wrapper',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    test_suite="tests"
+    test_suite="tests",
+    classifiers=[
+        'Development Status :: 4 - Beta',
+        'Environment :: Console',
+        'Operating System :: POSIX',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Topic :: Multimedia :: Video :: Conversion',
+    ]
+
 )
