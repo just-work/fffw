@@ -14,7 +14,12 @@
 TBD:
 
 * [ ] sphinx documentation - manual and autodoc
-* [ ] typing
-* [ ] coverage measure
-* [ ] mypy integration
-* [ ] licensing
+* [x] typing
+* [x] coverage measure
+* [x] mypy integration
+* [ ] license
+
+### PyCharm mypy plugin
+```
+dmypy run -- --config-file=mypy.ini .
+```

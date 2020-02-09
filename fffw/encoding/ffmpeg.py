@@ -1,18 +1,18 @@
 from itertools import chain
+from typing import List, Tuple, Any, Union, Iterable
 
-import fffw.graph.sources
 from fffw.encoding import Muxer
 from fffw.encoding import codec
-from fffw.graph import FilterComplex, base
+from fffw.graph import FilterComplex, base, sources
 from fffw.wrapper import BaseWrapper, ensure_binary
 
 __all__ = ['FFMPEG']
 
 
 class InputList(list):
-    def __call__(self):
+    def __call__(self) -> List[str]:
         """ Delegates arguments formatting to Source objects."""
-        result = []
+        result: List[str] = []
         for src in self:
             if hasattr(src, 'get_args') and callable(src.get_args):
                 result.extend(src.get_args())
@@ -54,16 +54,20 @@ class FFMPEG(BaseWrapper):
         ('segment_list_flags', '-segment_list_flags '),
     ]
 
-    def __init__(self, inputfile=None, **kw):
+    def __init__(self,
+                 inputfile: Union[
+                     None, sources.BaseSource,
+                     Iterable[sources.BaseSource]] = None,
+                 **kw: Any):
         super(FFMPEG, self).__init__(**kw)
         self._args['inputfile'] = self.__inputs = InputList()
-        self.__outputs = []
+        self.__outputs: List[Tuple[Tuple[codec.BaseCodec, ...], Muxer]] = []
         self.__vdest = self.__adest = 0
 
-        self.__video = fffw.graph.sources.Input(kind=base.VIDEO)
-        self.__audio = fffw.graph.sources.Input(kind=base.AUDIO)
+        self.__video = sources.Input(kind=base.VIDEO)
+        self.__audio = sources.Input(kind=base.AUDIO)
 
-        if isinstance(inputfile, fffw.graph.sources.BaseSource):
+        if isinstance(inputfile, sources.BaseSource):
             self.add_input(inputfile)
         elif isinstance(inputfile, (list, tuple)):
             for i in inputfile:
@@ -71,7 +75,7 @@ class FFMPEG(BaseWrapper):
         else:
             assert inputfile is None, "invalid inputfile type"
 
-    def init_filter_complex(self):
+    def init_filter_complex(self) -> FilterComplex:
         assert self.__inputs, "no inputs defined yet"
         assert not self.__outputs, "outputs already defined"
         self._args['filter_complex'] = fc = FilterComplex(
@@ -81,30 +85,27 @@ class FFMPEG(BaseWrapper):
         return fc
 
     @property
-    def filter_complex(self):
-        """:rtype: FilterComplex"""
+    def filter_complex(self) -> FilterComplex:
         return self._args['filter_complex']
 
-    def get_args(self):
-        return ensure_binary(
-            [self.command] +
-            super(FFMPEG, self).get_args() +
-            self.get_output_args())
+    def get_args(self) -> List[bytes]:
+        return (ensure_binary([self.command]) +
+                super(FFMPEG, self).get_args() +
+                ensure_binary(self.get_output_args()))
 
-    def get_output_args(self):
-        result = []
+    def get_output_args(self) -> List[bytes]:
+        result: List[bytes] = []
         for codecs, muxer in self.__outputs:
             args = list(chain.from_iterable(c.get_args() for c in codecs))
-            result.extend(args + muxer.get_args() + [muxer.output])
+            output = [ensure_binary(muxer.output)]
+            result.extend(args + muxer.get_args() + output)
         return result
 
-    def add_input(self, inputfile):
-        """ Adds new source file to ffmpeg.
-
-        :type inputfile: graph.base.SourceFile
+    def add_input(self, inputfile: sources.BaseSource) -> None:
+        """ Adds new source to ffmpeg.
         """
         assert not self.filter_complex, "filter complex already initialized"
-        assert isinstance(inputfile, fffw.graph.sources.BaseSource)
+        assert isinstance(inputfile, sources.BaseSource)
         self.__inputs.append(inputfile)
 
         for _ in range(inputfile.video_streams):
@@ -119,14 +120,14 @@ class FFMPEG(BaseWrapper):
         if not inputfile.audio_streams:
             self.__audio < base.Source(None, base.AUDIO)
 
-    def add_output(self, muxer, *codecs):
+    def add_output(self, muxer: Muxer, *codecs: codec.BaseCodec) -> None:
         assert isinstance(muxer, Muxer)
         for c in codecs:
             assert isinstance(c, codec.BaseCodec)
             fc = self.filter_complex
             if not fc or getattr(c, 'map', None):
                 # If filter_complex is not present or codec has source set,
-                # connect codec to inputd directly.
+                # connect codec to inputs directly.
                 if c.codec_type == base.VIDEO:
                     self.__video | c
                 if c.codec_type == base.AUDIO:
@@ -149,24 +150,22 @@ class FFMPEG(BaseWrapper):
         self.__outputs.append((codecs, muxer))
 
     @property
-    def outputs(self):
+    def outputs(self) -> List[Tuple[Tuple[codec.BaseCodec, ...], Muxer]]:
         return list(self.__outputs)
 
-    def __lt__(self, other):
+    def __lt__(self, other: sources.BaseSource) -> None:
         """ Adds new source file.
-
-        :type other: graph.base.SourceFile
         """
-        return self.add_input(other)
+        self.add_input(other)
 
-    def __setattr__(self, key, value):
+    def __setattr__(self, key: str, value: Any) -> None:
         if key == 'filter_complex':
             raise NotImplementedError("use init_filter_complex instead")
         if key == 'inputfile':
             raise NotImplementedError("use add_input instead")
         return super(FFMPEG, self).__setattr__(key, value)
 
-    def handle_stderr(self, line):
+    def handle_stderr(self, line: str) -> None:
         """
         Handle ffmpeg output.
 

@@ -1,3 +1,6 @@
+import abc
+from typing import Optional, List
+
 from fffw.graph import base
 from fffw.wrapper import BaseWrapper
 
@@ -7,52 +10,67 @@ __all__ = [
 ]
 
 
-class BaseCodec(BaseWrapper, base.Node):
-    codec_type = None
+class BaseCodec(BaseWrapper, base.Node, metaclass=abc.ABCMeta):
+    """
+    Abstract base class for codec nodes.
+    """
+    codec_type: base.StreamType
 
     arguments = [('map', '-map ')]
 
     @property
-    def enabled(self):
+    def enabled(self) -> bool:
         return True
 
-    # noinspection PyShadowingBuiltins
-    def render(self, namer, id=None, partial=False):
+    @enabled.setter
+    def enabled(self, value: bool) -> None:
+        raise RuntimeError("codecs can't be disabled")
+
+    @property
+    @abc.abstractmethod
+    def codec_name(self) -> str:
+        raise NotImplementedError()
+
+    @property
+    def map(self) -> str:
+        return self._args['map']
+
+    @map.setter
+    def map(self, value: str) -> None:
+        self._args['map'] = value
+
+    def render(self, namer: base.Namer, name: Optional[str] = None,
+               partial: bool = False) -> List[str]:
+        """ codec output node is already rendered in filter graph."""
         return []
 
-    def connect(self, dest):
+    def connect(self, dest: base.Dest) -> None:
+        """ Connects destination to codec node."""
         assert isinstance(dest, base.Dest), "Codec connects to Dest"
-        self.map = '[%s]' % dest.id
+        self.map = f'[{dest.name}]'
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<%s>(%s)" % (
             self.codec_name,
             ','.join('%s=%s' % (k, self._args[k]) for k in self._key_mapping
                      if self._args[k])
         )
 
-    def connect_edge(self, edge):
+    def connect_edge(self, edge: base.Edge
+                     ) -> base.Edge:
+        """ Connects source to codec through an edge."""
         src = edge.input
         assert isinstance(src, base.Source), "Codec connects to Source"
-        assert src.id, "Source file has not stream of desired type"
+        assert src.name, "Source file has not stream of desired type"
         if self.map:
             # normal Node can connect with source single time only,
             # BaseCodec can connect multiple times via "-map" arguments
-            return None
-        self.map = src.id
+
+            # FIXME: GH/JW #2 this should return base.Edge. See Source._edge
+            # noinspection PyTypeChecker
+            return None  # type: ignore
+        self.map = src.name
         return edge
-
-    @property
-    def codec_name(self):
-        return self._args['codec']
-
-    @property
-    def map(self):
-        return self._args['map']
-
-    @map.setter
-    def map(self, value):
-        self._args['map'] = value
 
 
 class VideoCodec(BaseCodec):
@@ -86,7 +104,7 @@ class VideoCodec(BaseCodec):
     ]
 
     @property
-    def codec_name(self):
+    def codec_name(self) -> str:
         return self._args['vcodec']
 
 
@@ -103,5 +121,5 @@ class AudioCodec(BaseCodec):
     ]
 
     @property
-    def codec_name(self):
+    def codec_name(self) -> str:
         return self._args['acodec']

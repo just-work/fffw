@@ -1,4 +1,3 @@
-sudo: false
 language: python
 python:
     - "3.6"
@@ -6,9 +5,9 @@ python:
     - "3.8"
 install:
   - pip install .
-  - pip install codecov
+  - pip install codecov mypy
 
 script:
   - python -m coverage run -m unittest discover
-
+  - mypy --config-file=mypy.ini .
 after_success: codecov
