@@ -52,7 +52,8 @@ class BaseCodec(BaseWrapper, base.Node, metaclass=abc.ABCMeta):
                      if self._args[k])
         )
 
-    def connect_edge(self, edge: base.Edge) -> Optional[base.Edge]:
+    def connect_edge(self, edge: base.Edge
+                     ) -> base.Edge:
         """ Connects source to codec through an edge."""
         src = edge.input
         assert isinstance(src, base.Source), "Codec connects to Source"
@@ -60,7 +61,10 @@ class BaseCodec(BaseWrapper, base.Node, metaclass=abc.ABCMeta):
         if self.map:
             # normal Node can connect with source single time only,
             # BaseCodec can connect multiple times via "-map" arguments
-            return None
+
+            # FIXME: GH/JW #2 this should return base.Edge. See Source._edge
+            # noinspection PyTypeChecker
+            return None  # type: ignore
         self.map = src.name
         return edge
 
