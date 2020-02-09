@@ -1,6 +1,8 @@
 import os
 import re
 import subprocess
+from typing import Optional
+
 from setuptools import setup, find_packages  # type: ignore
 from pathlib import Path
 
@@ -11,7 +13,7 @@ version_re = re.compile('^Version: (.+)$', re.M)
 package_name = 'django_sphinxsearch'
 
 
-def get_version():
+def get_version() -> Optional[str]:
     """
     Reads version from git status or PKG-INFO
 
@@ -19,6 +21,7 @@ def get_version():
     """
     d: Path = Path(__file__).parent.absolute()
     git_dir = d.joinpath('.git')
+    version: Optional[str] = None
     if git_dir.is_dir():
         # Get the version using "git describe".
         cmd = 'git describe --tags --match [0-9]*'.split()
@@ -50,7 +53,8 @@ def get_version():
         # Extract the version from the PKG-INFO file.
         try:
             with open('PKG-INFO') as v:
-                version = version_re.search(v.read()).group(1)
+                match = version_re.search(v.read())
+                version = match.group(1) if match else None
         except FileNotFoundError:
             version = None
 
