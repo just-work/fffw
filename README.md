@@ -17,7 +17,7 @@ TBD:
 * [x] typing
 * [x] coverage measure
 * [x] mypy integration
-* [ ] license
+* [x] license
 
 ### PyCharm mypy plugin
 ```
