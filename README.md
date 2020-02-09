@@ -14,10 +14,10 @@
 TBD:
 
 * [ ] sphinx documentation - manual and autodoc
-* [ ] typing
+* [x] typing
 * [x] coverage measure
 * [x] mypy integration
-* [ ] licensing
+* [ ] license
 
 ### PyCharm mypy plugin
 ```
