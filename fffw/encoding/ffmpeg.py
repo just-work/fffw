@@ -126,7 +126,7 @@ class FFMPEG(BaseWrapper):
             fc = self.filter_complex
             if not fc or getattr(c, 'map', None):
                 # If filter_complex is not present or codec has source set,
-                # connect codec to inputd directly.
+                # connect codec to inputs directly.
                 if c.codec_type == base.VIDEO:
                     self.__video | c
                 if c.codec_type == base.AUDIO:

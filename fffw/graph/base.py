@@ -17,25 +17,52 @@ class StreamType(Enum):
 VIDEO = StreamType.VIDEO
 AUDIO = StreamType.AUDIO
 
+Namer = Callable[[str], str]
+""" Callable type for generating unique stream identifiers."""
+
 
 class Renderable(metaclass=abc.ABCMeta):
+    """
+    Abstract class base for filter graph edges/nodes traversing and rendering.
+    """
+
     @abc.abstractmethod
     def render(self,
-               namer: Callable[[str], str],
-               gid: Optional[str] = None,
+               namer: Namer,
+               name: Optional[str] = None,
                partial: bool = False) -> List[str]:
         """ Returns a list of filter_graph edge descriptions.
 
         :param namer: callable used to generate unique edge identifiers
-        :param gid: edge identifier
+        :param name: edge identifier
         :param partial: partially formatted graph render mode floag
         :return: edge description list ["[v:0]yadif[v:t1]", "[v:t1]scale[out]"]
         """
-
         raise NotImplementedError()
 
 
-class Dest(Renderable):
+class NameMixin:
+    """
+    A mixin for single-time object name initialization
+    """
+
+    def __init__(self, name: Optional[str] = None):
+        super().__init__()
+        self.__name: Optional[str] = name
+
+    @property
+    def name(self) -> Optional[str]:
+        return self.__name
+
+    @name.setter
+    def name(self, value: str) -> None:
+        """ Set name only once."""
+        if self.__name is not None:
+            raise RuntimeError("Name is already set")
+        self.__name = value
+
+
+class Dest(Renderable, NameMixin):
     """
     Audio/video output stream node.
 
@@ -47,15 +74,9 @@ class Dest(Renderable):
         :param name: internal ffmpeg stream name ("v:0", "a:1")
         :param kind: stream kind (VIDEO/AUDIO)
         """
-
-        self._name = name
-        self._edge = None
+        super().__init__(name=name)
+        self._edge: Optional[Edge] = None
         self.kind = kind
-
-    @property
-    def id(self) -> str:
-        """ Returns node identifier used in filter_graph description."""
-        return self._name
 
     def connect_edge(self, edge: "Edge") -> "Edge":
         """ Connects and edge to output stream.
@@ -71,13 +92,13 @@ class Dest(Renderable):
         if self._edge is not None:
             raise RuntimeError("Dest is already connected to %s" % self._edge)
         self._edge = edge
-        self._edge.id = self.id
+        self._edge.name = self.name
         return edge
 
     def __repr__(self) -> str:
-        return "Dest('[%s]')" % self.id
+        return f"Dest('{self.name}')"
 
-    def render(self, namer: Callable[[], str], gid: Optional[str] = None,
+    def render(self, namer: Namer, name: Optional[str] = None,
                partial: bool = False) -> List[str]:
         # Previous nodes/edges already rendered destination node.
         return []
@@ -87,7 +108,7 @@ InputType = Union[None, "Source", "Node"]
 OutputType = Union[None, "Dest", "Node"]
 
 
-class Edge(Renderable):
+class Edge(Renderable, NameMixin):
     """ Internal ffmpeg data stream graph."""
 
     # noinspection PyShadowingBuiltins
@@ -98,41 +119,30 @@ class Edge(Renderable):
         :param input: input node
         :param output: output node
         """
-        self._id: Optional[str] = None
-        self._input = input
-        self._output = output
+        super().__init__()
+        self.__input = input
+        self.__output = output
 
     def __repr__(self):
-        return 'Edge#{id}[{input}, {output}]'.format(
-            id=self._id, input=self._input, output=self._output)
-
-    @property
-    def id(self):
-        return self._id
+        return f'Edge#{self.name}[{self.input}, {self.output}]'
 
     @property
     def input(self):
-        return self._input
+        return self.__input
 
     @property
     def output(self):
-        return self._output
-
-    @id.setter
-    def id(self, value):
-        if self._id is None:
-            self._id = value
-        else:
-            raise RuntimeError("id already set")
+        return self.__output
 
     def _connect_source(self, src: Union["Source", "Node"]) -> None:
         """ Connects input node to the edge.
 
         :param src: source stream or filter output node.
         """
-        if self._input is not None:
-            raise ValueError("edge already connected to input %s" % self._input)
-        self._input = src
+        if self.__input is not None:
+            raise RuntimeError("edge already connected to input %s"
+                               % self.__input)
+        self.__input = src
 
     def _connect_dest(self,
                       dest: Union["Dest", "Node"]) -> Union["Dest", "Node"]:
@@ -141,21 +151,25 @@ class Edge(Renderable):
         :param dest: output stream or filter input node
         :return: connected node
         """
-        if self._output is not None:
-            raise ValueError("edge already connected to output %s"
-                             % self._output)
-        self._output = dest
+        if self.__output is not None:
+            raise RuntimeError("edge already connected to output %s"
+                               % self.__output)
+        self.__output = dest
         return dest
 
     def render(self,
-               namer: Callable[[str], str],
-               gid: Optional[str] = None,
+               namer: Namer,
+               name: Optional[str] = None,
                partial: bool = False) -> List[str]:
-        if not self.id:
-            self.id = namer(self._output.name)
-        if not self._output and partial:
-            return []
-        return self._output.render(namer, gid=gid, partial=partial)
+        if not self.__output:
+            if partial:
+                return []
+            raise RuntimeError("output is none")
+        if self.name is None:
+            if self.__output.name is None:
+                raise RuntimeError("output name is not set")
+            self.name = namer(self.__output.name)
+        return self.__output.render(namer, name=name, partial=partial)
 
 
 class Node(Renderable):
@@ -175,31 +189,35 @@ class Node(Renderable):
         self.outputs: List[Optional[Edge]] = [None] * self.output_count
 
     def __repr__(self):
-        inputs = [('[%s]' % str(i.id if i else '---')) for i in self.inputs]
-        outputs = [('[%s]' % str(i.id if i else '---')) for i in self.outputs]
-        return '%s%s%s' % (''.join(inputs), self.name, ''.join(outputs))
+        inputs = [f"[{str(i.name if i else '---')}]" for i in self.inputs]
+        outputs = [f"[{str(i.name if i else '---')}]" for i in self.outputs]
+        return f"{''.join(inputs)}{self.name}{''.join(outputs)}"
 
-    def render(self, namer: Callable[[str], str], gid: Optional[str] = None,
+    def render(self, namer: Namer, name: Optional[str] = None,
                partial: bool = False) -> List[str]:
         if not self.enabled:
             # filter skipped, input is connected to output directly
             next_edge = self.outputs[0]
-            if partial and not next_edge:
-                return []
-            return next_edge.render(namer, gid=gid, partial=partial)
+            if next_edge is None:
+                if partial:
+                    return []
+                raise RuntimeError("output is None")
+            return next_edge.render(namer, name=name, partial=partial)
 
-        result = [self.get_filter_cmd(namer, gid=gid, partial=partial)]
+        result = [self.get_filter_cmd(namer, gid=name, partial=partial)]
 
         for dest in self.outputs:
-            if dest is None and partial:
-                continue
+            if dest is None:
+                if partial:
+                    continue
+                raise RuntimeError("destination is none")
             if isinstance(dest.output, Dest):
                 continue
             result.extend(dest.render(namer, partial=partial))
         return result
 
     # noinspection PyShadowingBuiltins
-    def get_filter_cmd(self, namer: Callable[[str], str],
+    def get_filter_cmd(self, namer: Namer,
                        gid: Optional[str] = None,
                        partial: bool = False) -> str:
         """
@@ -217,24 +235,30 @@ class Node(Renderable):
         inputs = []
         outputs = []
         for edge in self.inputs:
-            if not edge.id:
-                edge.id = namer(self.name)
-            inputs.append("[%s]" % str(gid or edge.id))
+            if edge is None:
+                raise RuntimeError("input is none")
+            if edge.name is None:
+                edge.name = namer(self.name)
+            inputs.append("[%s]" % str(gid or edge.name))
 
         for edge in self.outputs:
-            if edge is None and partial:
-                outputs.append('[---]')
-                continue
+            if edge is None:
+                if partial:
+                    outputs.append('[---]')
+                    continue
+                raise RuntimeError("output is none")
             node = edge.output
             while isinstance(node, Node) and not node.enabled:
                 # if next node is disabled, use next edge id
                 if node.outputs[0] is None and partial:
                     break
                 edge = node.outputs[0]
+                if edge is None:
+                    raise RuntimeError("output is none")
                 node = edge.output
-            if not edge.id:
-                edge.id = namer(self.name)
-            outputs.append("[%s]" % edge.id)
+            if edge.name is None:
+                edge.name = namer(self.name)
+            outputs.append(f"[{edge.name}]")
         args = '=' + self.args if self.args else ''
         return ''.join(inputs) + self.name + args + ''.join(outputs)
 
@@ -280,7 +304,7 @@ class Node(Renderable):
         return self.connect_dest(other)
 
 
-class Source(Renderable):
+class Source(Renderable, NameMixin):
     """ Graph node containing audio or video input.
 
     Must connect to single graph edge only as a source
@@ -291,14 +315,9 @@ class Source(Renderable):
         :param name: ffmpeg internal input stream name ("v:0", "a:1")
         :param kind: stream type (VIDEO/AUDIO)
         """
-        self._name = name
+        super().__init__(name=name)
         self._edge: Optional[Edge] = None
         self._kind = kind
-
-    @property
-    def id(self) -> str:
-        """ Returns node identifier used in filter_graph description."""
-        return self._name
 
     @property
     def edge(self) -> Optional["Edge"]:
@@ -322,9 +341,9 @@ class Source(Renderable):
             raise ValueError("only node allowed")
         if self._edge is not None and not getattr(other, 'map', None):
             raise RuntimeError("Source %s is already connected to %s"
-                               % (self.id, self._edge))
+                               % (self.name, self._edge))
         edge = Edge(input=self, output=other)
-        edge.id = self.id
+        edge.name = self.name
         self._edge = self._edge or other.connect_edge(edge)
         return other
 
@@ -338,21 +357,27 @@ class Source(Renderable):
         return self.connect(other)
 
     def render(self,
-               namer: Callable[[str], str],
-               gid: Optional[str] = None,
+               namer: Namer,
+               name: Optional[str] = None,
                partial: bool = False) -> List[str]:
-        edge = self._edge
-        if partial and not edge:
-            return []
+        if self._edge is None:
+            if partial:
+                return []
+            raise RuntimeError("Source is not ready for render")
 
-        eid = edge.id
-        node = edge.output
+        node = self._edge.output
         # if output node is disabled, use next edge identifier.
         if isinstance(node, Node) and not node.enabled:
-            edge = node.outputs[0]
+            name = self._edge.name
+            edge: Optional[Edge] = node.outputs[0]
+            if edge is None:
+                if partial:
+                    return []
+                raise RuntimeError("Skipped node is not ready for render")
         else:
-            eid = None
-        return edge.render(namer, gid=eid, partial=partial)
+            edge = self._edge
+            name = None
+        return edge.render(namer, name=name, partial=partial)
 
     def __repr__(self):
-        return "Source('[%s]')" % self.id
+        return f"Source('[{self.name}]')"

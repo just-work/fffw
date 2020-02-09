@@ -12,7 +12,7 @@ __all__ = [
 
 
 class Muxer(BaseWrapper):
-    format = None
+    format: str
 
     def __init__(self, output, **kw):
         self.output = output
