@@ -1,8 +1,7 @@
 import collections
+from typing import Optional, Dict
 
-import fffw.graph.sources
-from fffw.graph import base
-
+from fffw.graph import base, sources
 
 __all__ = [
     'FilterComplex'
@@ -12,23 +11,24 @@ __all__ = [
 class FilterComplex:
     """ ffmpeg filter graph wrapper."""
 
-    def __init__(self, video=None, audio=None):
+    def __init__(self, video: Optional[sources.Input] = None,
+                 audio: Optional[sources.Input] = None):
         """
+        :param video: input video streams set
+        :param audio: input audio streams set
         """
-        self.video = video or fffw.graph.sources.Input(kind=base.VIDEO)
-        self.audio = audio or fffw.graph.sources.Input(kind=base.AUDIO)
-        self.__video_outputs = {}
-        self.__audio_outputs = {}
-        self._video_tmp = collections.Counter()
-        self._audio_tmp = collections.Counter()
+        self.video = video or sources.Input(kind=base.VIDEO)
+        self.audio = audio or sources.Input(kind=base.AUDIO)
+        self.__video_outputs: Dict[int, base.Dest] = {}
+        self.__audio_outputs: Dict[int, base.Dest] = {}
+        self._video_tmp: Dict[str, int] = collections.Counter()
+        self._audio_tmp: Dict[str, int] = collections.Counter()
 
-    def get_video_dest(self, index=0, create=True):
+    def get_video_dest(self, index: int = 0, create: bool = True) -> base.Dest:
         """ Returns video output by index.
         :param index: video output index.
-        :type index: int
         :param create: create new video output flag
         :return: output video stream
-        :rtype: base.Dest
         """
         try:
             return self.__video_outputs[index]
@@ -39,13 +39,11 @@ class FilterComplex:
                 'vout%s' % index, base.VIDEO)
         return self.__video_outputs[index]
 
-    def get_audio_dest(self, index=0, create=True):
+    def get_audio_dest(self, index: int = 0, create: bool = True) -> base.Dest:
         """ Returns audio output by index.
         :param index: audio output index.
-        :type index: int
         :param create: create new audio output flag
         :return: output audio stream
-        :rtype: base.Dest
         """
         try:
             return self.__audio_outputs[index]
@@ -56,11 +54,9 @@ class FilterComplex:
                 'aout%s' % index, base.AUDIO)
         return self.__audio_outputs[index]
 
-    def render(self, partial=False):
+    def render(self, partial: bool = False) -> str:
         """
         Returns filter_graph description in corresponding ffmpeg param syntax.
-
-        :rtype: str
         """
         result = []
         for src in self.video.streams:
@@ -81,7 +77,7 @@ class FilterComplex:
     def __str__(self) -> str:
         return self.render()
 
-    def video_naming(self, name='tmp'):
+    def video_naming(self, name: str = 'tmp') -> str:
         """ Unique video edge identifier generator.
 
         :param name: prefix used in name generation.
@@ -92,7 +88,7 @@ class FilterComplex:
         self._video_tmp[name] += 1
         return res
 
-    def audio_naming(self, name='tmp'):
+    def audio_naming(self, name: str = 'tmp') -> str:
         """ Unique audio edge identifier generator.
 
         :param name: prefix used in name generation.

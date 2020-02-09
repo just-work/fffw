@@ -1,10 +1,10 @@
 import re
 import subprocess
 from logging import getLogger
-from typing import Tuple, List
+from typing import Tuple, List, Any, Dict, Union, overload
 
 
-def quote(token):
+def quote(token: Any) -> str:
     """ Escapes a token for command line."""
     token = ensure_text(token)
     if re.search(r'[ ()[\];]', token):
@@ -12,7 +12,22 @@ def quote(token):
     return token
 
 
-def ensure_binary(x):
+@overload
+def ensure_binary(x: Tuple[Any, ...]) -> Tuple[bytes, ...]:
+    ...
+
+
+@overload
+def ensure_binary(x: List[Any]) -> List[bytes]:
+    ...
+
+
+@overload
+def ensure_binary(x: Union[int, float, str, bytes, None]) -> bytes:
+    ...
+
+
+def ensure_binary(x: Any) -> Any:
     """ Recursively ensures that all values except collections are bytes."""
     if isinstance(x, tuple):
         return tuple(ensure_binary(y) for y in x)
@@ -25,7 +40,22 @@ def ensure_binary(x):
     return x
 
 
-def ensure_text(x):
+@overload
+def ensure_text(x: Tuple[Any, ...]) -> Tuple[str, ...]:
+    ...
+
+
+@overload
+def ensure_text(x: List[Any]) -> List[str]:
+    ...
+
+
+@overload
+def ensure_text(x: Union[int, float, str, bytes, None]) -> str:
+    ...
+
+
+def ensure_text(x: Any) -> Any:
     """ Recursively ensures that all values except collections are strings."""
     if isinstance(x, tuple):
         return tuple(ensure_text(y) for y in x)
@@ -49,16 +79,16 @@ class BaseWrapper:
     """
     arguments: List[Tuple[str, str]] = []
 
-    def __init_args(self):
+    def __init_args(self) -> None:
         self._key_mapping = {}
-        self._args = {}
+        self._args: Dict[str, Any] = {}
         self._args_order = []
         for (name, key) in self.arguments:
             self._key_mapping[name] = key
             self._args[name] = None
             self._args_order.append(name)
 
-    def __init__(self, **kw):
+    def __init__(self, **kw: Any):
         self.__init_args()
         for k, v in kw.items():
             setattr(self, k, v)
@@ -66,13 +96,13 @@ class BaseWrapper:
         cls = self.__class__
         self.logger = getLogger("%s.%s" % (cls.__module__, cls.__name__))
 
-    def __setattr__(self, key, value):
+    def __setattr__(self, key: str, value: Any) -> None:
         if key in getattr(self, '_key_mapping', {}):
             self._args[key] = value
         else:
             object.__setattr__(self, key, value)
 
-    def get_args(self):
+    def get_args(self) -> List[bytes]:
         result = []
         for k in self._args_order:
             v = self._args[k]
@@ -97,18 +127,18 @@ class BaseWrapper:
 
         return list(map(ensure_binary, result))
 
-    def set_args(self, **kwargs):
+    def set_args(self, **kwargs: Any) -> None:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-    def get_cmd(self):
+    def get_cmd(self) -> str:
         return ' '.join(map(quote, ensure_text(self.get_args())))
 
-    def handle_stderr(self, line):
+    def handle_stderr(self, line: str) -> None:
         self.logger.debug(line.strip())
         self._output += line
 
-    def run(self):
+    def run(self) -> Tuple[int, str]:
         self._output = ''
         self.logger.info(self.get_cmd())
         args = self.get_args()
@@ -118,7 +148,6 @@ class BaseWrapper:
                 line = proc.stderr.readline()
                 if not line:
                     break
-                line = ensure_text(line)
-                self.handle_stderr(line)
+                self.handle_stderr(ensure_text(line))
         self.logger.info("%s return code is %s", args[0], proc.returncode)
         return proc.returncode, self._output

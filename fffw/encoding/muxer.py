@@ -1,6 +1,6 @@
-from typing import List
+from typing import List, Any, Tuple
 
-from fffw.wrapper import BaseWrapper
+from fffw.wrapper import BaseWrapper, ensure_binary
 
 __all__ = [
     'FLVMuxer',
@@ -16,8 +16,8 @@ __all__ = [
 class Muxer(BaseWrapper):
     format: str
 
-    def __init__(self, output, **kw):
-        self.output = output
+    def __init__(self, output: str, **kw: Any):
+        self.__output = output
         super(Muxer, self).__init__(**kw)
 
     def __repr__(self) -> str:
@@ -26,15 +26,24 @@ class Muxer(BaseWrapper):
             self.get_opts()
         )
 
-    def get_args(self) -> List[str]:
-        return ['-f', self.format] + super(Muxer, self).get_args()
+    @property
+    def output(self) -> str:
+        return self.__output
+
+    @output.setter
+    def output(self, value: str) -> None:
+        self.__output = value
+
+    def get_args(self) -> List[bytes]:
+        args = super(Muxer, self).get_args()
+        return ensure_binary(['-f', self.format]) + args
 
     def get_opts(self) -> str:
         """ Returns muxer options formatted with ':' delimiter."""
         return ':'.join('%s=%s' % (self.key_to_opt(k), self._args[k])
                         for k in self._args_order if self._args[k])
 
-    def key_to_opt(self, k):
+    def key_to_opt(self, k: str) -> str:
         return self._key_mapping[k].strip('- ')
 
 
@@ -67,9 +76,13 @@ class HLSMuxer(Muxer):
 class TeeMuxer(Muxer):
     format = 'tee'
 
-    def __init__(self, *muxers):
-        self.muxers = []
-        super(TeeMuxer, self).__init__(muxers)
+    def __init__(self, *muxers: Muxer) -> None:
+        # tee muxer does not require output file argument, instead it aggregates
+        # multiple other muxer definitions.
+        # FIXME: fix typing for this.
+        # noinspection PyTypeChecker
+        super(TeeMuxer, self).__init__(None)  # type: ignore
+        self.muxers = muxers
 
     @property
     def output(self) -> str:
@@ -78,7 +91,7 @@ class TeeMuxer(Muxer):
             output=m.output) for m in self.muxers])
 
     @output.setter
-    def output(self, muxers: List[Muxer]) -> None:
+    def output(self, muxers: Tuple[Muxer]) -> None:
         for m in muxers:
             assert isinstance(m, Muxer)
         self.muxers = muxers

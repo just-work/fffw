@@ -1,4 +1,4 @@
-from typing import Iterable, Optional, List
+from typing import Iterable, Optional, List, Any
 
 from fffw.graph.base import VIDEO, AUDIO
 from fffw.graph import base
@@ -41,7 +41,7 @@ class LavfiSource(BaseSource):
     def __init__(self, name: str, kind: base.StreamType,
                  video_streams: Optional[int] = None,
                  audio_streams: Optional[int] = None,
-                 **opts: str) -> None:
+                 **opts: Any) -> None:
         if video_streams is None:
             video_streams = int(kind == VIDEO)
         if audio_streams is None:

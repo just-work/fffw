@@ -180,11 +180,11 @@ class Node(Renderable):
     input_count: int = 1  # number of inputs
     output_count: int = 1  # number of outputs
 
-    def __init__(self, enabled=True):
+    def __init__(self, enabled: bool = True):
         if not enabled:
             assert self.input_count == 1
             assert self.output_count == 1
-        self.enabled = enabled
+        self.__enabled = enabled
         self.inputs: List[Optional[Edge]] = [None] * self.input_count
         self.outputs: List[Optional[Edge]] = [None] * self.output_count
 
@@ -192,6 +192,14 @@ class Node(Renderable):
         inputs = [f"[{str(i.name if i else '---')}]" for i in self.inputs]
         outputs = [f"[{str(i.name if i else '---')}]" for i in self.outputs]
         return f"{''.join(inputs)}{self.name}{''.join(outputs)}"
+
+    @property
+    def enabled(self) -> bool:
+        return self.__enabled
+
+    @enabled.setter
+    def enabled(self, value: bool) -> None:
+        self.__enabled = value
 
     def render(self, namer: Namer, name: Optional[str] = None,
                partial: bool = False) -> List[str]:

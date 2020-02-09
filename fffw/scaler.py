@@ -1,7 +1,9 @@
 from math import floor, ceil
+from typing import Union, Tuple
 
 
-def xround(val, div, how=None, quality=5):
+def xround(val: float, div: int, how: Union[None, str] = None,
+           quality: int = 5) -> int:
     """ Number rounding with steroids.
 
     :param val: float, a number to round
@@ -25,18 +27,22 @@ def xround(val, div, how=None, quality=5):
 class Scaler:
     """ Image and video dimensions transformation helpers."""
 
-    def __init__(self, source_size, par=1.0, rotation=0, accuracy=2):
+    def __init__(self,
+                 source_size: Tuple[int, int],
+                 par: float = 1.0,
+                 rotation: int = 0,
+                 accuracy: int = 2):
         self.rotation = rotation in (90, 270)
         w, h = source_size
         self.source_size = (h, w) if self.rotation else (w, h)
         self.accuracy = accuracy
         self.par = par
 
-    def _clone(self):
+    def _clone(self) -> "Scaler":
         return Scaler(self.source_size, par=self.par, rotation=self.rotation,
                       accuracy=self.accuracy)
 
-    def crop(self, left, top, width, height):
+    def crop(self, left: int, top: int, width: int, height: int) -> "Scaler":
         """ Returns new scaler with cut dimensions.
         """
         s = self._clone()
@@ -45,7 +51,7 @@ class Scaler:
         s.source_size = (width, height)
         return s
 
-    def rotate(self, rotation=90):
+    def rotate(self, rotation: int = 90) -> "Scaler":
         """ Retuns new scaler with 90-degree rotation."""
         s = self._clone()
         if rotation in (0, 180):
@@ -57,20 +63,20 @@ class Scaler:
         return s
 
     @property
-    def pixel_size(self):
+    def pixel_size(self) -> Tuple[int, int]:
         """ Source image size in square pixels."""
         sw, sh = self.source_size
         sw = int(sw * self.par)
         return sw, sh
 
     @property
-    def aspect(self):
+    def aspect(self) -> float:
         width, height = self.source_size
         if height:
             return round(float(width) / float(height), 3)
         return 0.0
 
-    def scale_fit(self, target_size):
+    def scale_fit(self, target_size: Tuple[int, int]) -> "Scaler":
         """
         Scales source image fitting it to
         target_size.
@@ -88,7 +94,8 @@ class Scaler:
 
         return self.scale(scale)
 
-    def scale_crop(self, target_size):
+    def scale_crop(self, target_size: Tuple[int, int]
+                   ) -> Tuple["Scaler", Tuple[int, int, int, int]]:
         """ Scales source image to target_size with cutting borders.
 
         One of resulting dimensions is equal to corresponding target dimension,
@@ -106,11 +113,11 @@ class Scaler:
 
         # source image part size, cut to target size
         cw, ch = int(tw / scale), int(th / scale)
-        left = max(sw - cw, 0) / 2
-        top = max(sh - ch, 0) / 2
+        left = max(sw - cw, 0) // 2
+        top = max(sh - ch, 0) // 2
         return s, (left, top, cw, ch)
 
-    def scale(self, scale):
+    def scale(self, scale: float) -> "Scaler":
         """
         Scales source image with a scale.
 

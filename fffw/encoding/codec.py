@@ -22,6 +22,10 @@ class BaseCodec(BaseWrapper, base.Node, metaclass=abc.ABCMeta):
     def enabled(self) -> bool:
         return True
 
+    @enabled.setter
+    def enabled(self, value: bool) -> None:
+        raise RuntimeError("codecs can't be disabled")
+
     @property
     @abc.abstractmethod
     def codec_name(self) -> str:
