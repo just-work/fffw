@@ -1,7 +1,8 @@
 # fffw
 ## FFMPEG filter wrapper
-[![Build Status](https://travis-ci.org/tumb1er/fffw.svg?branch=master)](https://travis-ci.org/tumb1er/fffw)
+[![Build Status](https://travis-ci.org/just-work/fffw.svg?branch=master)](https://travis-ci.org/just-work/fffw)
 [![PyPI version](https://badge.fury.io/py/fffw.svg)](http://badge.fury.io/py/fffw)
+[![codecov](https://codecov.io/gh/just-work/fffw/branch/master/graph/badge.svg)](https://codecov.io/gh/just-work/fffw)
 
 
 [FFMPEG](https://github.com/FFmpeg/FFmpeg) command line tools.
