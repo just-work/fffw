@@ -1,3 +1,5 @@
+from typing import List
+
 from fffw.wrapper import BaseWrapper
 
 __all__ = [
@@ -18,16 +20,16 @@ class Muxer(BaseWrapper):
         self.output = output
         super(Muxer, self).__init__(**kw)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<%s>(%s)" % (
             self.output,
             self.get_opts()
         )
 
-    def get_args(self):
+    def get_args(self) -> List[str]:
         return ['-f', self.format] + super(Muxer, self).get_args()
 
-    def get_opts(self):
+    def get_opts(self) -> str:
         """ Returns muxer options formatted with ':' delimiter."""
         return ':'.join('%s=%s' % (self.key_to_opt(k), self._args[k])
                         for k in self._args_order if self._args[k])
@@ -70,20 +72,17 @@ class TeeMuxer(Muxer):
         super(TeeMuxer, self).__init__(muxers)
 
     @property
-    def output(self):
+    def output(self) -> str:
         return '|'.join(['[f={format}{opts}]{output}'.format(
             format=m.format, opts=self._format_opts(m.get_opts()),
             output=m.output) for m in self.muxers])
 
     @output.setter
-    def output(self, muxers):
+    def output(self, muxers: List[Muxer]) -> None:
         for m in muxers:
             assert isinstance(m, Muxer)
         self.muxers = muxers
 
-    def get_args(self):
-        return super(TeeMuxer, self).get_args()
-
     @staticmethod
-    def _format_opts(opts):
+    def _format_opts(opts: str) -> str:
         return (':' + opts) if opts else ''

@@ -1,5 +1,5 @@
 import abc
-from typing import Optional
+from typing import Optional, List
 
 from fffw.graph import base
 from fffw.wrapper import BaseWrapper
@@ -36,7 +36,7 @@ class BaseCodec(BaseWrapper, base.Node, metaclass=abc.ABCMeta):
         self._args['map'] = value
 
     def render(self, namer: base.Namer, name: Optional[str] = None,
-               partial: bool = False):
+               partial: bool = False) -> List[str]:
         """ codec output node is already rendered in filter graph."""
         return []
 
@@ -45,7 +45,7 @@ class BaseCodec(BaseWrapper, base.Node, metaclass=abc.ABCMeta):
         assert isinstance(dest, base.Dest), "Codec connects to Dest"
         self.map = f'[{dest.name}]'
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<%s>(%s)" % (
             self.codec_name,
             ','.join('%s=%s' % (k, self._args[k]) for k in self._key_mapping

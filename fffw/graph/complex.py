@@ -78,7 +78,7 @@ class FilterComplex:
         # duplicates respecting order of appearance.
         return ';'.join(collections.OrderedDict.fromkeys(result))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.render()
 
     def video_naming(self, name='tmp'):

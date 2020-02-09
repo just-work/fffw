@@ -123,15 +123,15 @@ class Edge(Renderable, NameMixin):
         self.__input = input
         self.__output = output
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'Edge#{self.name}[{self.input}, {self.output}]'
 
     @property
-    def input(self):
+    def input(self) -> InputType:
         return self.__input
 
     @property
-    def output(self):
+    def output(self) -> OutputType:
         return self.__output
 
     def _connect_source(self, src: Union["Source", "Node"]) -> None:
@@ -188,7 +188,7 @@ class Node(Renderable):
         self.inputs: List[Optional[Edge]] = [None] * self.input_count
         self.outputs: List[Optional[Edge]] = [None] * self.output_count
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         inputs = [f"[{str(i.name if i else '---')}]" for i in self.inputs]
         outputs = [f"[{str(i.name if i else '---')}]" for i in self.outputs]
         return f"{''.join(inputs)}{self.name}{''.join(outputs)}"
@@ -379,5 +379,5 @@ class Source(Renderable, NameMixin):
             name = None
         return edge.render(namer, name=name, partial=partial)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"Source('[{self.name}]')"

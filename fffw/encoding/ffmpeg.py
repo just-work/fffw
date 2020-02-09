@@ -1,4 +1,5 @@
 from itertools import chain
+from typing import List, Tuple
 
 import fffw.graph.sources
 from fffw.encoding import Muxer
@@ -10,9 +11,9 @@ __all__ = ['FFMPEG']
 
 
 class InputList(list):
-    def __call__(self):
+    def __call__(self) -> List[str]:
         """ Delegates arguments formatting to Source objects."""
-        result = []
+        result: List[str] = []
         for src in self:
             if hasattr(src, 'get_args') and callable(src.get_args):
                 result.extend(src.get_args())
@@ -71,7 +72,7 @@ class FFMPEG(BaseWrapper):
         else:
             assert inputfile is None, "invalid inputfile type"
 
-    def init_filter_complex(self):
+    def init_filter_complex(self) -> FilterComplex:
         assert self.__inputs, "no inputs defined yet"
         assert not self.__outputs, "outputs already defined"
         self._args['filter_complex'] = fc = FilterComplex(
@@ -81,18 +82,17 @@ class FFMPEG(BaseWrapper):
         return fc
 
     @property
-    def filter_complex(self):
-        """:rtype: FilterComplex"""
+    def filter_complex(self) -> FilterComplex:
         return self._args['filter_complex']
 
-    def get_args(self):
+    def get_args(self) -> List[bytes]:
         return ensure_binary(
             [self.command] +
             super(FFMPEG, self).get_args() +
             self.get_output_args())
 
-    def get_output_args(self):
-        result = []
+    def get_output_args(self) -> List[str]:
+        result: List[str] = []
         for codecs, muxer in self.__outputs:
             args = list(chain.from_iterable(c.get_args() for c in codecs))
             result.extend(args + muxer.get_args() + [muxer.output])
@@ -149,7 +149,7 @@ class FFMPEG(BaseWrapper):
         self.__outputs.append((codecs, muxer))
 
     @property
-    def outputs(self):
+    def outputs(self) -> List[Tuple[codec.BaseCodec, Muxer]]:
         return list(self.__outputs)
 
     def __lt__(self, other):

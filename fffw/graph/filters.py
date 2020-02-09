@@ -45,7 +45,7 @@ class Deint(base.Node):
         self.mode = mode
 
     @property
-    def args(self):
+    def args(self) -> str:
         return "%s" % self.mode
 
 
@@ -59,7 +59,7 @@ class Scale(base.Node):
         self.height = int(height)
 
     @property
-    def args(self):
+    def args(self) -> str:
         return "%sx%s" % (self.width, self.height)
 
 
@@ -67,7 +67,7 @@ class ScaleNPP(Scale):
     name = 'scale_npp'
 
     @property
-    def args(self):
+    def args(self) -> str:
         return "w=%s:h=%s" % (self.width, self.height)
 
 
@@ -80,7 +80,7 @@ class SetSAR(base.Node):
         self.sar = sar
 
     @property
-    def args(self):
+    def args(self) -> str:
         return "%s" % self.sar
 
 
@@ -96,7 +96,7 @@ class Crop(base.Node):
         self.top = top
 
     @property
-    def args(self):
+    def args(self) -> str:
         return "%s:%s:%s:%s" % (self.width, self.height, self.left, self.top)
 
 
@@ -114,7 +114,7 @@ class Split(base.Node):
         return self._output_count
 
     @property
-    def args(self):
+    def args(self) -> str:
         if self._output_count == 2:
             return ''
         return '%s' % self._output_count
@@ -135,7 +135,7 @@ class Concat(base.Node):
         super(Concat, self).__init__(enabled=enabled)
 
     @property
-    def args(self):
+    def args(self) -> str:
         if self.input_count == 2:
             return ''
         return 'n=%s' % self.input_count
@@ -151,7 +151,7 @@ class AudioConcat(base.Node):
         super(AudioConcat, self).__init__(enabled=enabled)
 
     @property
-    def args(self):
+    def args(self) -> str:
         return 'v=0:a=1:n=%s' % self.input_count
 
 
@@ -165,7 +165,7 @@ class Trim(base.Node):
         super(Trim, self).__init__(enabled=enabled)
 
     @property
-    def args(self):
+    def args(self) -> str:
         return 'start=%s:end=%s' % (self.start, self.end)
 
 
@@ -179,7 +179,7 @@ class AudioTrim(base.Node):
         super(AudioTrim, self).__init__(enabled=enabled)
 
     @property
-    def args(self):
+    def args(self) -> str:
         return 'start=%s:end=%s' % (self.start, self.end)
 
 
@@ -192,7 +192,7 @@ class SetPTS(base.Node):
         super(SetPTS, self).__init__(enabled=enabled)
 
     @property
-    def args(self):
+    def args(self) -> str:
         return self.mode
 
 
@@ -205,7 +205,7 @@ class AudioSetPTS(base.Node):
         super(AudioSetPTS, self).__init__(enabled=enabled)
 
     @property
-    def args(self):
+    def args(self) -> str:
         return self.mode
 
 
@@ -223,7 +223,7 @@ class AudioSplit(base.Node):
         return self._output_count
 
     @property
-    def args(self):
+    def args(self) -> str:
         if self._output_count == 2:
             return ''
         return '%s' % self._output_count
@@ -240,7 +240,7 @@ class Overlay(base.Node):
         self.top = int(top)
 
     @property
-    def args(self):
+    def args(self) -> str:
         return "x=%s:y=%s" % (self.left, self.top)
 
 
@@ -253,7 +253,7 @@ class Volume(base.Node):
         self.volume = volume
 
     @property
-    def args(self):
+    def args(self) -> str:
         return "%.2f" % self.volume
 
 
@@ -267,7 +267,7 @@ class Rotate(base.Node):
         self.output_size = output_size
 
     @property
-    def args(self):
+    def args(self) -> str:
         if self.degrees is not None:
             result = "%s*PI/180" % self.degrees
             if self.output_size:
@@ -291,5 +291,5 @@ class Drawtext(base.Node):
         self.opts = dict(opts, fontfile=fontfile, text=text, x=x, y=y)
 
     @property
-    def args(self):
+    def args(self) -> str:
         return ':'.join('%s=%s' % t for t in sorted(self.opts.items()))
