@@ -10,7 +10,7 @@ with open('README.md') as f:
     long_description = f.read()
 
 version_re = re.compile('^Version: (.+)$', re.M)
-package_name = 'django_sphinxsearch'
+package_name = 'fffw'
 
 
 def get_version() -> Optional[str]:
@@ -62,10 +62,10 @@ def get_version() -> Optional[str]:
 
 
 setup(
-    name='fffw',
+    name=package_name,
     version=get_version() or 'dev',
     packages=find_packages(exclude=["tests"]),
-    url='http://github.com/tumb1er/fffw',
+    url='http://github.com/just-work/fffw',
     license='MIT',
     author='tumb1er',
     author_email='zimbler@gmail.com',
@@ -73,6 +73,9 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     test_suite="tests",
+    install_requires=[
+        'pymediainfo',
+    ],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
