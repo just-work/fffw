@@ -1,7 +1,7 @@
 import re
 import subprocess
 from logging import getLogger
-from typing import Tuple, List, Any, Dict, Union, overload
+from typing import Tuple, List, Any, Dict, Union, overload, IO, cast
 
 
 def quote(token: Any) -> str:
@@ -145,7 +145,8 @@ class BaseWrapper:
 
         with subprocess.Popen(args, stderr=subprocess.PIPE) as proc:
             while True:
-                line = proc.stderr.readline()
+                stderr = cast(IO[bytes], proc.stderr)
+                line = stderr.readline()
                 if not line:
                     break
                 self.handle_stderr(ensure_text(line))
