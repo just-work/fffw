@@ -1,6 +1,7 @@
 # fffw
 ## FFMPEG filter wrapper
-[![Build Status](https://travis-ci.org/just-work/fffw.svg?branch=master)](https://travis-ci.org/just-work/fffw)
+
+![build](https://github.com/just-work/fffw/workflows/build/badge.svg?branch=master)
 [![PyPI version](https://badge.fury.io/py/fffw.svg)](http://badge.fury.io/py/fffw)
 [![codecov](https://codecov.io/gh/just-work/fffw/branch/master/graph/badge.svg)](https://codecov.io/gh/just-work/fffw)
 
@@ -13,13 +14,13 @@
 
 TBD:
 
-* [ ] sphinx documentation - manual and autodoc
+* [ ] sphinx documentation - manual and auto docs
 * [x] typing
 * [x] coverage measure
-* [x] mypy integration
+* [x] MyPy integration
 * [x] license
 
-### PyCharm mypy plugin
+### PyCharm MyPy plugin
 ```
 dmypy run -- --config-file=mypy.ini .
 ```
