@@ -21,8 +21,6 @@ class FilterComplex:
         self.audio = audio or sources.Input(kind=base.AUDIO)
         self.__video_outputs: Dict[int, base.Dest] = {}
         self.__audio_outputs: Dict[int, base.Dest] = {}
-        self._video_tmp: Dict[str, int] = collections.Counter()
-        self._audio_tmp: Dict[str, int] = collections.Counter()
 
     def get_video_dest(self, index: int = 0, create: bool = True) -> base.Dest:
         """ Returns video output by index.
@@ -77,25 +75,3 @@ class FilterComplex:
 
     def __str__(self) -> str:
         return self.render()
-
-    def video_naming(self, name: str = 'tmp') -> str:
-        """ Unique video edge identifier generator.
-
-        :param name: prefix used in name generation.
-        :type name: str
-        :rtype: str
-        """
-        res = 'v:%s%s' % (name, self._video_tmp[name])
-        self._video_tmp[name] += 1
-        return res
-
-    def audio_naming(self, name: str = 'tmp') -> str:
-        """ Unique audio edge identifier generator.
-
-        :param name: prefix used in name generation.
-        :type name: str
-        :rtype: str
-        """
-        res = 'a:%s%s' % (name, self._audio_tmp[name])
-        self._audio_tmp[name] += 1
-        return res

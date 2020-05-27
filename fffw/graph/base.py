@@ -104,7 +104,7 @@ class Dest(Renderable):
 
     @property
     def name(self) -> str:
-        return self.name
+        return self.__name
 
     def connect_edge(self, edge: "Edge") -> "Edge":
         """ Connects and edge to output stream.
