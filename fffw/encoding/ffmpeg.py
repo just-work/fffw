@@ -1,8 +1,8 @@
 from itertools import chain
 from typing import List, Tuple, Any, Union
 
-from fffw.encoding import Muxer, inputs, codec
-from fffw.graph import FilterComplex, base
+from fffw.encoding import Muxer, codec
+from fffw.graph import FilterComplex, base, inputs
 from fffw.wrapper import BaseWrapper, ensure_binary
 
 __all__ = ['FFMPEG']
@@ -65,7 +65,7 @@ class FFMPEG(BaseWrapper):
     def init_filter_complex(self) -> FilterComplex:
         # TODO #9 refactor filter complex initialization
         assert not self.__outputs, "outputs already defined"
-        fc = FilterComplex(*self.__input_list.streams)
+        fc = FilterComplex(self.__input_list)
         self._args['filter_complex'] = fc
         return fc
 

@@ -1,8 +1,7 @@
 from unittest import TestCase
 
-from fffw.encoding import inputs
 from fffw.graph import *
-from fffw.graph import meta
+from fffw.graph import meta, inputs
 
 
 class FilterGraphTestCase(TestCase):
@@ -20,7 +19,7 @@ class FilterGraphTestCase(TestCase):
         main = inputs.Input(input_file='main.mp4')
         il = inputs.InputList(main, logo)
 
-        fc = FilterComplex(*il.streams)
+        fc = FilterComplex(il)
 
         deint = Deint(enabled=False)  # deinterlace is disabled
 
@@ -84,21 +83,21 @@ class FilterGraphTestCase(TestCase):
     def test_disabled_filters(self):
         """ Filter skipping."""
         source = inputs.Input(inputs.Stream(VIDEO), input_file="input.mp4")
-        fc = FilterComplex(*source.streams)
+        fc = FilterComplex(inputs.InputList(source))
 
         dest = fc.get_video_dest(0)
         fc.video | Scale(640, 360) | Deint(enabled=False) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
         source = inputs.Input(inputs.Stream(VIDEO), input_file="input.mp4")
-        fc = FilterComplex(*source.streams)
+        fc = FilterComplex(inputs.InputList(source))
 
         dest = fc.get_video_dest(0)
         fc.video | Deint(enabled=False) | Scale(640, 360) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
         source = inputs.Input(inputs.Stream(VIDEO), input_file="input.mp4")
-        fc = FilterComplex(*source.streams)
+        fc = FilterComplex(inputs.InputList(source))
 
         dest = fc.get_video_dest(0)
         tmp = fc.video | Deint(enabled=False)
@@ -107,7 +106,7 @@ class FilterGraphTestCase(TestCase):
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
         source = inputs.Input(inputs.Stream(VIDEO), input_file="input.mp4")
-        fc = FilterComplex(*source.streams)
+        fc = FilterComplex(inputs.InputList(source))
 
         dest = fc.get_video_dest(0)
         tmp = fc.video | Scale(640, 360)
@@ -121,7 +120,7 @@ class FilterGraphTestCase(TestCase):
         source = inputs.Input(input_file='input.mp4')
         il = inputs.InputList(source)
         # passing only video to FilterComplex
-        fc = FilterComplex(il.streams[0])
+        fc = FilterComplex(il)
         dest = fc.get_video_dest(0)
         fc.video | Scale(640, 360) | dest
 
@@ -136,7 +135,7 @@ class FilterGraphTestCase(TestCase):
         source = inputs.Input(inputs.Stream(VIDEO, meta=metadata),
                               input_file='input.mp4')
         il = inputs.InputList(source)
-        fc = FilterComplex(*il.streams)
+        fc = FilterComplex(il)
         dest = fc.get_video_dest(0)
         fc.video | Scale(640, 360) | dest
 

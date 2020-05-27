@@ -1,7 +1,7 @@
 import collections
 from typing import Dict
 
-from fffw.graph import base
+from fffw.graph import base, inputs
 
 __all__ = [
     'FilterComplex'
@@ -11,11 +11,12 @@ __all__ = [
 class FilterComplex:
     """ ffmpeg filter graph wrapper."""
 
-    def __init__(self, *streams: base.Source):
+    def __init__(self, input_list: inputs.InputList):
         """
-        :param streams: list of initializes streams
+        :param input_list: list of input files, containing video and audio
+        streams.
         """
-        self.__streams = list(streams)
+        self.__input_list = input_list
         self.__video_outputs: Dict[int, base.Dest] = {}
         self.__audio_outputs: Dict[int, base.Dest] = {}
 
@@ -34,7 +35,7 @@ class FilterComplex:
         :param kind: stream type
         :return: first stream of this kind not connected to filter graph
         """
-        for stream in self.__streams:
+        for stream in self.__input_list.streams:
             if stream.kind != kind or stream.edge is not None:
                 continue
             return stream
@@ -83,7 +84,7 @@ class FilterComplex:
             # same edges will receive same names and different edges will
             # receive unique names. This includes idempotent results for
             # subsequent render() calls for outer Namer context.
-            for src in self.__streams:
+            for src in self.__input_list.streams:
                 result.extend(src.render(partial=partial))
 
         # There are no visit checks in recurse graph traversing, so remove

@@ -441,9 +441,7 @@ class Source(Renderable):
 
     def render(self, partial: bool = False) -> List[str]:
         if self._edge is None:
-            if partial:
-                return []
-            raise RuntimeError("Source is not ready for render")
+            return []
 
         node = self._edge.output
         # if output node is disabled, use next edge identifier.
