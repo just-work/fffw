@@ -13,9 +13,8 @@ class InputsTestCase(TestCase):
         self.a1 = inputs.Stream(StreamType.AUDIO)
         self.a2 = inputs.Stream(StreamType.AUDIO)
         self.a3 = inputs.Stream(StreamType.AUDIO)
-        self.i1 = inputs.BaseInput(input_file='i1', streams=(self.v1, self.a1))
-        self.i2 = inputs.BaseInput(input_file='i2',
-                                   streams=(self.a2, self.v2, self.a3))
+        self.i1 = inputs.Input(self.v1, self.a1)
+        self.i2 = inputs.Input(self.a2, self.v2, self.a3)
 
     def test_input_list(self):
         """ Inputs and streams are properly enumerated."""
@@ -32,7 +31,7 @@ class InputsTestCase(TestCase):
         """
         By default each input has a video and an audio stream without meta.
         """
-        source = inputs.BaseInput(input_file='input.mp4')
+        source = inputs.Input()
         self.assertEqual(len(source.streams), 2)
         v = source.streams[0]
         self.assertEqual(v.kind, StreamType.VIDEO)
@@ -47,7 +46,7 @@ class InputsTestCase(TestCase):
         """
         il = inputs.InputList()
 
-        il.append(inputs.BaseInput(input_file='input.mp4', streams=(self.v1,)))
+        il.append(inputs.Input(self.v1))
 
         self.assertEqual(self.v1.name, '0:v')
 
@@ -56,5 +55,5 @@ class InputsTestCase(TestCase):
         Stream without proper StreamType can't be added to input.
         """
         # noinspection PyTypeChecker
-        self.assertRaises(ValueError, inputs.BaseInput, input_file='input.mp4',
-                          streams=(inputs.Stream(kind=None),))
+        self.assertRaises(ValueError, inputs.Input, inputs.Stream(kind=None),
+                          input_file='input.mp4')

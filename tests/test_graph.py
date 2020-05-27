@@ -15,9 +15,8 @@ class FilterGraphTestCase(TestCase):
                                             |
                                             ------<Scale>--[O/720p]
         """
-        logo = inputs.SourceFile('logo.png', (inputs.Stream(VIDEO),))
-        main = inputs.SourceFile('main.mp4', (inputs.Stream(VIDEO),
-                                              inputs.Stream(AUDIO)))
+        logo = inputs.Input(inputs.Stream(VIDEO), input_file='logo.png')
+        main = inputs.Input(input_file='main.mp4')
         il = inputs.InputList(main, logo)
 
         fc = FilterComplex(*il.streams)
@@ -86,21 +85,21 @@ class FilterGraphTestCase(TestCase):
 
     def test_disabled_filters(self):
         """ Filter skipping."""
-        source = inputs.SourceFile("input.mp4", streams=(inputs.Stream(VIDEO),))
+        source = inputs.Input(inputs.Stream(VIDEO), input_file="input.mp4")
         fc = FilterComplex(*source.streams)
 
         dest = fc.get_video_dest(0)
         fc.video | Scale(640, 360) | Deint(enabled=False) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
-        source = inputs.SourceFile("input.mp4", streams=(inputs.Stream(VIDEO),))
+        source = inputs.Input(inputs.Stream(VIDEO), input_file="input.mp4")
         fc = FilterComplex(*source.streams)
 
         dest = fc.get_video_dest(0)
         fc.video | Deint(enabled=False) | Scale(640, 360) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
-        source = inputs.SourceFile("input.mp4", streams=(inputs.Stream(VIDEO),))
+        source = inputs.Input(inputs.Stream(VIDEO), input_file="input.mp4")
         fc = FilterComplex(*source.streams)
 
         dest = fc.get_video_dest(0)
@@ -109,7 +108,7 @@ class FilterGraphTestCase(TestCase):
         tmp | Scale(640, 360) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
-        source = inputs.SourceFile("input.mp4", streams=(inputs.Stream(VIDEO),))
+        source = inputs.Input(inputs.Stream(VIDEO), input_file="input.mp4")
         fc = FilterComplex(*source.streams)
 
         dest = fc.get_video_dest(0)
@@ -121,8 +120,7 @@ class FilterGraphTestCase(TestCase):
     def test_skip_not_connected_sources(self):
         """ Skip unused sources in filter complex.
         """
-        source = inputs.SourceFile('input.mp4',
-                                   (inputs.Stream(VIDEO), inputs.Stream(AUDIO)))
+        source = inputs.Input(input_file='input.mp4')
         fc = FilterComplex(*source.streams)
         dest = fc.get_video_dest(0)
         fc.video | Scale(640, 360) | dest

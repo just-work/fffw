@@ -10,7 +10,7 @@ class FFMPEGTestCase(TestCase):
     def test_ffmpeg(self):
         """ Smoke test and feature demo."""
         ff = FFMPEG()
-        ff < SourceFile('/tmp/input.mp4')
+        ff < Input(input_file='/tmp/input.mp4')
 
         fc = ff.init_filter_complex()
 
@@ -51,7 +51,7 @@ class FFMPEGTestCase(TestCase):
 
     def test_bypass_with_filter_complex(self):
         """ Audio stream bypass mode."""
-        ff = FFMPEG(SourceFile('/tmp/input.mp4'))
+        ff = FFMPEG(Input(input_file='/tmp/input.mp4'))
 
         fc = ff.init_filter_complex()
         fc.video | Scale(640, 360) | fc.get_video_dest(0)
@@ -75,7 +75,7 @@ class FFMPEGTestCase(TestCase):
 
     def test_bypass_without_filter_complex(self):
         """ Stream bypass with filter_complex missing."""
-        ff = FFMPEG(SourceFile('/tmp/input.mp4'))
+        ff = FFMPEG(Input(input_file='/tmp/input.mp4'))
 
         cv0 = VideoCodec(vcodec='libx264', vbitrate='700000', size='640x360')
         ca0 = AudioCodec(acodec='aac', abitrate='128000')
@@ -96,8 +96,8 @@ class FFMPEGTestCase(TestCase):
         """ Input stream naming test."""
 
         ff = FFMPEG()
-        ff < SourceFile('/tmp/input.jpg', streams=(Stream(VIDEO),))
-        ff < SourceFile('/tmp/input.mp4')
+        ff < Input(Stream(VIDEO), input_file='/tmp/input.jpg')
+        ff < Input(input_file='/tmp/input.mp4')
         fc = ff.init_filter_complex()
         overlay = Overlay(0, 0)
         fc.video | Scale(640, 360) | overlay
@@ -129,7 +129,7 @@ class FFMPEGTestCase(TestCase):
 
     def test_handle_codec_copy(self):
         """ vcodec=copy connects source directly to muxer."""
-        ff = FFMPEG(SourceFile('/tmp/input.mp4'))
+        ff = FFMPEG(Input(input_file='/tmp/input.mp4'))
 
         fc = ff.init_filter_complex()
 
@@ -155,7 +155,7 @@ class FFMPEGTestCase(TestCase):
 
     def test_reuse_input_files(self):
         """ Reuse input files multiple times."""
-        ff = FFMPEG(SourceFile('/tmp/input.mp4'))
+        ff = FFMPEG(Input(input_file='/tmp/input.mp4'))
         cv0 = VideoCodec(map='0:v', vcodec='copy')
         ca0 = AudioCodec(map='0:a', acodec='copy')
         out0 = FLVMuxer('/tmp/out0.flv')
@@ -185,7 +185,7 @@ class FFMPEGTestCase(TestCase):
 
     def test_handle_codec_copy_with_other_filters(self):
         """ vcodec=copy with separate transcoded output."""
-        ff = FFMPEG(SourceFile('/tmp/input.mp4'))
+        ff = FFMPEG(Input(input_file='/tmp/input.mp4'))
 
         fc = ff.init_filter_complex()
 
@@ -225,7 +225,7 @@ class FFMPEGTestCase(TestCase):
     def test_transcoding_without_graph(self):
         """ Transcoding works without filter graph."""
         ff = FFMPEG()
-        ff < SourceFile('input.mp4')
+        ff < Input(input_file='input.mp4')
         ff.add_output(NullMuxer('/dev/null'))
         expected = [
             'ffmpeg',
@@ -237,7 +237,7 @@ class FFMPEGTestCase(TestCase):
 
     def test_hls_muxer(self):
         """ hls muxer args."""
-        ff = FFMPEG(SourceFile('/tmp/input.mp4'))
+        ff = FFMPEG(Input(input_file='/tmp/input.mp4'))
 
         cv0 = VideoCodec(vcodec='libx264')
         ca0 = AudioCodec(acodec='aac')
@@ -261,7 +261,7 @@ class FFMPEGTestCase(TestCase):
 
     def test_tee_muxer(self):
         """ tee muxer args."""
-        ff = FFMPEG(SourceFile('/tmp/input.mp4'))
+        ff = FFMPEG(Input(input_file='/tmp/input.mp4'))
 
         cv0 = VideoCodec(vcodec='libx264')
         ca0 = AudioCodec(acodec='aac')
@@ -286,8 +286,8 @@ class FFMPEGTestCase(TestCase):
     def test_concat(self):
         """ Concat source files."""
         ff = FFMPEG()
-        ff < SourceFile('preroll.mp4')
-        ff < SourceFile('input.mp4')
+        ff < Input(input_file='preroll.mp4')
+        ff < Input(input_file='input.mp4')
 
         fc = ff.init_filter_complex()
 

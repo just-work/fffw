@@ -53,7 +53,7 @@ class FFMPEG(BaseWrapper):
         ('segment_list_flags', '-segment_list_flags '),
     ]
 
-    def __init__(self, *sources: inputs.BaseInput, **kw: Any):
+    def __init__(self, *sources: inputs.Input, **kw: Any):
         super(FFMPEG, self).__init__(**kw)
         self.__outputs: List[Tuple[Tuple[codec.BaseCodec, ...], Muxer]] = []
         self.__vdest = self.__adest = 0
@@ -83,10 +83,10 @@ class FFMPEG(BaseWrapper):
             result.extend(args + muxer.get_args() + output)
         return result
 
-    def add_input(self, input_file: inputs.BaseInput) -> None:
+    def add_input(self, input_file: inputs.Input) -> None:
         """ Adds new source to ffmpeg.
         """
-        assert isinstance(input_file, inputs.BaseInput)
+        assert isinstance(input_file, inputs.Input)
         self.__input_list.append(input_file)
 
     def get_free_source(self, kind: base.StreamType) -> base.Source:
@@ -131,37 +131,13 @@ class FFMPEG(BaseWrapper):
         assert isinstance(muxer, Muxer)
         for c in codecs:
             self.add_codec(c)
-            # assert isinstance(c, codec.BaseCodec)
-            # fc = self.filter_complex
-            # if not fc or getattr(c, 'map', None):
-            #     # If filter_complex is not present or codec has source set,
-            #     # connect codec to inputs directly.
-            #     if c.codec_type == base.VIDEO:
-            #         self.__video | c
-            #     if c.codec_type == base.AUDIO:
-            #         self.__audio | c
-            #     continue
-            # if c.codec_type == base.VIDEO:
-            #     try:
-            #         c.connect(
-            #             fc.get_video_dest(self.__vdest, create=False))
-            #         self.__vdest += 1
-            #     except IndexError:
-            #         self.__video | c
-            # if c.codec_type == base.AUDIO:
-            #     try:
-            #         c.connect(fc.get_audio_dest(self.__adest, create=False))
-            #         self.__adest += 1
-            #     except IndexError:
-            #         self.__audio | c
-
         self.__outputs.append((codecs, muxer))
 
     @property
     def outputs(self) -> List[Tuple[Tuple[codec.BaseCodec, ...], Muxer]]:
         return list(self.__outputs)
 
-    def __lt__(self, other: inputs.BaseInput) -> None:
+    def __lt__(self, other: inputs.Input) -> None:
         """ Adds new source file.
         """
         self.add_input(other)

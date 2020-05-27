@@ -1,28 +1,29 @@
-from dataclasses import dataclass, field
+from dataclasses import field
 from typing import Optional, List, Tuple
 
-from fffw.graph import StreamType, base
+from fffw.graph import base
 from fffw.graph.meta import Meta
 from fffw.wrapper import BaseWrapper, ensure_binary
 
 __all__ = [
-    'BaseInput',
+    'Input',
     'InputList',
     'Stream',
-    'SourceFile',
+    'Input',
 ]
 
 
 class Stream(base.Source):
     """ Video or audio stream in input file."""
-    def __init__(self, kind: StreamType, meta: Optional[Meta] = None):
+
+    def __init__(self, kind: base.StreamType, meta: Optional[Meta] = None):
         """
         :param kind: stream kind, video or audio
         :param meta: stream metadata
         """
         super().__init__(None, kind)
         self._meta = meta
-        self.source: Optional[BaseInput] = None
+        self.source: Optional[Input] = None
         """ Source file that contains current stream."""
         self.index: Optional[int] = None
         """ Index of current stream in source file."""
@@ -34,48 +35,57 @@ class Stream(base.Source):
         return f'{self.source.index}:{self._kind.value}:{self.index}'
 
     @property
-    def kind(self) -> StreamType:
+    def kind(self) -> base.StreamType:
         return self._kind
 
 
-@dataclass
-class BaseInput(BaseWrapper):
+class Input(BaseWrapper):
     """
     Input command line params generator for FFMPEG.
     """
-    input_file: str
     """ Filename or url, value for `-i` argument."""
     streams: Tuple[Stream, ...] = field(default=None)
     """ List of audio and video streams for input file."""
     index: int = field(default=0, init=False)
     """ Internal ffmpeg source file index."""
 
-    def __post_init__(self):
-        """ Performs streams enumeration for proper stream id generation."""
-        if not self.streams:
-            self.streams = (Stream(StreamType.VIDEO), Stream(StreamType.AUDIO))
+    def __init__(self, *streams: Stream, input_file: str = ''):
+        super().__init__()
+        self.streams = streams or (Stream(base.VIDEO), Stream(base.AUDIO))
+        self.index = 0
+        self.input_file = input_file
+        self.__link_streams_to_input()
+
+    def __link_streams_to_input(self):
+        """
+        Add a link to self to input streams and enumerate streams to get
+        proper stream index for input.
+        """
         video_streams = 0
         audio_streams = 0
         for stream in self.streams:
-            if stream.kind == StreamType.VIDEO:
+            if stream.kind == base.VIDEO:
                 stream.index = video_streams
                 video_streams += 1
-            elif stream.kind == StreamType.AUDIO:
+            elif stream.kind == base.AUDIO:
                 stream.index = audio_streams
                 audio_streams += 1
             else:
                 raise ValueError(stream.kind)
             stream.source = self
 
+    def get_args(self) -> List[bytes]:
+        return ensure_binary(["-i", self.input_file])
+
 
 class InputList:
     """ List of inputs in FFMPEG."""
 
-    def __init__(self, *sources: BaseInput) -> None:
+    def __init__(self, *sources: Input) -> None:
         """
         :param sources: list of input files
         """
-        self.inputs: List[BaseInput] = []
+        self.inputs: List[Input] = []
         self.extend(*sources)
 
     @property
@@ -85,7 +95,7 @@ class InputList:
             result.extend(source.streams)
         return result
 
-    def append(self, source: BaseInput) -> None:
+    def append(self, source: Input) -> None:
         """
         Adds new source file to input list.
 
@@ -94,7 +104,7 @@ class InputList:
         source.index = len(self.inputs)
         self.inputs.append(source)
 
-    def extend(self, *sources: BaseInput) -> None:
+    def extend(self, *sources: Input) -> None:
         """
         Adds multiple source files to input list.
 
@@ -109,12 +119,3 @@ class InputList:
         for source in self.inputs:
             result.extend(source.get_args())
         return result
-
-
-@dataclass
-class SourceFile(BaseInput):
-    """ File-based input."""
-    # TODO: hardware-accelerated decoding and forced formats
-
-    def get_args(self) -> List[bytes]:
-        return ensure_binary(["-i", self.input_file])
