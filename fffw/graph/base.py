@@ -72,20 +72,6 @@ class Renderable(metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
 
-class NameMixin:
-    """
-    A mixin for single-time object name initialization
-    """
-
-    def __init__(self, name: str):
-        super().__init__()
-        self.__name: str = name
-
-    @property
-    def name(self) -> Optional[str]:
-        return self.__name
-
-
 class Dest(Renderable):
     """
     Audio/video output stream node.
