@@ -1,7 +1,7 @@
 import collections
-from typing import Optional, Dict
+from typing import Dict
 
-from fffw.graph import base, sources
+from fffw.graph import base
 
 __all__ = [
     'FilterComplex'
@@ -11,16 +11,35 @@ __all__ = [
 class FilterComplex:
     """ ffmpeg filter graph wrapper."""
 
-    def __init__(self, video: Optional[sources.Input] = None,
-                 audio: Optional[sources.Input] = None):
+    def __init__(self, *streams: base.Source):
         """
-        :param video: input video streams set
-        :param audio: input audio streams set
+        :param streams: list of initializes streams
         """
-        self.video = video or sources.Input(kind=base.VIDEO)
-        self.audio = audio or sources.Input(kind=base.AUDIO)
+        self.__streams = list(streams)
         self.__video_outputs: Dict[int, base.Dest] = {}
         self.__audio_outputs: Dict[int, base.Dest] = {}
+
+    @property
+    def video(self) -> base.Source:
+        """ Returns first free video stream."""
+        return self.get_free_source(base.VIDEO)
+
+    @property
+    def audio(self) -> base.Source:
+        """ Returns first free audio stream."""
+        return self.get_free_source(base.AUDIO)
+
+    def get_free_source(self, kind: base.StreamType) -> base.Source:
+        """
+        :param kind: stream type
+        :return: first stream of this kind not connected to filter graph
+        """
+        for stream in self.__streams:
+            if stream.kind != kind or stream.edge is not None:
+                continue
+            return stream
+        else:
+            raise RuntimeError("No free streams")
 
     def get_video_dest(self, index: int = 0, create: bool = True) -> base.Dest:
         """ Returns video output by index.
@@ -64,15 +83,7 @@ class FilterComplex:
             # same edges will receive same names and different edges will
             # receive unique names. This includes idempotent results for
             # subsequent render() calls for outer Namer context.
-            for src in self.video.streams:
-                # noinspection PyProtectedMember
-                if not src._edge:
-                    continue
-                result.extend(src.render(partial=partial))
-            for src in self.audio.streams:
-                # noinspection PyProtectedMember
-                if not src._edge:
-                    continue
+            for src in self.__streams:
                 result.extend(src.render(partial=partial))
 
         # There are no visit checks in recurse graph traversing, so remove

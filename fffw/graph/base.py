@@ -7,7 +7,8 @@ __all__ = [
 import abc
 from collections import Counter
 from enum import Enum
-from typing import Optional, List, Union, Dict, Any
+from typing import Dict, Any
+from typing import Optional, List, Union
 
 
 class StreamType(Enum):

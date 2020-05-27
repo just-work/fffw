@@ -22,10 +22,10 @@ class InputsTestCase(TestCase):
         il = inputs.InputList(self.i1, self.i2)
         self.assertEqual(il.inputs[0].index, 0)
         self.assertEqual(il.inputs[1].index, 1)
-        self.assertEqual(self.v1.name, '0:v:0')
-        self.assertEqual(self.a1.name, '0:a:0')
-        self.assertEqual(self.v2.name, '1:v:0')
-        self.assertEqual(self.a2.name, '1:a:0')
+        self.assertEqual(self.v1.name, '0:v')
+        self.assertEqual(self.a1.name, '0:a')
+        self.assertEqual(self.v2.name, '1:v')
+        self.assertEqual(self.a2.name, '1:a')
         self.assertEqual(self.a3.name, '1:a:1')
 
     def test_default_input(self):
@@ -49,7 +49,7 @@ class InputsTestCase(TestCase):
 
         il.append(inputs.BaseInput(input_file='input.mp4', streams=(self.v1,)))
 
-        self.assertEqual(self.v1.name, '0:v:0')
+        self.assertEqual(self.v1.name, '0:v')
 
     def test_validate_stream_kind(self):
         """

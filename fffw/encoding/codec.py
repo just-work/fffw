@@ -55,8 +55,7 @@ class BaseCodec(BaseWrapper, base.Node, metaclass=abc.ABCMeta):
                      if self._args[k])
         )
 
-    def connect_edge(self, edge: base.Edge
-                     ) -> base.Edge:
+    def connect_edge(self, edge: base.Edge) -> base.Edge:
         """ Connects source to codec through an edge."""
         src = edge.input
         assert isinstance(src, base.Source), "Codec connects to Source"
@@ -70,6 +69,11 @@ class BaseCodec(BaseWrapper, base.Node, metaclass=abc.ABCMeta):
             return None  # type: ignore
         self.map = src.name
         return edge
+
+    def __ror__(self, other: base.Dest):
+        if not isinstance(other, base.Dest):
+            return NotImplemented
+        self.connect(other)
 
 
 class VideoCodec(BaseCodec):

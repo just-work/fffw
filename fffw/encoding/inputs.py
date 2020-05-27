@@ -1,20 +1,26 @@
 from dataclasses import dataclass, field
 from typing import Optional, List, Tuple
 
-from fffw.graph import StreamType
+from fffw.graph import StreamType, base
 from fffw.graph.meta import Meta
-from fffw.wrapper import BaseWrapper
+from fffw.wrapper import BaseWrapper, ensure_binary
+
+__all__ = [
+    'BaseInput',
+    'InputList',
+    'Stream',
+    'SourceFile',
+]
 
 
-class Stream:
+class Stream(base.Source):
     """ Video or audio stream in input file."""
-    def __init__(self, kind: StreamType,
-                 meta: Optional[Meta] = None):
+    def __init__(self, kind: StreamType, meta: Optional[Meta] = None):
         """
         :param kind: stream kind, video or audio
         :param meta: stream metadata
         """
-        self._kind = kind
+        super().__init__(None, kind)
         self._meta = meta
         self.source: Optional[BaseInput] = None
         """ Source file that contains current stream."""
@@ -23,6 +29,8 @@ class Stream:
 
     @property
     def name(self):
+        if self.index == 0:
+            return f'{self.source.index}:{self._kind.value}'
         return f'{self.source.index}:{self._kind.value}:{self.index}'
 
     @property
@@ -70,6 +78,13 @@ class InputList:
         self.inputs: List[BaseInput] = []
         self.extend(*sources)
 
+    @property
+    def streams(self) -> List[Stream]:
+        result = []
+        for source in self.inputs:
+            result.extend(source.streams)
+        return result
+
     def append(self, source: BaseInput) -> None:
         """
         Adds new source file to input list.
@@ -88,3 +103,18 @@ class InputList:
         for i, source in enumerate(sources, start=len(self.inputs)):
             source.index = i
         self.inputs.extend(sources)
+
+    def get_args(self) -> List[bytes]:
+        result = []
+        for source in self.inputs:
+            result.extend(source.get_args())
+        return result
+
+
+@dataclass
+class SourceFile(BaseInput):
+    """ File-based input."""
+    # TODO: hardware-accelerated decoding and forced formats
+
+    def get_args(self) -> List[bytes]:
+        return ensure_binary(["-i", self.input_file])
