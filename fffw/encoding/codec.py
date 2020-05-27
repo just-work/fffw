@@ -70,7 +70,7 @@ class BaseCodec(BaseWrapper, base.Node, metaclass=abc.ABCMeta):
         self.map = src.name
         return edge
 
-    def __ror__(self, other: base.Dest):
+    def __ror__(self, other: base.Dest) -> None:
         if not isinstance(other, base.Dest):
             return NotImplemented
         self.connect(other)

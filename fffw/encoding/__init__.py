@@ -7,5 +7,5 @@ __all__ = (
         codec.__all__ +  # type: ignore
         muxer.__all__ +  # type: ignore
         ffmpeg.__all__ +  # type: ignore
-    inputs.__all__  # type: ignore
+        inputs.__all__  # type: ignore
 )

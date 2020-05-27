@@ -1,5 +1,5 @@
 from itertools import chain
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, Union
 
 from fffw.encoding import Muxer, inputs
 from fffw.encoding import codec
@@ -103,6 +103,7 @@ class FFMPEG(BaseWrapper):
 
     def add_codec(self, c: codec.BaseCodec) -> None:
         """ Connect codec to filter graph output or input stream."""
+        node: Union[base.Source, base.Dest]
         if c.map:
             try:
                 node = next(filter(lambda s: s.name == c.map,

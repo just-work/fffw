@@ -29,7 +29,9 @@ class Stream(base.Source):
         """ Index of current stream in source file."""
 
     @property
-    def name(self):
+    def name(self) -> str:
+        if self.source is None or self.index is None:
+            raise RuntimeError("Stream not initialized")
         if self.index == 0:
             return f'{self.source.index}:{self._kind.value}'
         return f'{self.source.index}:{self._kind.value}:{self.index}'
@@ -44,7 +46,7 @@ class Input(BaseWrapper):
     Input command line params generator for FFMPEG.
     """
     """ Filename or url, value for `-i` argument."""
-    streams: Tuple[Stream, ...] = field(default=None)
+    streams: Optional[Tuple[Stream, ...]] = field(default=None)
     """ List of audio and video streams for input file."""
     index: int = field(default=0, init=False)
     """ Internal ffmpeg source file index."""
@@ -56,13 +58,15 @@ class Input(BaseWrapper):
         self.input_file = input_file
         self.__link_streams_to_input()
 
-    def __link_streams_to_input(self):
+    def __link_streams_to_input(self) -> None:
         """
         Add a link to self to input streams and enumerate streams to get
         proper stream index for input.
         """
         video_streams = 0
         audio_streams = 0
+        if self.streams is None:
+            raise RuntimeError("Streams not initialized")
         for stream in self.streams:
             if stream.kind == base.VIDEO:
                 stream.index = video_streams
@@ -90,8 +94,10 @@ class InputList:
 
     @property
     def streams(self) -> List[Stream]:
-        result = []
+        result: List[Stream] = []
         for source in self.inputs:
+            if source.streams is None:
+                raise RuntimeError("Source streams not initialized")
             result.extend(source.streams)
         return result
 
