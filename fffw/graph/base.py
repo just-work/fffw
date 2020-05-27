@@ -7,7 +7,7 @@ __all__ = [
 import abc
 from collections import Counter
 from enum import Enum
-from typing import Optional, List, Union, Dict
+from typing import Optional, List, Union, Dict, Any
 
 
 class StreamType(Enum):
@@ -29,10 +29,10 @@ class Singleton(type):
 
 class Namer(metaclass=Singleton):
     """ Unique stream identifiers generator."""
-    stack = []
+    stack: List["Namer"] = []
 
-    def __init__(self):
-        self.counters = Counter()
+    def __init__(self) -> None:
+        self.counters: Dict[str, int] = Counter()
         self.cache: Dict[int, str] = dict()
 
     def name(self, edge: "Edge") -> str:
@@ -49,11 +49,11 @@ class Namer(metaclass=Singleton):
             self.cache[id(edge)] = name
         return self.cache[id(edge)]
 
-    def __enter__(self):
+    def __enter__(self) -> "Namer":
         self.stack.append(self)
         return self.stack[0]
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, *_: Any) -> None:
         self.stack.pop(-1)
 
 
@@ -89,7 +89,7 @@ class NameMixin:
         return self.__name
 
 
-class Dest(Renderable, NameMixin):
+class Dest(Renderable):
     """
     Audio/video output stream node.
 
@@ -101,9 +101,13 @@ class Dest(Renderable, NameMixin):
         :param name: internal ffmpeg stream name ("v:0", "a:1")
         :param kind: stream kind (VIDEO/AUDIO)
         """
-        super().__init__(name)
         self._edge: Optional[Edge] = None
         self.kind = kind
+        self.__name = name
+
+    @property
+    def name(self) -> str:
+        return self.name
 
     def connect_edge(self, edge: "Edge") -> "Edge":
         """ Connects and edge to output stream.
@@ -150,7 +154,7 @@ class Edge(Renderable):
         return f'Edge#{self.name}[{self.input}, {self.output}]'
 
     @property
-    def kind(self):
+    def kind(self) -> StreamType:
         return self.__input.kind
 
     @property
@@ -174,7 +178,9 @@ class Edge(Renderable):
             return self.output.name
         edge = self
         node = self.input
-        while not getattr(node, 'enabled', True):
+        while not getattr(node, 'enabled', True) and isinstance(node, Node):
+            if node.inputs[0] is None:
+                raise RuntimeError("Node input is None")
             edge = node.inputs[0]
             node = edge.input
         return Namer.current.name(edge)
@@ -340,20 +346,26 @@ class Node(Renderable):
         return self.connect_dest(other)
 
 
-class Source(Renderable, NameMixin):
+class Source(Renderable):
     """ Graph node containing audio or video input.
 
     Must connect to single graph edge only as a source
     """
 
-    def __init__(self, name: str, kind: StreamType) -> None:
+    def __init__(self, name: Optional[str], kind: StreamType) -> None:
         """
         :param name: ffmpeg internal input stream name ("v:0", "a:1")
         :param kind: stream type (VIDEO/AUDIO)
         """
-        super().__init__(name=name)
         self._edge: Optional[Edge] = None
         self._kind = kind
+        self.__name = name
+
+    @property
+    def name(self) -> str:
+        if self.__name is None:
+            raise RuntimeError("Source name not set")
+        return self.__name
 
     @property
     def edge(self) -> Optional["Edge"]:
