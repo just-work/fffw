@@ -32,6 +32,13 @@ class Namer:
         self._counters: Dict[str, int] = Counter()
         self._cache: Dict[int, str] = dict()
 
+    def __enter__(self) -> "Namer":
+        self._stack.append(self)
+        return self._stack[0]
+
+    def __exit__(self, *_: Any) -> None:
+        self._stack.pop(-1)
+
     def _name(self, edge: "Edge") -> str:
         if id(edge) not in self._cache:
             node = edge.input
@@ -45,13 +52,6 @@ class Namer:
             # caching edge name for idempotency
             self._cache[id(edge)] = name
         return self._cache[id(edge)]
-
-    def __enter__(self) -> "Namer":
-        self._stack.append(self)
-        return self._stack[0]
-
-    def __exit__(self, *_: Any) -> None:
-        self._stack.pop(-1)
 
 
 class Renderable(metaclass=abc.ABCMeta):
@@ -85,12 +85,19 @@ class Dest(Renderable):
         :param kind: stream kind (VIDEO/AUDIO)
         """
         self._edge: Optional[Edge] = None
-        self.kind = kind
-        self.__name = name
+        self._kind = kind
+        self._name = name
+
+    def __repr__(self) -> str:
+        return f"Dest('{self.name}')"
 
     @property
     def name(self) -> str:
-        return self.__name
+        return self._name
+
+    @property
+    def kind(self) -> StreamType:
+        return self._kind
 
     def connect_edge(self, edge: "Edge") -> "Edge":
         """ Connects and edge to output stream.
@@ -107,9 +114,6 @@ class Dest(Renderable):
             raise RuntimeError("Dest is already connected to %s" % self._edge)
         self._edge = edge
         return edge
-
-    def __repr__(self) -> str:
-        return f"Dest('{self.name}')"
 
     def render(self, partial: bool = False) -> List[str]:
         # Previous nodes/edges already rendered destination node.
@@ -153,9 +157,11 @@ class Edge(Renderable):
         """
         Get actual name for edge from source node.
 
-        When connected to destination, uses dest name as edge name.
-        When connected to other filters, looks for source node, skipping
-        disabled nodes.
+        Property must be accessed within Namer context.
+
+        :returns: edge identifier generated from output node name if connected
+        to Dest, or a  name of last enabled filter before (and including)
+        current node.
         """
         if isinstance(self.output, Dest):
             return self.output.name
@@ -220,6 +226,15 @@ class Node(Renderable):
         outputs = [f"[{str(i.name if i else '---')}]" for i in self.outputs]
         return f"{''.join(inputs)}{self.name}{''.join(outputs)}"
 
+    def __or__(self, other: Union["Node", "Dest"]) -> Union["Node", "Dest"]:
+        """
+        connect output edge to node
+        :return: connected edge
+        """
+        if not isinstance(other, (Node, Dest)):
+            return NotImplemented
+        return self.connect_dest(other)
+
     @property
     def enabled(self) -> bool:
         return self.__enabled
@@ -227,6 +242,13 @@ class Node(Renderable):
     @enabled.setter
     def enabled(self, value: bool) -> None:
         self.__enabled = value
+
+    @property
+    def args(self) -> str:
+        """
+        Generates filter params as a string
+        """
+        return ''
 
     def render(self, partial: bool = False) -> List[str]:
         if not self.enabled:
@@ -287,13 +309,6 @@ class Node(Renderable):
         args = '=' + self.args if self.args else ''
         return ''.join(inputs) + self.name + args + ''.join(outputs)
 
-    @property
-    def args(self) -> str:
-        """
-        Generates filter params as a string
-        """
-        return ''
-
     def connect_edge(self, edge: "Edge") -> "Edge":
         """ Connects and edge to one of filter inputs
 
@@ -319,15 +334,6 @@ class Node(Renderable):
         other.connect_edge(edge)
         return other
 
-    def __or__(self, other: Union["Node", "Dest"]) -> Union["Node", "Dest"]:
-        """
-        connect output edge to node
-        :return: connected edge
-        """
-        if not isinstance(other, (Node, Dest)):
-            return NotImplemented
-        return self.connect_dest(other)
-
 
 class Source(Renderable):
     """ Graph node containing audio or video input.
@@ -343,6 +349,18 @@ class Source(Renderable):
         self._edge: Optional[Edge] = None
         self._kind = kind
         self.__name = name
+
+    def __repr__(self) -> str:
+        return f"Source('[{self.name}]')"
+
+    def __or__(self, other: Node) -> Node:
+        """
+        Connect a filter to a source
+        :return: connected filter
+        """
+        if not isinstance(other, Node):
+            return NotImplemented
+        return self.connect(other)
 
     @property
     def name(self) -> str:
@@ -377,15 +395,6 @@ class Source(Renderable):
         self._edge = self._edge or other.connect_edge(edge)
         return other
 
-    def __or__(self, other: Node) -> Node:
-        """
-        Connect a filter to a source
-        :return: connected filter
-        """
-        if not isinstance(other, Node):
-            return NotImplemented
-        return self.connect(other)
-
     def render(self, partial: bool = False) -> List[str]:
         if self._edge is None:
             if partial:
@@ -403,6 +412,3 @@ class Source(Renderable):
         else:
             edge = self._edge
         return edge.render(partial=partial)
-
-    def __repr__(self) -> str:
-        return f"Source('[{self.name}]')"
