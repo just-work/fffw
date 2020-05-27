@@ -21,8 +21,6 @@ class FilterComplex:
         self.audio = audio or sources.Input(kind=base.AUDIO)
         self.__video_outputs: Dict[int, base.Dest] = {}
         self.__audio_outputs: Dict[int, base.Dest] = {}
-        self._video_tmp: Dict[str, int] = collections.Counter()
-        self._audio_tmp: Dict[str, int] = collections.Counter()
 
     def get_video_dest(self, index: int = 0, create: bool = True) -> base.Dest:
         """ Returns video output by index.
@@ -59,16 +57,23 @@ class FilterComplex:
         Returns filter_graph description in corresponding ffmpeg param syntax.
         """
         result = []
-        for src in self.video.streams:
-            # noinspection PyProtectedMember
-            if not src._edge:
-                continue
-            result.extend(src.render(self.video_naming, partial=partial))
-        for src in self.audio.streams:
-            # noinspection PyProtectedMember
-            if not src._edge:
-                continue
-            result.extend(src.render(self.audio_naming, partial=partial))
+        with base.Namer():
+            # Initialize namer context to track unique edge identifiers.
+            # In name generation there is no access to namer, so it is accessed
+            # via Namer singleton's method. Within context it is guaranteed that
+            # same edges will receive same names and different edges will
+            # receive unique names. This includes idempotent results for
+            # subsequent render() calls for outer Namer context.
+            for src in self.video.streams:
+                # noinspection PyProtectedMember
+                if not src._edge:
+                    continue
+                result.extend(src.render(partial=partial))
+            for src in self.audio.streams:
+                # noinspection PyProtectedMember
+                if not src._edge:
+                    continue
+                result.extend(src.render(partial=partial))
 
         # There are no visit checks in recurse graph traversing, so remove
         # duplicates respecting order of appearance.
@@ -76,25 +81,3 @@ class FilterComplex:
 
     def __str__(self) -> str:
         return self.render()
-
-    def video_naming(self, name: str = 'tmp') -> str:
-        """ Unique video edge identifier generator.
-
-        :param name: prefix used in name generation.
-        :type name: str
-        :rtype: str
-        """
-        res = 'v:%s%s' % (name, self._video_tmp[name])
-        self._video_tmp[name] += 1
-        return res
-
-    def audio_naming(self, name: str = 'tmp') -> str:
-        """ Unique audio edge identifier generator.
-
-        :param name: prefix used in name generation.
-        :type name: str
-        :rtype: str
-        """
-        res = 'a:%s%s' % (name, self._audio_tmp[name])
-        self._audio_tmp[name] += 1
-        return res

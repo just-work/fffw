@@ -83,10 +83,13 @@ class Input:
         assert isinstance(other, base.Node)
         input_map = getattr(other, 'map', None)
         for stream in self.streams:
-            if stream.name is None:
-                # skip streams not present in source file
+            try:
+                stream_name = stream.name
+            except RuntimeError:
+                # skip streams not present in input file
                 continue
-            if input_map and input_map == stream.name:
+
+            if input_map and input_map == stream_name:
                 return stream.connect(other)
             if stream.edge is None:
                 return stream.connect(other)

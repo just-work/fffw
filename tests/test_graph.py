@@ -24,14 +24,14 @@ class FilterGraphTestCase(TestCase):
         fc = FilterComplex(video=sources.Input(video_streams, VIDEO),
                            audio=sources.Input(audio_streams, AUDIO))
 
-        deint = Deint(enabled=True)  # deinterlace is disabled
+        deint = Deint(enabled=False)  # deinterlace is disabled
 
         # first video stream is deinterlaced
         next_node = fc.video | deint
 
         left, top = 20, 20  # logo position
 
-        # first overlay input is deinterlaced source (or source itself is
+        # first overlay input is deinterlaced source (or source itself as
         # deint filter is disabled)
         over = next_node | Overlay(left, top)
 
@@ -58,31 +58,30 @@ class FilterGraphTestCase(TestCase):
         for i, size in enumerate(sizes):
             # add scale filters to video streams
             w, h = size
-            scale = Scale(w, h, enabled=size)
+            scale = Scale(w, h, enabled=True)
             # connect scaled streams to video destinations
             split | scale | fc.get_video_dest(i)
 
         result = fc.render()
 
         expected = ';'.join([
-            # deinterlace
-            '[0:v]yadif=0[v:yadif0]',
             # overlay logo
-            '[v:yadif0][v:overlay0]overlay=x=20:y=20[v:overlay1]',
+            '[0:v][v:scale0]overlay=x=20:y=20[v:overlay0]',
             # split video to two streams
-            '[v:overlay1]split[v:split0][v:split1]',
+            '[v:overlay0]split[v:split0][v:split1]',
             # each video is scaled to own size
             '[v:split0]scale=640x480[vout0]',
             '[v:split1]scale=1280x720[vout1]',
 
             # logo scaling
-            '[1:v]scale=200x50[v:overlay0]',
+            '[1:v]scale=200x50[v:scale0]',
 
             # split audio to two streams
             '[0:a]asplit[aout0][aout1]'
         ])
 
-        self.assertEqual(result, expected)
+        self.assertEqual(expected.replace(';', ';\n'),
+                         result.replace(';', ';\n'))
 
     def test_disabled_filters(self):
         """ Filter skipping."""
