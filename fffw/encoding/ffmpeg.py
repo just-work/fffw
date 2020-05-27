@@ -1,8 +1,7 @@
 from itertools import chain
 from typing import List, Tuple, Any, Union
 
-from fffw.encoding import Muxer, inputs
-from fffw.encoding import codec
+from fffw.encoding import Muxer, inputs, codec
 from fffw.graph import FilterComplex, base
 from fffw.wrapper import BaseWrapper, ensure_binary
 
@@ -54,12 +53,17 @@ class FFMPEG(BaseWrapper):
     ]
 
     def __init__(self, *sources: inputs.Input, **kw: Any):
+        """
+        :param sources: list of input files (or another ffmpeg sources)
+        :param kw: ffmpeg command line arguments
+        """
         super(FFMPEG, self).__init__(**kw)
         self.__outputs: List[Tuple[Tuple[codec.BaseCodec, ...], Muxer]] = []
         self.__vdest = self.__adest = 0
         self.__input_list = inputs.InputList(*sources)
 
     def init_filter_complex(self) -> FilterComplex:
+        # TODO #9 refactor filter complex initialization
         assert not self.__outputs, "outputs already defined"
         fc = FilterComplex(*self.__input_list.streams)
         self._args['filter_complex'] = fc
@@ -103,6 +107,7 @@ class FFMPEG(BaseWrapper):
 
     def add_codec(self, c: codec.BaseCodec) -> None:
         """ Connect codec to filter graph output or input stream."""
+        # TODO: #14 refactor connecting codec while merging Dest and BaseCodec
         node: Union[base.Source, base.Dest]
         if c.map:
             try:
@@ -129,6 +134,8 @@ class FFMPEG(BaseWrapper):
         node | c
 
     def add_output(self, muxer: Muxer, *codecs: codec.BaseCodec) -> None:
+        # TODO: #14 muxer should contain codecs and codecs should connect
+        #  directly to input stream or graph filter.
         assert isinstance(muxer, Muxer)
         for c in codecs:
             self.add_codec(c)
@@ -141,9 +148,12 @@ class FFMPEG(BaseWrapper):
     def __lt__(self, other: inputs.Input) -> None:
         """ Adds new source file.
         """
+        if not isinstance(other, inputs.Input):
+           return NotImplemented
         self.add_input(other)
 
     def __setattr__(self, key: str, value: Any) -> None:
+        # TODO: #9 refactor working with args
         if key == 'filter_complex':
             raise NotImplementedError("use init_filter_complex instead")
         if key == 'inputfile':
