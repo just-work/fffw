@@ -58,6 +58,12 @@ class FilterComplex:
         """
         result = []
         with base.Namer():
+            # Initialize namer context to track unique edge identifiers.
+            # In name generation there is no access to namer, so it is accessed
+            # via Namer singleton's method. Within context it is guaranteed that
+            # same edges will receive same names and different edges will
+            # receive unique names. This includes idempotent results for
+            # subsequent render() calls for outer Namer context.
             for src in self.video.streams:
                 # noinspection PyProtectedMember
                 if not src._edge:
