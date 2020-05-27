@@ -59,16 +59,17 @@ class FilterComplex:
         Returns filter_graph description in corresponding ffmpeg param syntax.
         """
         result = []
-        for src in self.video.streams:
-            # noinspection PyProtectedMember
-            if not src._edge:
-                continue
-            result.extend(src.render(self.video_naming, partial=partial))
-        for src in self.audio.streams:
-            # noinspection PyProtectedMember
-            if not src._edge:
-                continue
-            result.extend(src.render(self.audio_naming, partial=partial))
+        with base.Namer():
+            for src in self.video.streams:
+                # noinspection PyProtectedMember
+                if not src._edge:
+                    continue
+                result.extend(src.render(partial=partial))
+            for src in self.audio.streams:
+                # noinspection PyProtectedMember
+                if not src._edge:
+                    continue
+                result.extend(src.render(partial=partial))
 
         # There are no visit checks in recurse graph traversing, so remove
         # duplicates respecting order of appearance.

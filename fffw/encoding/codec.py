@@ -1,5 +1,5 @@
 import abc
-from typing import Optional, List
+from typing import List
 
 from fffw.graph import base
 from fffw.wrapper import BaseWrapper
@@ -39,8 +39,7 @@ class BaseCodec(BaseWrapper, base.Node, metaclass=abc.ABCMeta):
     def map(self, value: str) -> None:
         self._args['map'] = value
 
-    def render(self, namer: base.Namer, name: Optional[str] = None,
-               partial: bool = False) -> List[str]:
+    def render(self, partial: bool = False) -> List[str]:
         """ codec output node is already rendered in filter graph."""
         return []
 

@@ -117,8 +117,8 @@ class FFMPEGTestCase(TestCase):
             '-filter_complex',
             (
                 '[0:v]scale=640x360[v:scale0];'
-                '[v:scale0][v:overlay0]overlay=x=0:y=0[vout0];'
-                '[1:v]scale=1280x720[v:overlay0];'
+                '[v:scale0][v:scale1]overlay=x=0:y=0[vout0];'
+                '[1:v]scale=1280x720[v:scale1];'
                 '[1:a]volume=-20.00[aout0]'),
             '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '700000',
             '-map', '[aout0]', '-c:a', 'aac', '-b:a', '128000',
