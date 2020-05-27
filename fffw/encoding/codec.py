@@ -71,6 +71,8 @@ class BaseCodec(BaseWrapper, base.Node, metaclass=abc.ABCMeta):
         return edge
 
     def __ror__(self, other: base.Dest) -> None:
+        """ Connects destination to codec. """
+        # TODO: unite Dest and codec into single object.
         if not isinstance(other, base.Dest):
             return NotImplemented
         self.connect(other)
