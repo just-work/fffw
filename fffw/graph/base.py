@@ -10,6 +10,8 @@ from enum import Enum
 from typing import Dict, Any
 from typing import Optional, List, Union
 
+from fffw.graph.meta import Meta
+
 
 class StreamType(Enum):
     VIDEO = 'v'
@@ -80,14 +82,17 @@ class Dest(Renderable):
     Must connect to single filter output only.
     """
 
-    def __init__(self, name: str, kind: StreamType) -> None:
+    def __init__(self, name: str, kind: StreamType, meta: Optional[Meta] = None
+                 ) -> None:
         """
         :param name: internal ffmpeg stream name ("v:0", "a:1")
         :param kind: stream kind (VIDEO/AUDIO)
+        :param meta: stream metadata
         """
         self._edge: Optional[Edge] = None
         self._kind = kind
         self._name = name
+        self._meta = meta
 
     def __repr__(self) -> str:
         return f"Dest('{self.name}')"
@@ -99,6 +104,14 @@ class Dest(Renderable):
     @property
     def kind(self) -> StreamType:
         return self._kind
+
+    @property
+    def meta(self) -> Optional[Meta]:
+        return self._meta
+
+    @meta.setter
+    def meta(self, value: Optional[Meta]) -> None:
+        self._meta = value
 
     def connect_edge(self, edge: "Edge") -> "Edge":
         """ Connects and edge to output stream.
@@ -137,6 +150,7 @@ class Edge(Renderable):
         super().__init__()
         self.__input = input
         self.__output = output
+        output.meta = input.meta
 
     def __repr__(self) -> str:
         return f'Edge#{self.name}[{self.input}, {self.output}]'
@@ -215,12 +229,10 @@ class Node(Renderable):
     output_count: int = 1  # number of outputs
 
     def __init__(self, enabled: bool = True):
-        if not enabled:
-            assert self.input_count == 1
-            assert self.output_count == 1
-        self.__enabled = enabled
+        self.enabled = enabled
         self.inputs: List[Optional[Edge]] = [None] * self.input_count
         self.outputs: List[Optional[Edge]] = [None] * self.output_count
+        self._meta: Optional[Meta] = None
 
     def __repr__(self) -> str:
         inputs = [f"[{str(i.name if i else '---')}]" for i in self.inputs]
@@ -242,6 +254,9 @@ class Node(Renderable):
 
     @enabled.setter
     def enabled(self, value: bool) -> None:
+        if not value:
+            assert self.input_count == 1
+            assert self.output_count == 1
         self.__enabled = value
 
     @property
@@ -250,6 +265,22 @@ class Node(Renderable):
         Generates filter params as a string
         """
         return ''
+
+    @property
+    def meta(self) -> Optional[Meta]:
+        return self._meta
+
+    @meta.setter
+    def meta(self, value: Optional[Meta]) -> None:
+        if value is not None:
+            self._meta = self.transform(value)
+        else:
+            self._meta = None
+
+    # noinspection PyMethodMayBeStatic
+    def transform(self, meta: Meta) -> Meta:
+        """ Apply filter changes to stream metadata."""
+        return meta
 
     def render(self, partial: bool = False) -> List[str]:
         if not self.enabled:
@@ -342,14 +373,17 @@ class Source(Renderable):
     Must connect to single graph edge only as a source
     """
 
-    def __init__(self, name: Optional[str], kind: StreamType) -> None:
+    def __init__(self, name: Optional[str], kind: StreamType,
+                 meta: Optional[Meta] = None) -> None:
         """
         :param name: ffmpeg internal input stream name ("v:0", "a:1")
         :param kind: stream type (VIDEO/AUDIO)
+        :param meta: stream metadata
         """
         self._edge: Optional[Edge] = None
         self._kind = kind
-        self.__name = name
+        self._name = name
+        self._meta = meta
 
     def __repr__(self) -> str:
         return f"Source('[{self.name}]')"
@@ -365,21 +399,30 @@ class Source(Renderable):
 
     @property
     def name(self) -> str:
-        if self.__name is None:
+        if self._name is None:
             raise RuntimeError("Source name not set")
-        return self.__name
+        return self._name
 
     @property
     def edge(self) -> Optional["Edge"]:
-        """ Returns an edge connected to current source.
-        :rtype: fffw.graph.base.Edge|NoneType
+        """
+        :returns: an edge connected to current source.
         """
         return self._edge
 
     @property
     def kind(self) -> StreamType:
-        """ Returns stream type."""
+        """
+        :returns: stream type
+        """
         return self._kind
+
+    @property
+    def meta(self) -> Optional[Meta]:
+        """
+        :returns: stream metadata
+        """
+        return self._meta
 
     def connect(self, other: Node) -> Node:
         """ Connects a source to a filter or output

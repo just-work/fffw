@@ -93,12 +93,18 @@ def video_meta_data(**kwargs: Any) -> VideoMeta:
     try:
         dar = float(kwargs['display_aspect_ratio'])
     except KeyError:
-        dar = width / height * par
+        if height == 0:
+            dar = float('nan')
+        else:
+            dar = width / height * par
     try:
         frame_rate = float(kwargs['frame_rate'])
     except KeyError:
-        frames = int(kwargs['frame_count'])
-        frame_rate = duration.total_seconds() / frames
+        frames = int(kwargs.get('frame_count', 0))
+        if frames == 0:
+            frame_rate = float('nan')
+        else:
+            frame_rate = duration.total_seconds() / frames
     return VideoMeta(
         duration=duration,
         start=TS(kwargs.get('start', 0)),

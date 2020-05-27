@@ -2,6 +2,7 @@ from unittest import TestCase
 
 from fffw.encoding import inputs
 from fffw.graph import *
+from fffw.graph import meta
 
 
 class FilterGraphTestCase(TestCase):
@@ -125,3 +126,18 @@ class FilterGraphTestCase(TestCase):
         fc.video | Scale(640, 360) | dest
 
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
+
+    def test_pass_metadata(self):
+        """
+        stream metadata is passed from source to destination
+        """
+        metadata = meta.video_meta_data()
+
+        source = inputs.Input(inputs.Stream(VIDEO, meta=metadata),
+                              input_file='input.mp4')
+        il = inputs.InputList(source)
+        fc = FilterComplex(*il.streams)
+        dest = fc.get_video_dest(0)
+        fc.video | Scale(640, 360) | dest
+
+        self.assertIs(dest._meta, metadata)
