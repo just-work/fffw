@@ -59,7 +59,7 @@ class FilterGraphTestCase(TestCase):
             # connect scaled streams to video destinations
             split | scale | fc.get_video_dest(i)
 
-        result = fc.render().replace(';', ';\n')
+        result = fc.render()
 
         expected = ';'.join([
             # overlay logo
@@ -75,9 +75,6 @@ class FilterGraphTestCase(TestCase):
 
             # logo scaling
             '[1:v]scale=200x50[v:scale0]',
-
-            # split audio to two streams
-            '[0:a]asplit[aout0][aout1]'
         ])
 
         self.assertEqual(expected.replace(';', ';\n'),
@@ -121,7 +118,9 @@ class FilterGraphTestCase(TestCase):
         """ Skip unused sources in filter complex.
         """
         source = inputs.Input(input_file='input.mp4')
-        fc = FilterComplex(*source.streams)
+        il = inputs.InputList(source)
+        # passing only video to FilterComplex
+        fc = FilterComplex(il.streams[0])
         dest = fc.get_video_dest(0)
         fc.video | Scale(640, 360) | dest
 
