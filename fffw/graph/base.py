@@ -19,42 +19,39 @@ VIDEO = StreamType.VIDEO
 AUDIO = StreamType.AUDIO
 
 
-class Singleton(type):
-    stack: List["Namer"]
-
-    @property
-    def current(self) -> "Namer":
-        return self.stack[0]
-
-
-class Namer(metaclass=Singleton):
+class Namer:
     """ Unique stream identifiers generator."""
-    stack: List["Namer"] = []
+    _stack: List["Namer"] = []
+
+    @classmethod
+    def name(cls, edge: "Edge") -> str:
+        current = cls._stack[0]
+        return current._name(edge)
 
     def __init__(self) -> None:
-        self.counters: Dict[str, int] = Counter()
-        self.cache: Dict[int, str] = dict()
+        self._counters: Dict[str, int] = Counter()
+        self._cache: Dict[int, str] = dict()
 
-    def name(self, edge: "Edge") -> str:
-        if id(edge) not in self.cache:
+    def _name(self, edge: "Edge") -> str:
+        if id(edge) not in self._cache:
             node = edge.input
             if isinstance(node, Node):
                 prefix = f'{node.kind.value}:{node.name}'
                 # generating unique edge id by src node kind and name
-                name = f'{prefix}{self.counters[prefix]}'
-                self.counters[prefix] += 1
+                name = f'{prefix}{self._counters[prefix]}'
+                self._counters[prefix] += 1
             else:
                 name = node.name
             # caching edge name for idempotency
-            self.cache[id(edge)] = name
-        return self.cache[id(edge)]
+            self._cache[id(edge)] = name
+        return self._cache[id(edge)]
 
     def __enter__(self) -> "Namer":
-        self.stack.append(self)
-        return self.stack[0]
+        self._stack.append(self)
+        return self._stack[0]
 
     def __exit__(self, *_: Any) -> None:
-        self.stack.pop(-1)
+        self._stack.pop(-1)
 
 
 class Renderable(metaclass=abc.ABCMeta):
@@ -183,7 +180,7 @@ class Edge(Renderable):
                 raise RuntimeError("Node input is None")
             edge = node.inputs[0]
             node = edge.input
-        return Namer.current.name(edge)
+        return Namer.name(edge)
 
     def _connect_source(self, src: Union["Source", "Node"]) -> None:
         """ Connects input node to the edge.
