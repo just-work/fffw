@@ -2,7 +2,6 @@ from unittest import TestCase
 
 from fffw.encoding import *
 from fffw.graph import *
-from fffw.graph import meta
 from fffw.wrapper import ensure_binary
 
 
@@ -52,7 +51,7 @@ class FFMPEGTestCase(TestCase):
 
     def test_bypass_with_filter_complex(self):
         """ Audio stream bypass mode."""
-        ff = FFMPEG(Input(input_file='/tmp/input.mp4'))
+        ff = FFMPEG('/tmp/input.mp4')
 
         fc = ff.init_filter_complex()
         fc.video | Scale(640, 360) | fc.get_video_dest(0)
@@ -76,7 +75,7 @@ class FFMPEGTestCase(TestCase):
 
     def test_bypass_without_filter_complex(self):
         """ Stream bypass with filter_complex missing."""
-        ff = FFMPEG(Input(input_file='/tmp/input.mp4'))
+        ff = FFMPEG('/tmp/input.mp4')
 
         cv0 = VideoCodec(vcodec='libx264', vbitrate='700000', size='640x360')
         ca0 = AudioCodec(acodec='aac', abitrate='128000')
@@ -130,7 +129,7 @@ class FFMPEGTestCase(TestCase):
 
     def test_handle_codec_copy(self):
         """ vcodec=copy connects source directly to muxer."""
-        ff = FFMPEG(Input(input_file='/tmp/input.mp4'))
+        ff = FFMPEG('/tmp/input.mp4')
 
         fc = ff.init_filter_complex()
 
@@ -156,7 +155,7 @@ class FFMPEGTestCase(TestCase):
 
     def test_reuse_input_files(self):
         """ Reuse input files multiple times."""
-        ff = FFMPEG(Input(input_file='/tmp/input.mp4'))
+        ff = FFMPEG('/tmp/input.mp4')
         cv0 = VideoCodec(map='0:v', vcodec='copy')
         ca0 = AudioCodec(map='0:a', acodec='copy')
         out0 = FLVMuxer('/tmp/out0.flv')
@@ -186,7 +185,7 @@ class FFMPEGTestCase(TestCase):
 
     def test_handle_codec_copy_with_other_filters(self):
         """ vcodec=copy with separate transcoded output."""
-        ff = FFMPEG(Input(input_file='/tmp/input.mp4'))
+        ff = FFMPEG('/tmp/input.mp4')
 
         fc = ff.init_filter_complex()
 
@@ -238,7 +237,7 @@ class FFMPEGTestCase(TestCase):
 
     def test_hls_muxer(self):
         """ hls muxer args."""
-        ff = FFMPEG(Input(input_file='/tmp/input.mp4'))
+        ff = FFMPEG('/tmp/input.mp4')
 
         cv0 = VideoCodec(vcodec='libx264')
         ca0 = AudioCodec(acodec='aac')
@@ -262,7 +261,7 @@ class FFMPEGTestCase(TestCase):
 
     def test_tee_muxer(self):
         """ tee muxer args."""
-        ff = FFMPEG(Input(input_file='/tmp/input.mp4'))
+        ff = FFMPEG('/tmp/input.mp4')
 
         cv0 = VideoCodec(vcodec='libx264')
         ca0 = AudioCodec(acodec='aac')

@@ -52,7 +52,7 @@ class FFMPEG(BaseWrapper):
         ('segment_list_flags', '-segment_list_flags '),
     ]
 
-    def __init__(self, *sources: inputs.Input, **kw: Any):
+    def __init__(self, *sources: Union[inputs.Input, str], **kw: Any):
         """
         :param sources: list of input files (or another ffmpeg sources)
         :param kw: ffmpeg command line arguments
@@ -60,7 +60,12 @@ class FFMPEG(BaseWrapper):
         super(FFMPEG, self).__init__(**kw)
         self.__outputs: List[Tuple[Tuple[codec.BaseCodec, ...], Muxer]] = []
         self.__vdest = self.__adest = 0
-        self.__input_list = inputs.InputList(*sources)
+        self.__input_list = inputs.InputList(
+            *(
+                inputs.Input(input_file=src)
+                if isinstance(src, str) else src
+                for src in sources
+            ))
 
     def init_filter_complex(self) -> FilterComplex:
         # TODO #9 refactor filter complex initialization
@@ -149,7 +154,7 @@ class FFMPEG(BaseWrapper):
         """ Adds new source file.
         """
         if not isinstance(other, inputs.Input):
-           return NotImplemented
+            return NotImplemented
         self.add_input(other)
 
     def __setattr__(self, key: str, value: Any) -> None:
