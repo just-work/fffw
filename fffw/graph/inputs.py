@@ -50,18 +50,13 @@ class Stream(base.Source):
         :param kind: stream kind, video or audio
         :param meta: stream metadata
         """
-        super().__init__(None, kind)
-        self._meta = meta
+        super().__init__(name=None, kind=kind, meta=meta)
 
     @property
     def name(self) -> str:
         if self.index == 0:
             return f'{self.source.index}:{self._kind.value}'
         return f'{self.source.index}:{self._kind.value}:{self.index}'
-
-    @property
-    def kind(self) -> base.StreamType:
-        return self._kind
 
 
 class Input(BaseWrapper):

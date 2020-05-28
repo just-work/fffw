@@ -139,4 +139,4 @@ class FilterGraphTestCase(TestCase):
         dest = fc.get_video_dest(0)
         fc.video | Scale(640, 360) | dest
 
-        self.assertIs(dest._meta, metadata)
+        self.assertIs(dest.get_meta_data(dest), metadata)

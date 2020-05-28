@@ -2,6 +2,7 @@ from unittest import TestCase
 
 from fffw.encoding import *
 from fffw.graph import *
+from fffw.graph import meta
 from fffw.wrapper import ensure_binary
 
 
