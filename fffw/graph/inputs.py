@@ -1,4 +1,4 @@
-from typing import Optional, List, Tuple, cast
+from typing import Optional, List, Tuple, cast, Any
 
 from fffw.graph import base
 from fffw.graph.meta import Meta
@@ -69,8 +69,9 @@ class Input(BaseWrapper):
                 raise ValueError(stream.kind)
             stream.source = self
 
-    def get_args(self) -> List[bytes]:
-        return ensure_binary(["-i", self.input_file])
+    @ensure_binary
+    def get_args(self) -> List[Any]:
+        return ["-i", self.input_file]
 
 
 class InputList:
@@ -116,7 +117,7 @@ class InputList:
         self.__inputs.extend(sources)
 
     def get_args(self) -> List[bytes]:
-        result = []
+        result: List[bytes] = []
         for source in self.__inputs:
             result.extend(source.get_args())
         return result

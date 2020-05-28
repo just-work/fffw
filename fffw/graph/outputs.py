@@ -66,8 +66,12 @@ class Output(BaseWrapper):
         return self._codecs
 
     def get_args(self) -> List[bytes]:
-        args = list(chain(*(codec.get_args() for codec in self._codecs)))
-        return args + super().get_args() + ensure_binary([self._output_file])
+        args = (
+            list(chain(*(codec.get_args() for codec in self._codecs))) +
+            super().get_args() +
+            ensure_binary([self._output_file])
+        )
+        return args
 
 
 class OutputList:

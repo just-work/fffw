@@ -1,6 +1,7 @@
 from typing import List, Any, Union, Optional
 
-from fffw.graph import FilterComplex, base, inputs, outputs
+from fffw.graph import base, inputs, outputs
+from fffw.graph.complex import FilterComplex
 from fffw.wrapper import BaseWrapper, ensure_binary
 
 __all__ = ['FFMPEG']
@@ -130,9 +131,9 @@ class FFMPEG(BaseWrapper):
 
     def get_args(self) -> List[bytes]:
         return (ensure_binary([self.command]) +
-                ensure_binary(self.__input_list.get_args()) +
+                self.__input_list.get_args() +
                 super(FFMPEG, self).get_args() +
-                ensure_binary(self.__output_list.get_args()))
+                self.__output_list.get_args())
 
     def add_input(self, input_file: inputs.Input) -> None:
         """ Adds new source to ffmpeg.
