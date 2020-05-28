@@ -148,10 +148,6 @@ class FFMPEG(BaseWrapper):
         self.__output_list.append(output)
         for codec in output.codecs:
             self._add_codec(codec)
-    #
-    # @property
-    # def outputs(self) -> List[Tuple[Tuple[codec.BaseCodec, ...], Muxer]]:
-    #     return list(self.__outputs)
 
     def handle_stderr(self, line: str) -> None:
         """
