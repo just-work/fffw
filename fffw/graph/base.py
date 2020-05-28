@@ -21,7 +21,6 @@ class StreamType(Enum):
 VIDEO = StreamType.VIDEO
 AUDIO = StreamType.AUDIO
 
-
 InputType = Union["Source", "Node"]
 OutputType = Union["Dest", "Node"]
 
@@ -52,7 +51,7 @@ class Traversable(metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
 
-class Dest(Traversable, metaclass=abc.ABCMeta):
+class Dest(Traversable):
     """
     Audio/video output stream node.
 
@@ -165,7 +164,7 @@ class Edge(Traversable):
             node = edge.input
         return Namer.name(edge)
 
-    def _connect_source(self, src: Union["Source", "Node"]) -> None:
+    def _connect_source(self, src: InputType) -> None:
         """ Connects input node to the edge.
 
         :param src: source stream or filter output node.
@@ -175,8 +174,15 @@ class Edge(Traversable):
                                % self.__input)
         self.__input = src
 
-    def _connect_dest(self,
-                      dest: Union["Dest", "Node"]) -> Union["Dest", "Node"]:
+    @overload
+    def _connect_dest(self, dest: "Node") -> "Node":
+        ...
+
+    @overload
+    def _connect_dest(self, dest: Dest) -> Dest:
+        ...
+
+    def _connect_dest(self, dest: OutputType) -> OutputType:
         """ Connects output node to the edge.
 
         :param dest: output stream or filter input node
@@ -350,14 +356,14 @@ class Node(Traversable):
         return edge
 
     @overload
-    def connect_dest(self, other: Dest) -> Dest:
-        ...
-
-    @overload
     def connect_dest(self, other: "Node") -> "Node":
         ...
 
-    def connect_dest(self, other: Union["Node", Dest]) -> Union["Node", Dest]:
+    @overload
+    def connect_dest(self, other: Dest) -> Dest:
+        ...
+
+    def connect_dest(self, other: OutputType) -> OutputType:
         """ Connects next filter or output to one of filter outputs.
 
         :param other: next filter or output stream
@@ -420,7 +426,7 @@ class Source(Traversable, metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
     @property
-    def edge(self) -> Optional["Edge"]:
+    def edge(self) -> Optional[Edge]:
         """
         :returns: an edge connected to current source.
         """
