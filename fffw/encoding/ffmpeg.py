@@ -130,10 +130,12 @@ class FFMPEG(BaseWrapper):
         return fc
 
     def get_args(self) -> List[bytes]:
-        return (ensure_binary([self.command]) +
-                self.__input_list.get_args() +
-                super(FFMPEG, self).get_args() +
-                self.__output_list.get_args())
+        with base.Namer():
+            # Namer context is used to generate unique output stream names
+            return (ensure_binary([self.command]) +
+                    self.__input_list.get_args() +
+                    super(FFMPEG, self).get_args() +
+                    self.__output_list.get_args())
 
     def add_input(self, input_file: inputs.Input) -> None:
         """ Adds new source to ffmpeg.

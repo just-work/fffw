@@ -215,14 +215,14 @@ class FFMPEGTestCase(TestCase):
             'ffmpeg',
             '-i', '/tmp/input.mp4',
             '-filter_complex',
-            '[0:v]scale=640x360[vout1]',
+            '[0:v]scale=640x360[vout0]',
             '-map', '0:v',
             '-c:v', 'copy',
             '-map', '0:a',
             '-c:a', 'copy',
             '-f', 'flv',
             '/tmp/copy.flv',
-            '-map', '[vout1]',
+            '-map', '[vout0]',
             '-c:v', 'libx264',
             '-map', '0:a',
             '-c:a', 'aac',
@@ -230,7 +230,7 @@ class FFMPEGTestCase(TestCase):
             '/tmp/out.flv'
 
         ]
-        self.assertEqual(ff.get_args(), ensure_binary(expected))
+        self.assertEqual(ensure_binary(expected), ff.get_args())
 
     def test_transcoding_without_graph(self):
         """ Transcoding works without filter graph."""

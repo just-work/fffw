@@ -21,7 +21,7 @@ class Codec(base.Dest, BaseWrapper):
         ('abitrate', '-b:a '),
     ]
 
-    def __init__(self, kind: base.StreamType, codec: str,
+    def __init__(self, kind: base.StreamType, codec: str = None,
                  **kwargs: Any) -> None:
         super().__init__(kind)
         BaseWrapper.__init__(self, **kwargs)
@@ -34,10 +34,6 @@ class Codec(base.Dest, BaseWrapper):
             return None
         return self.edge.input
 
-    @property
-    def name(self) -> str:
-        return f'[{self.kind.value}out{self.index}]'
-
     def get_args(self) -> List[bytes]:
         if self.edge is None:
             raise RuntimeError("Codec not connected to source")
@@ -46,10 +42,9 @@ class Codec(base.Dest, BaseWrapper):
             mapping = self.edge.name
         else:
             mapping = source.name
-        args = [
-            '-map', mapping,
-            f'-c:{self.kind.value}', self._codec,
-        ]
+        args = ['-map', mapping]
+        if self._codec:
+            args.extend([f'-c:{self.kind.value}', self._codec])
         return ensure_binary(args) + super().get_args()
 
 
@@ -63,17 +58,43 @@ class Output(BaseWrapper):
         kwargs.setdefault('format', ext)
         super().__init__(**kwargs)
         self._output_file = output_file
-        self._codecs = codecs
+        self._codecs = list(codecs)
+
+    def __lt__(self, other: base.InputType) -> Codec:
+        """
+        Connects a source or a filter to a first free codec.
+
+        If there is no free codecs, new codec stub is created.
+        """
+        codec = self.get_free_codec(other.kind)
+        other.connect_dest(codec)
+        return codec
 
     @property
     def codecs(self) -> Tuple[Codec, ...]:
-        return self._codecs
+        return tuple(self._codecs)
+
+    @property
+    def video(self) -> Codec:
+        return self.get_free_codec(base.VIDEO)
+
+    @property
+    def audio(self) -> Codec:
+        return self.get_free_codec(base.AUDIO)
+
+    def get_free_codec(self, kind: base.StreamType) -> Codec:
+        try:
+            codec = next(filter(lambda c: not c.map, self._codecs))
+        except StopIteration:
+            codec = Codec(kind)
+            self._codecs.append(codec)
+        return codec
 
     def get_args(self) -> List[bytes]:
         args = (
-            list(chain(*(codec.get_args() for codec in self._codecs))) +
-            super().get_args() +
-            ensure_binary([self._output_file])
+                list(chain(*(codec.get_args() for codec in self._codecs))) +
+                super().get_args() +
+                ensure_binary([self._output_file])
         )
         return args
 

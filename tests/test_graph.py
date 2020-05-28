@@ -17,8 +17,8 @@ class FilterGraphTestCase(TestCase):
         logo = Input(Stream(VIDEO), input_file='logo.png')
         main = Input(input_file='main.mp4')
         il = InputList(main, logo)
-        out0 = Output('out0.mp4', Codec(VIDEO, 'v'), Codec(AUDIO, 'a'))
-        out1 = Output('out1.mp4', Codec(VIDEO, 'v'), Codec(AUDIO, 'a'))
+        out0 = Output('out0.mp4')
+        out1 = Output('out1.mp4')
         ol = OutputList(out0, out1)
 
         fc = FilterComplex(il, ol)
@@ -44,7 +44,7 @@ class FilterGraphTestCase(TestCase):
         asplit = fc.audio | AudioSplit(2)
 
         for out in ol.outputs:
-            asplit.connect_dest(out.codecs[1])
+            asplit > out
 
         # video split to two steams
 
@@ -59,7 +59,7 @@ class FilterGraphTestCase(TestCase):
             w, h = size
             scale = Scale(w, h, enabled=True)
             # connect scaled streams to video destinations
-            split | scale > out.codecs[0]
+            split | scale > out
 
         result = fc.render()
 
@@ -88,45 +88,44 @@ class FilterGraphTestCase(TestCase):
         # noinspection PyShadowingNames
         def fc_factory():
             src = Input(Stream(VIDEO), input_file="input.mp4")
-            dst = Output(
-                'output.mp4', Codec(VIDEO, 'v'), Codec(AUDIO, 'a'))
+            dst = Output('output.mp4')
             fc = FilterComplex(InputList(src), OutputList(dst))
             return fc, dst
 
         fc, dst = fc_factory()
 
-        fc.video | Scale(640, 360) | Deint(enabled=False) > dst.codecs[0]
+        fc.video | Scale(640, 360) | Deint(enabled=False) > dst.video
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
         fc, dst = fc_factory()
 
-        fc.video | Deint(enabled=False) | Scale(640, 360) > dst.codecs[0]
+        fc.video | Deint(enabled=False) | Scale(640, 360) > dst.video
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
         fc, dst = fc_factory()
 
         tmp = fc.video | Deint(enabled=False)
         tmp = tmp | Deint(enabled=False)
-        tmp | Scale(640, 360) > dst.codecs[0]
+        tmp | Scale(640, 360) > dst.video
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
         fc, dst = fc_factory()
 
         tmp = fc.video | Scale(640, 360)
         tmp = tmp | Deint(enabled=False)
-        tmp | Deint(enabled=False) > dst.codecs[0]
+        tmp | Deint(enabled=False) > dst.video
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
     def test_skip_not_connected_sources(self):
         """ Skip unused sources in filter complex.
         """
         source = Input(input_file='input.mp4')
-        output = Output('output.mp4', Codec(VIDEO, 'v'))
+        output = Output('output.mp4')
         il = InputList(source)
         ol = OutputList(output)
         # passing only video to FilterComplex
         fc = FilterComplex(il, ol)
-        fc.video | Scale(640, 360) > output.codecs[0]
+        fc.video | Scale(640, 360) > output
 
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
@@ -138,11 +137,11 @@ class FilterGraphTestCase(TestCase):
 
         source = Input(Stream(VIDEO, meta=metadata),
                        input_file='input.mp4')
-        output = Output('output.mp4', Codec(VIDEO, 'v'))
+        output = Output('output.mp4')
         il = InputList(source)
         ol = OutputList(output)
         fc = FilterComplex(il, ol)
-        dest = output.codecs[0]
+        dest = output.video
         fc.video | Scale(640, 360) > dest
 
         self.assertIs(dest.get_meta_data(dest), metadata)

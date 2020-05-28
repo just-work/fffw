@@ -22,41 +22,6 @@ VIDEO = StreamType.VIDEO
 AUDIO = StreamType.AUDIO
 
 
-class Namer:
-    """ Unique stream identifiers generator."""
-    _stack: List["Namer"] = []
-
-    @classmethod
-    def name(cls, edge: "Edge") -> str:
-        current = cls._stack[0]
-        return current._name(edge)
-
-    def __init__(self) -> None:
-        self._counters: Dict[str, int] = Counter()
-        self._cache: Dict[int, str] = dict()
-
-    def __enter__(self) -> "Namer":
-        self._stack.append(self)
-        return self._stack[0]
-
-    def __exit__(self, *_: Any) -> None:
-        self._stack.pop(-1)
-
-    def _name(self, edge: "Edge") -> str:
-        if id(edge) not in self._cache:
-            node = edge.input
-            if isinstance(node, Node):
-                prefix = f'{node.kind.value}:{node.name}'
-                # generating unique edge id by src node kind and name
-                name = f'[{prefix}{self._counters[prefix]}]'
-                self._counters[prefix] += 1
-            else:
-                name = f'[{node.name}]'
-            # caching edge name for idempotency
-            self._cache[id(edge)] = name
-        return self._cache[id(edge)]
-
-
 InputType = Union["Source", "Node"]
 OutputType = Union["Dest", "Node"]
 
@@ -104,10 +69,10 @@ class Dest(Traversable, metaclass=abc.ABCMeta):
     def __repr__(self) -> str:
         return f"Dest('{self.name}')"
 
-    @property
-    @abc.abstractmethod
     def name(self) -> str:
-        raise NotImplementedError()
+        if self._edge is None:
+            raise RuntimeError("Dest not connected")
+        return Namer.name(self._edge)
 
     @property
     def kind(self) -> StreamType:
@@ -187,7 +152,10 @@ class Edge(Traversable):
         current node.
         """
         if isinstance(self.output, Dest):
-            return self.output.name
+            # For final edges name is generated from destination node, like
+            # [vout0] or [aout1]
+            return Namer.name(self)
+        # For edges connected to other filters disabled source nodes are skipped
         edge = self
         node = self.input
         while not getattr(node, 'enabled', True) and isinstance(node, Node):
@@ -403,23 +371,21 @@ class Node(Traversable):
         return other
 
 
-class Source(Traversable):
+class Source(Traversable, metaclass=abc.ABCMeta):
     """ Graph node containing audio or video input.
 
     Must connect to single graph edge only as a source
     """
 
-    def __init__(self, name: Optional[str], kind: StreamType,
+    def __init__(self, kind: StreamType,
                  meta: Optional[Meta] = None) -> None:
         """
-        :param name: ffmpeg internal input stream name ("v:0", "a:1")
         :param kind: stream type (VIDEO/AUDIO)
         :param meta: stream metadata
         """
         self._edge: Optional[Edge] = None
         self._destinations: List[Edge] = []
         self._kind = kind
-        self._name = name
         self._meta = meta
 
     def __repr__(self) -> str:
@@ -449,10 +415,9 @@ class Source(Traversable):
         return bool(self._edge or self._destinations)
 
     @property
+    @abc.abstractmethod
     def name(self) -> str:
-        if self._name is None:
-            raise RuntimeError("Source name not set")
-        return self._name
+        raise NotImplementedError()
 
     @property
     def edge(self) -> Optional["Edge"]:
@@ -535,3 +500,44 @@ class Once:
         if self.attr_name in instance.__dict__:
             raise RuntimeError(f"{self.attr_name} already initialized")
         instance.__dict__[self.attr_name] = value
+
+
+class Namer:
+    """ Unique stream identifiers generator."""
+    _stack: List["Namer"] = []
+
+    @classmethod
+    def name(cls, obj: Edge) -> str:
+        current = cls._stack[0]
+        return current._name(obj)
+
+    def __init__(self) -> None:
+        self._counters: Dict[str, int] = Counter()
+        self._cache: Dict[int, str] = dict()
+
+    def __enter__(self) -> "Namer":
+        self._stack.append(self)
+        return self._stack[0]
+
+    def __exit__(self, *_: Any) -> None:
+        self._stack.pop(-1)
+
+    def _name(self, obj: Edge) -> str:
+        if id(obj) not in self._cache:
+            src = obj.input
+            dst = obj.output
+            if isinstance(dst, Dest):
+                prefix = f'{dst.kind.value}out'
+                # generating unique edge id by src node kind and name
+                name = f'[{prefix}{self._counters[prefix]}]'
+                self._counters[prefix] += 1
+            elif isinstance(src, Node):
+                prefix = f'{src.kind.value}:{src.name}'
+                # generating unique edge id by src node kind and name
+                name = f'[{prefix}{self._counters[prefix]}]'
+                self._counters[prefix] += 1
+            else:
+                name = f'[{src.name}]'
+            # caching edge name for idempotency
+            self._cache[id(obj)] = name
+        return self._cache[id(obj)]
