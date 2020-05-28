@@ -23,7 +23,7 @@ class Codec(base.Dest, BaseWrapper):
 
     def __init__(self, kind: base.StreamType, codec: str,
                  **kwargs: Any) -> None:
-        super().__init__('', kind)
+        super().__init__(kind)
         BaseWrapper.__init__(self, **kwargs)
         self._codec = codec
 
@@ -36,14 +36,14 @@ class Codec(base.Dest, BaseWrapper):
 
     @property
     def name(self) -> str:
-        return f'{self.kind.value}out{self.index}'
+        return f'[{self.kind.value}out{self.index}]'
 
     def get_args(self) -> List[bytes]:
         if self.edge is None:
             raise RuntimeError("Codec not connected to source")
         source = self.edge.input
         if isinstance(source, base.Node):
-            mapping = f'[{self.edge.name}]'
+            mapping = self.edge.name
         else:
             mapping = source.name
         args = [

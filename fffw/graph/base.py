@@ -48,10 +48,10 @@ class Namer:
             if isinstance(node, Node):
                 prefix = f'{node.kind.value}:{node.name}'
                 # generating unique edge id by src node kind and name
-                name = f'{prefix}{self._counters[prefix]}'
+                name = f'[{prefix}{self._counters[prefix]}]'
                 self._counters[prefix] += 1
             else:
-                name = node.name
+                name = f'[{node.name}]'
             # caching edge name for idempotency
             self._cache[id(edge)] = name
         return self._cache[id(edge)]
@@ -87,28 +87,27 @@ class Traversable(metaclass=abc.ABCMeta):
         raise NotImplementedError()
 
 
-class Dest(Traversable):
+class Dest(Traversable, metaclass=abc.ABCMeta):
     """
     Audio/video output stream node.
 
     Must connect to single filter output only.
     """
 
-    def __init__(self, name: str, kind: StreamType) -> None:
+    def __init__(self, kind: StreamType) -> None:
         """
-        :param name: internal ffmpeg stream name ("v:0", "a:1")
         :param kind: stream kind (VIDEO/AUDIO)
         """
         self._edge: Optional[Edge] = None
         self._kind = kind
-        self._name = name
 
     def __repr__(self) -> str:
         return f"Dest('{self.name}')"
 
     @property
+    @abc.abstractmethod
     def name(self) -> str:
-        return self._name
+        raise NotImplementedError()
 
     @property
     def kind(self) -> StreamType:
@@ -350,7 +349,7 @@ class Node(Traversable):
         for edge in self.inputs:
             if edge is None:
                 raise RuntimeError("input is none")
-            inputs.append(f"[{edge.name}]")
+            inputs.append(edge.name)
 
         for edge in self.outputs:
             if edge is None:
@@ -367,7 +366,7 @@ class Node(Traversable):
                 if edge is None:
                     raise RuntimeError("output is none")
                 node = edge.output
-            outputs.append(f"[{edge.name}]")
+            outputs.append(f"{edge.name}")
         args = '=' + self.args if self.args else ''
         return ''.join(inputs) + self.name + args + ''.join(outputs)
 
