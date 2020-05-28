@@ -219,6 +219,7 @@ class MetaDataTestCase(TestCase):
             par=1.0,
             dar=1.778,
             frame_rate=50.0,
+            frames=337,
         )
         self.assertEqual(expected, video)
         audio = streams[1]
@@ -229,5 +230,6 @@ class MetaDataTestCase(TestCase):
             bitrate=192000,
             sampling_rate=48000,
             channels=6,
+            samples=323616,
         )
         self.assertEqual(expected, audio)

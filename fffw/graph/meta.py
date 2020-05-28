@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import List, Union, Any
+from typing import List, Union
 
 from pymediainfo import MediaInfo  # type: ignore
 
@@ -60,6 +60,21 @@ class VideoMeta(Meta):
     """ Display aspect ratio."""
     frame_rate: float
     """ Frames per second."""
+    frames: int
+
+    def __post_init__(self):
+        self.validate()
+
+    def validate(self):
+        if self.height != 0:
+            assert abs(self.dar - self.width / self.height * self.par) <= 0.001
+        else:
+            assert str(self.dar) == 'nan'
+        duration = self.duration.total_seconds()
+        if duration != 0:
+            assert abs(self.frame_rate - self.frames / duration) < 0.001
+        else:
+            assert self.frame_rate == 0
 
 
 @dataclass
@@ -73,19 +88,32 @@ class AudioMeta(Meta):
     """ Samples per second."""
     channels: int
     """ Number of audio channels."""
+    samples: int
+    """ Samples count."""
+
+    def __post_init__(self):
+        self.validate()
+
+    def validate(self):
+        duration = self.duration.total_seconds()
+        if duration != 0:
+            assert abs(self.sampling_rate - self.samples / duration) < 0.001
+        else:
+            assert self.sampling_rate == 0
 
 
-def audio_meta_data(**kwargs: Any) -> AudioMeta:
+def audio_meta_data(**kwargs: str) -> AudioMeta:
     return AudioMeta(
         duration=TS(kwargs.get('duration', 0)),
         start=TS(kwargs.get('start', 0)),
         bitrate=int(kwargs.get('bit_rate', 0)),
         channels=int(kwargs.get('channel_s', 0)),
-        sampling_rate=int(kwargs.get('sampling_rate', 0))
+        sampling_rate=int(kwargs.get('sampling_rate', 0)),
+        samples=int(kwargs.get('samples_count', 0)),
     )
 
 
-def video_meta_data(**kwargs: Any) -> VideoMeta:
+def video_meta_data(**kwargs: str) -> VideoMeta:
     duration = TS(kwargs.get('duration', 0))
     width = int(kwargs.get('width', 0))
     height = int(kwargs.get('height', 0))
@@ -97,14 +125,14 @@ def video_meta_data(**kwargs: Any) -> VideoMeta:
             dar = float('nan')
         else:
             dar = width / height * par
+    frames = int(kwargs.get('frame_count', 0))
     try:
         frame_rate = float(kwargs['frame_rate'])
     except KeyError:
-        frames = int(kwargs.get('frame_count', 0))
-        if frames == 0:
-            frame_rate = float('nan')
+        if duration.total_seconds() == 0:
+            frame_rate = 0
         else:
-            frame_rate = duration.total_seconds() / frames
+            frame_rate = frames / duration.total_seconds()
     return VideoMeta(
         duration=duration,
         start=TS(kwargs.get('start', 0)),
@@ -113,7 +141,8 @@ def video_meta_data(**kwargs: Any) -> VideoMeta:
         height=height,
         par=par,
         dar=dar,
-        frame_rate=frame_rate)
+        frame_rate=frame_rate,
+        frames=frames)
 
 
 def from_media_info(mi: MediaInfo) -> List[Meta]:
