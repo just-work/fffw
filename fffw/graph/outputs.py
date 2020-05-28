@@ -5,13 +5,17 @@ from typing import List, Tuple, cast, Optional, Any
 from fffw.graph import base
 from fffw.wrapper import BaseWrapper, ensure_binary
 
-__all__ = ['Codec', 'Output', 'OutputList']
+__all__ = [
+    'Codec',
+    'Output',
+    'OutputList'
+]
 
 
 class Codec(base.Dest, BaseWrapper):
     index = cast(int, base.Once('index'))
     """ Index of current codec in ffmpeg output streams."""
-
+    # TODO #9: implement single argument with stream type modifier
     arguments = [
         ('vbitrate', '-b:v '),
         ('abitrate', '-b:a '),
@@ -75,6 +79,7 @@ class Output(BaseWrapper):
 
 
 class OutputList:
+    """ Supports unique output streams names generation."""
 
     def __init__(self, *outputs: Output) -> None:
         """
@@ -106,14 +111,6 @@ class OutputList:
             self.__set_index(codec)
         self.__outputs.append(output)
 
-    def __set_index(self, codec: Codec) -> None:
-        if codec.kind == base.VIDEO:
-            codec.index = self.__video_index
-            self.__video_index += 1
-        else:
-            codec.index = self.__audio_index
-            self.__audio_index += 1
-
     def extend(self, *outputs: Output) -> None:
         """
         Adds multiple output files to output list.
@@ -129,3 +126,11 @@ class OutputList:
         for source in self.__outputs:
             result.extend(source.get_args())
         return result
+
+    def __set_index(self, codec: Codec) -> None:
+        if codec.kind == base.VIDEO:
+            codec.index = self.__video_index
+            self.__video_index += 1
+        else:
+            codec.index = self.__audio_index
+            self.__audio_index += 1
