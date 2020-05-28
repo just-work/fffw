@@ -7,7 +7,7 @@ __all__ = [
 import abc
 from collections import Counter
 from enum import Enum
-from typing import Dict, Any
+from typing import Dict, Any, TypeVar, Type, overload
 from typing import Optional, List, Union
 
 from fffw.graph.meta import Meta
@@ -117,6 +117,10 @@ class Dest(Traversable):
     @property
     def meta(self) -> Optional[Meta]:
         return self.get_meta_data(self)
+
+    @property
+    def edge(self) -> Optional["Edge"]:
+        return self._edge
 
     def get_meta_data(self, dst: OutputType) -> Optional[Meta]:
         if self._edge is None:
@@ -246,12 +250,22 @@ class Node(Traversable):
         outputs = [f"[{str(i.name if i else '---')}]" for i in self.outputs]
         return f"{''.join(inputs)}{self.name}{''.join(outputs)}"
 
-    def __or__(self, other: Union["Node", "Dest"]) -> Union["Node", "Dest"]:
+    def __or__(self, other: "Node") -> "Node":
         """
         connect output edge to node
-        :return: connected edge
+        :return: connected node
         """
-        if not isinstance(other, (Node, Dest)):
+        if not isinstance(other, Node):
+            return NotImplemented
+        return self.connect_dest(other)
+
+    def __gt__(self, other: Dest) -> Dest:
+        """
+        connects output edge to destination
+        :param other: destination codec
+        :return: connected codec
+        """
+        if not isinstance(other, Dest):
             return NotImplemented
         return self.connect_dest(other)
 
@@ -397,6 +411,7 @@ class Source(Traversable):
         :param meta: stream metadata
         """
         self._edge: Optional[Edge] = None
+        self._destinations: List[Edge] = []
         self._kind = kind
         self._name = name
         self._meta = meta
@@ -411,7 +426,21 @@ class Source(Traversable):
         """
         if not isinstance(other, Node):
             return NotImplemented
-        return self.connect(other)
+        return self.connect_edge(other)
+
+    def __gt__(self, other: Dest) -> Dest:
+        """
+        Connects a codec to a source
+        :param other: codec that will process current source stream
+        :return: destination object
+        """
+        if not isinstance(other, Dest):
+            return NotImplemented
+        return self.connect_dest(other)
+
+    @property
+    def connected(self) -> bool:
+        return bool(self._edge or self._destinations)
 
     @property
     def name(self) -> str:
@@ -440,19 +469,22 @@ class Source(Traversable):
         """
         return self._meta
 
-    def connect(self, other: Node) -> Node:
-        """ Connects a source to a filter or output
-
-        :param other: filter consuming current input stream
-        :return filter connected to current stream
-        """
-        if not isinstance(other, Node):
-            raise ValueError("only node allowed")
-        if self._edge is not None and not getattr(other, 'map', None):
+    def connect_edge(self, other: Node) -> Node:
+        # FIXME: check dest?
+        if self._edge is not None:
             raise RuntimeError("Source %s is already connected to %s"
                                % (self.name, self._edge))
         edge = Edge(input=self, output=other)
-        self._edge = self._edge or other.connect_edge(edge)
+        self._edge = other.connect_edge(edge)
+        return other
+
+    def connect_dest(self, other: Dest) -> Dest:
+        # FIXME: check edge?
+        if not isinstance(other, Dest):
+            raise ValueError("only node or dest allowed")
+        edge = Edge(input=self, output=other)
+        other.connect_edge(edge)
+        self._destinations.append(edge)
         return other
 
     def get_meta_data(self, dst: OutputType) -> Optional[Meta]:
@@ -473,3 +505,27 @@ class Source(Traversable):
         else:
             edge = self._edge
         return edge.render(partial=partial)
+
+
+Obj = TypeVar('Obj')
+
+
+class Once:
+    """ Property that must be set exactly once."""
+
+    def __init__(self, attr_name: str) -> None:
+        """
+        :param attr_name: instance attribute name
+        """
+        self.attr_name = attr_name
+
+    def __get__(self, instance: Obj, owner: Type[Obj]) -> Any:
+        try:
+            return instance.__dict__[self.attr_name]
+        except KeyError:
+            raise RuntimeError(f"{self.attr_name} is not initialized")
+
+    def __set__(self, instance: Obj, value: Any) -> None:
+        if self.attr_name in instance.__dict__:
+            raise RuntimeError(f"{self.attr_name} already initialized")
+        instance.__dict__[self.attr_name] = value

@@ -1,4 +1,4 @@
-from typing import Optional, List, Tuple, TypeVar, Type, cast, Any
+from typing import Optional, List, Tuple, cast
 
 from fffw.graph import base
 from fffw.graph.meta import Meta
@@ -11,35 +11,12 @@ __all__ = [
     'Input',
 ]
 
-Obj = TypeVar('Obj')
-
-
-class Once:
-    """ Property that must be set exactly once."""
-
-    def __init__(self, attr_name: str) -> None:
-        """
-        :param attr_name: instance attribute name
-        """
-        self.attr_name = attr_name
-
-    def __get__(self, instance: Obj, owner: Type[Obj]) -> Any:
-        try:
-            return instance.__dict__[self.attr_name]
-        except KeyError:
-            raise RuntimeError(f"{self.attr_name} is not initialized")
-
-    def __set__(self, instance: Obj, value: Any) -> None:
-        if self.attr_name in instance.__dict__:
-            raise RuntimeError(f"{self.attr_name} already initialized")
-        instance.__dict__[self.attr_name] = value
-
 
 class Stream(base.Source):
     """ Video or audio stream in input file."""
-    source = cast("Input", Once('source'))
+    source = cast("Input", base.Once('source'))
     """ Source file that contains current stream."""
-    index = cast(int, Once('index'))
+    index = cast(int, base.Once('index'))
     """ Index of current stream in source file."""
 
     def __init__(self, kind: base.StreamType, meta: Optional[Meta] = None):
@@ -61,9 +38,9 @@ class Input(BaseWrapper):
     Input command line params generator for FFMPEG.
     """
     """ Filename or url, value for `-i` argument."""
-    streams = cast(Tuple[Stream, ...], Once("streams"))
+    streams = cast(Tuple[Stream, ...], base.Once("streams"))
     """ List of audio and video streams for input file."""
-    index = cast(int, Once("index"))
+    index = cast(int, base.Once("index"))
     """ Internal ffmpeg source file index."""
 
     def __init__(self, *streams: Stream, input_file: str = ''):

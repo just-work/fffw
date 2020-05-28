@@ -1,8 +1,6 @@
-from itertools import chain
-from typing import List, Tuple, Any, Union
+from typing import List, Any, Union, Optional
 
-from fffw.encoding import Muxer, codec
-from fffw.graph import FilterComplex, base, inputs
+from fffw.graph import FilterComplex, base, inputs, outputs
 from fffw.wrapper import BaseWrapper, ensure_binary
 
 __all__ = ['FFMPEG']
@@ -52,103 +50,25 @@ class FFMPEG(BaseWrapper):
         ('segment_list_flags', '-segment_list_flags '),
     ]
 
-    def __init__(self, *sources: Union[inputs.Input, str], **kw: Any):
+    def __init__(self, *sources: Union[inputs.Input, str],
+                 output: Union[None, outputs.Output, str] = None, **kw: Any):
         """
         :param sources: list of input files (or another ffmpeg sources)
         :param kw: ffmpeg command line arguments
         """
         super(FFMPEG, self).__init__(**kw)
-        self.__outputs: List[Tuple[Tuple[codec.BaseCodec, ...], Muxer]] = []
-        self.__vdest = self.__adest = 0
         self.__input_list = inputs.InputList(
             *(
                 inputs.Input(input_file=src)
                 if isinstance(src, str) else src
                 for src in sources
             ))
-
-    def init_filter_complex(self) -> FilterComplex:
-        # TODO #9 refactor filter complex initialization
-        assert not self.__outputs, "outputs already defined"
-        fc = FilterComplex(self.__input_list)
-        self._args['filter_complex'] = fc
-        return fc
-
-    @property
-    def filter_complex(self) -> FilterComplex:
-        return self._args['filter_complex']
-
-    def get_args(self) -> List[bytes]:
-        return (ensure_binary([self.command]) +
-                ensure_binary(self.__input_list.get_args()) +
-                super(FFMPEG, self).get_args() +
-                ensure_binary(self.get_output_args()))
-
-    def get_output_args(self) -> List[bytes]:
-        result: List[bytes] = []
-        for codecs, muxer in self.__outputs:
-            args = list(chain.from_iterable(c.get_args() for c in codecs))
-            output = [ensure_binary(muxer.output)]
-            result.extend(args + muxer.get_args() + output)
-        return result
-
-    def add_input(self, input_file: inputs.Input) -> None:
-        """ Adds new source to ffmpeg.
-        """
-        assert isinstance(input_file, inputs.Input)
-        self.__input_list.append(input_file)
-
-    def get_free_source(self, kind: base.StreamType) -> base.Source:
-        """
-        :param kind: stream type
-        :return: first stream of this kind not connected to destination
-        """
-        for stream in self.__input_list.streams:
-            if stream.kind != kind or stream.edge is not None:
-                continue
-            return stream
-        else:
-            raise RuntimeError("no free streams")
-
-    def add_codec(self, c: codec.BaseCodec) -> None:
-        """ Connect codec to filter graph output or input stream."""
-        # TODO: #14 refactor connecting codec while merging Dest and BaseCodec
-        node: Union[base.Source, base.Dest]
-        if c.map:
-            try:
-                node = next(filter(lambda s: s.name == c.map,
-                                   self.__input_list.streams))
-            except StopIteration:
-                raise RuntimeError("No stream for map")
-        else:
-            try:
-                node = self.get_free_source(c.codec_type)
-            except RuntimeError:
-                # no free sources, search for free dest in fc
-                fc = self.filter_complex
-                if fc is None:
-                    raise
-                if c.codec_type == base.VIDEO:
-                    node = fc.get_video_dest(self.__vdest, create=False)
-                    self.__vdest += 1
-                else:
-                    node = fc.get_audio_dest(self.__adest, create=False)
-                    self.__adest += 1
-        if c.codec_type != node.kind:
-            raise RuntimeError("stream and codec type mismatch")
-        node | c
-
-    def add_output(self, muxer: Muxer, *codecs: codec.BaseCodec) -> None:
-        # TODO: #14 muxer should contain codecs and codecs should connect
-        #  directly to input stream or graph filter.
-        assert isinstance(muxer, Muxer)
-        for c in codecs:
-            self.add_codec(c)
-        self.__outputs.append((codecs, muxer))
-
-    @property
-    def outputs(self) -> List[Tuple[Tuple[codec.BaseCodec, ...], Muxer]]:
-        return list(self.__outputs)
+        self.__output_list = outputs.OutputList()
+        if output:
+            self.__output_list.append(
+                outputs.Output(output_file=output)
+                if isinstance(output, str) else output
+            )
 
     def __lt__(self, other: inputs.Input) -> None:
         """ Adds new source file.
@@ -157,6 +77,12 @@ class FFMPEG(BaseWrapper):
             return NotImplemented
         self.add_input(other)
 
+    def __gt__(self, other: outputs.Output) -> None:
+        """ Adds new output file."""
+        if not isinstance(other, outputs.Output):
+            return NotImplemented
+        self.add_output(other)
+
     def __setattr__(self, key: str, value: Any) -> None:
         # TODO: #9 refactor working with args
         if key == 'filter_complex':
@@ -164,6 +90,66 @@ class FFMPEG(BaseWrapper):
         if key == 'inputfile':
             raise NotImplementedError("use add_input instead")
         return super(FFMPEG, self).__setattr__(key, value)
+
+    @property
+    def filter_complex(self) -> FilterComplex:
+        # TODO #9 refactor filter complex initialization
+        return self._args['filter_complex']
+
+    def _get_free_source(self, kind: base.StreamType) -> base.Source:
+        """
+        :param kind: stream type
+        :return: first stream of this kind not connected to destination
+        """
+        for stream in self.__input_list.streams:
+            if stream.kind != kind or stream.connected:
+                continue
+            return stream
+        else:
+            raise RuntimeError("no free streams")
+
+    def _add_codec(self, c: outputs.Codec) -> Optional[outputs.Codec]:
+        """ Connect codec to filter graph output or input stream.
+
+        :param c: codec to connect to free source
+        :returns: None of codec already connected to filter graph or codec
+            itself if it was connected successfully to input stream.
+        """
+        node: Union[base.Source, base.Dest]
+        if c.map:
+            return
+        node = self._get_free_source(c.kind)
+        node > c
+
+    def init_filter_complex(self) -> FilterComplex:
+        # TODO #9 refactor filter complex initialization
+        fc = FilterComplex(self.__input_list, self.__output_list)
+        self._args['filter_complex'] = fc
+        return fc
+
+    def get_args(self) -> List[bytes]:
+        return (ensure_binary([self.command]) +
+                ensure_binary(self.__input_list.get_args()) +
+                super(FFMPEG, self).get_args() +
+                ensure_binary(self.__output_list.get_args()))
+
+    def add_input(self, input_file: inputs.Input) -> None:
+        """ Adds new source to ffmpeg.
+        """
+        assert isinstance(input_file, inputs.Input)
+        self.__input_list.append(input_file)
+
+    def add_output(self, output: outputs.Output) -> None:
+        """
+        Adds output file to ffmpeg and connect it's codecs to free sources.
+        """
+        self.__output_list.append(output)
+        for codec in output.codecs:
+            self._add_codec(codec)
+    #
+    # @property
+    # def outputs(self) -> List[Tuple[Tuple[codec.BaseCodec, ...], Muxer]]:
+    #     return list(self.__outputs)
 
     def handle_stderr(self, line: str) -> None:
         """
