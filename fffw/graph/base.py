@@ -7,10 +7,7 @@ __all__ = [
 import abc
 from collections import Counter
 from enum import Enum
-from typing import Dict, Any
-from typing import Optional, List, Union
-
-from fffw.graph.meta import Meta
+from typing import Optional, List, Union, Dict, Any
 
 
 class StreamType(Enum):
@@ -57,11 +54,7 @@ class Namer:
         return self._cache[id(edge)]
 
 
-InputType = Union["Source", "Node"]
-OutputType = Union["Dest", "Node"]
-
-
-class Traversable(metaclass=abc.ABCMeta):
+class Renderable(metaclass=abc.ABCMeta):
     """
     Abstract class base for filter graph edges/nodes traversing and rendering.
     """
@@ -78,16 +71,8 @@ class Traversable(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError()
 
-    @abc.abstractmethod
-    def get_meta_data(self, dst: OutputType) -> Optional[Meta]:
-        """
-        :param dst: destination node
-        :return: metadata passed to destination node after transformation
-        """
-        raise NotImplementedError()
 
-
-class Dest(Traversable):
+class Dest(Renderable):
     """
     Audio/video output stream node.
 
@@ -114,15 +99,6 @@ class Dest(Traversable):
     def kind(self) -> StreamType:
         return self._kind
 
-    @property
-    def meta(self) -> Optional[Meta]:
-        return self.get_meta_data(self)
-
-    def get_meta_data(self, dst: OutputType) -> Optional[Meta]:
-        if self._edge is None:
-            raise RuntimeError("Dest not connected")
-        return self._edge.get_meta_data(self)
-
     def connect_edge(self, edge: "Edge") -> "Edge":
         """ Connects and edge to output stream.
 
@@ -144,7 +120,11 @@ class Dest(Traversable):
         return []
 
 
-class Edge(Traversable):
+InputType = Union["Source", "Node"]
+OutputType = Union["Dest", "Node"]
+
+
+class Edge(Renderable):
     """ Internal ffmpeg data stream graph."""
 
     # noinspection PyShadowingBuiltins
@@ -217,9 +197,6 @@ class Edge(Traversable):
         self.__output = dest
         return dest
 
-    def get_meta_data(self, dst: OutputType) -> Optional[Meta]:
-        return self.__input.get_meta_data(dst)
-
     def render(self, partial: bool = False) -> List[str]:
         if not self.__output:
             if partial:
@@ -228,7 +205,7 @@ class Edge(Traversable):
         return self.__output.render(partial=partial)
 
 
-class Node(Traversable):
+class Node(Renderable):
     """ Graph node describing ffmpeg filter."""
 
     kind: StreamType  # filter type (VIDEO/AUDIO)
@@ -237,7 +214,10 @@ class Node(Traversable):
     output_count: int = 1  # number of outputs
 
     def __init__(self, enabled: bool = True):
-        self.enabled = enabled
+        if not enabled:
+            assert self.input_count == 1
+            assert self.output_count == 1
+        self.__enabled = enabled
         self.inputs: List[Optional[Edge]] = [None] * self.input_count
         self.outputs: List[Optional[Edge]] = [None] * self.output_count
 
@@ -261,9 +241,6 @@ class Node(Traversable):
 
     @enabled.setter
     def enabled(self, value: bool) -> None:
-        if not value:
-            assert self.input_count == 1
-            assert self.output_count == 1
         self.__enabled = value
 
     @property
@@ -272,31 +249,6 @@ class Node(Traversable):
         Generates filter params as a string
         """
         return ''
-
-    # noinspection PyMethodMayBeStatic
-    def transform(self, *metadata: Meta) -> Meta:
-        """ Apply filter changes to stream metadata."""
-        return metadata[0]
-
-    def get_meta_data(self, dst: OutputType) -> Optional[Meta]:
-        metadata = []
-        for edge in self.inputs:
-            if edge is None:
-                raise RuntimeError("Input not connected")
-            meta = edge.get_meta_data(self)
-            if meta is None:
-                return None
-            metadata.append(meta)
-
-        meta = self.transform(*metadata)
-
-        for edge in self.outputs:
-            if edge is None:
-                continue
-            if edge.output is dst:
-                return meta
-        else:
-            raise KeyError(dst)
 
     def render(self, partial: bool = False) -> List[str]:
         if not self.enabled:
@@ -383,23 +335,20 @@ class Node(Traversable):
         return other
 
 
-class Source(Traversable):
+class Source(Renderable):
     """ Graph node containing audio or video input.
 
     Must connect to single graph edge only as a source
     """
 
-    def __init__(self, name: Optional[str], kind: StreamType,
-                 meta: Optional[Meta] = None) -> None:
+    def __init__(self, name: Optional[str], kind: StreamType) -> None:
         """
         :param name: ffmpeg internal input stream name ("v:0", "a:1")
         :param kind: stream type (VIDEO/AUDIO)
-        :param meta: stream metadata
         """
         self._edge: Optional[Edge] = None
         self._kind = kind
-        self._name = name
-        self._meta = meta
+        self.__name = name
 
     def __repr__(self) -> str:
         return f"Source('[{self.name}]')"
@@ -415,30 +364,21 @@ class Source(Traversable):
 
     @property
     def name(self) -> str:
-        if self._name is None:
+        if self.__name is None:
             raise RuntimeError("Source name not set")
-        return self._name
+        return self.__name
 
     @property
     def edge(self) -> Optional["Edge"]:
-        """
-        :returns: an edge connected to current source.
+        """ Returns an edge connected to current source.
+        :rtype: fffw.graph.base.Edge|NoneType
         """
         return self._edge
 
     @property
     def kind(self) -> StreamType:
-        """
-        :returns: stream type
-        """
+        """ Returns stream type."""
         return self._kind
-
-    @property
-    def meta(self) -> Optional[Meta]:
-        """
-        :returns: stream metadata
-        """
-        return self._meta
 
     def connect(self, other: Node) -> Node:
         """ Connects a source to a filter or output
@@ -455,12 +395,11 @@ class Source(Traversable):
         self._edge = self._edge or other.connect_edge(edge)
         return other
 
-    def get_meta_data(self, dst: OutputType) -> Optional[Meta]:
-        return self._meta
-
     def render(self, partial: bool = False) -> List[str]:
         if self._edge is None:
-            return []
+            if partial:
+                return []
+            raise RuntimeError("Source is not ready for render")
 
         node = self._edge.output
         # if output node is disabled, use next edge identifier.
