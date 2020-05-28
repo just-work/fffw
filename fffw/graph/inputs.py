@@ -1,5 +1,4 @@
-from dataclasses import field
-from typing import Optional, List, Tuple
+from typing import Optional, List, Tuple, TypeVar, Generic, Type, cast
 
 from fffw.graph import base
 from fffw.graph.meta import Meta
@@ -12,9 +11,39 @@ __all__ = [
     'Input',
 ]
 
+T = TypeVar('T')
+
+Obj = TypeVar('Obj')
+
+
+class Once(Generic[T]):
+    """ Property that must be set exactly once."""
+
+    def __init__(self, attr_name: str) -> None:
+        """
+        :param attr_name: instance attribute name
+        """
+        self.attr_name = attr_name
+
+    def __get__(self, instance: Obj, owner: Type[Obj]) -> T:
+        try:
+            return instance.__dict__[self.attr_name]
+        except KeyError:
+            raise RuntimeError(f"{self.attr_name} is not initialized")
+
+    def __set__(self, instance: Obj, value: T) -> None:
+        if self.attr_name in instance.__dict__:
+            raise RuntimeError(f"{self.attr_name} already initialized")
+        instance.__dict__[self.attr_name] = value
+
 
 class Stream(base.Source):
     """ Video or audio stream in input file."""
+
+    source = cast("Input", Once["Input"]('source'))
+    """ Source file that contains current stream."""
+    index = cast(int, Once[int]('index'))
+    """ Index of current stream in source file."""
 
     def __init__(self, kind: base.StreamType, meta: Optional[Meta] = None):
         """
@@ -23,15 +52,9 @@ class Stream(base.Source):
         """
         super().__init__(None, kind)
         self._meta = meta
-        self.source: Optional[Input] = None
-        """ Source file that contains current stream."""
-        self.index: Optional[int] = None
-        """ Index of current stream in source file."""
 
     @property
     def name(self) -> str:
-        if self.source is None or self.index is None:
-            raise RuntimeError("Stream not initialized")
         if self.index == 0:
             return f'{self.source.index}:{self._kind.value}'
         return f'{self.source.index}:{self._kind.value}:{self.index}'
@@ -46,15 +69,15 @@ class Input(BaseWrapper):
     Input command line params generator for FFMPEG.
     """
     """ Filename or url, value for `-i` argument."""
-    streams: Optional[Tuple[Stream, ...]] = field(default=None)
+    streams = cast(Tuple[Stream, ...], Once[Tuple[Stream, ...]]("streams"))
     """ List of audio and video streams for input file."""
-    index: int = field(default=0, init=False)
+
+    index = cast(int, Once[int]("index"))
     """ Internal ffmpeg source file index."""
 
     def __init__(self, *streams: Stream, input_file: str = ''):
         super().__init__()
         self.streams = streams or (Stream(base.VIDEO), Stream(base.AUDIO))
-        self.index = 0
         self.input_file = input_file
         self.__link_streams_to_input()
 
@@ -89,13 +112,17 @@ class InputList:
         """
         :param sources: list of input files
         """
-        self.inputs: List[Input] = []
+        self.__inputs: List[Input] = []
         self.extend(*sources)
+
+    @property
+    def inputs(self) -> Tuple[Input, ...]:
+        return tuple(self.__inputs)
 
     @property
     def streams(self) -> List[Stream]:
         result: List[Stream] = []
-        for source in self.inputs:
+        for source in self.__inputs:
             if source.streams is None:
                 raise RuntimeError("Source streams not initialized")
             result.extend(source.streams)
@@ -107,8 +134,8 @@ class InputList:
 
         :param source: input file
         """
-        source.index = len(self.inputs)
-        self.inputs.append(source)
+        source.index = len(self.__inputs)
+        self.__inputs.append(source)
 
     def extend(self, *sources: Input) -> None:
         """
@@ -116,12 +143,12 @@ class InputList:
 
         :param sources: list of input files
         """
-        for i, source in enumerate(sources, start=len(self.inputs)):
+        for i, source in enumerate(sources, start=len(self.__inputs)):
             source.index = i
-        self.inputs.extend(sources)
+        self.__inputs.extend(sources)
 
     def get_args(self) -> List[bytes]:
         result = []
-        for source in self.inputs:
+        for source in self.__inputs:
             result.extend(source.get_args())
         return result

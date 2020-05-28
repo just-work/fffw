@@ -44,10 +44,11 @@ class InputsTestCase(TestCase):
         Source file streams receive indices when appended to input list.
         """
         il = inputs.InputList()
+        v3 = inputs.Stream(StreamType.VIDEO)
 
-        il.append(inputs.Input(self.v1))
+        il.append(inputs.Input(v3))
 
-        self.assertEqual(self.v1.name, '0:v')
+        self.assertEqual(v3.name, '0:v')
 
     def test_validate_stream_kind(self):
         """
