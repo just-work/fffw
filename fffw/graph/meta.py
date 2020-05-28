@@ -62,10 +62,10 @@ class VideoMeta(Meta):
     """ Frames per second."""
     frames: int
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.validate()
 
-    def validate(self):
+    def validate(self) -> None:
         if self.height != 0:
             assert abs(self.dar - self.width / self.height * self.par) <= 0.001
         else:
@@ -91,10 +91,10 @@ class AudioMeta(Meta):
     samples: int
     """ Samples count."""
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.validate()
 
-    def validate(self):
+    def validate(self) -> None:
         duration = self.duration.total_seconds()
         if duration != 0:
             assert abs(self.sampling_rate - self.samples / duration) < 0.001

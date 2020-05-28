@@ -291,6 +291,8 @@ class Node(Traversable):
         meta = self.transform(*metadata)
 
         for edge in self.outputs:
+            if edge is None:
+                continue
             if edge.output is dst:
                 return meta
         else:
