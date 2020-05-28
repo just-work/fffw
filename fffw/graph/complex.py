@@ -38,7 +38,7 @@ class FilterComplex:
         :return: first stream of this kind not connected to filter graph
         """
         for stream in self.__input_list.streams:
-            if stream.kind != kind or stream.edge is not None:
+            if stream.kind != kind or stream.connected:
                 continue
             return stream
         else:

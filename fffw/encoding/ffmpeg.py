@@ -116,11 +116,10 @@ class FFMPEG(BaseWrapper):
         :returns: None of codec already connected to filter graph or codec
             itself if it was connected successfully to input stream.
         """
-        node: Union[base.Source, base.Dest]
         if c.map:
             return None
         node = self._get_free_source(c.kind)
-        node.connect_dest(c)
+        node.connect(c)
         return c
 
     def init_filter_complex(self) -> FilterComplex:

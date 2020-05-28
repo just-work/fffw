@@ -204,9 +204,7 @@ class FFMPEGTestCase(TestCase):
         ca1 = Codec(AUDIO, 'aac')
         out1 = Output('/tmp/out.flv', cv1, ca1)
 
-        fc = ff.init_filter_complex()
-
-        fc.video | Scale(640, 360) > cv1
+        v | Scale(640, 360) > cv1
         a > ca1
 
         ff.add_output(out1)

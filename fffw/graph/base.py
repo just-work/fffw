@@ -389,8 +389,7 @@ class Source(Traversable, metaclass=abc.ABCMeta):
         :param kind: stream type (VIDEO/AUDIO)
         :param meta: stream metadata
         """
-        self._edge: Optional[Edge] = None
-        self._destinations: List[Edge] = []
+        self._outputs: List[Edge] = []
         self._kind = kind
         self._meta = meta
 
@@ -404,7 +403,7 @@ class Source(Traversable, metaclass=abc.ABCMeta):
         """
         if not isinstance(other, Node):
             return NotImplemented
-        return self.connect_edge(other)
+        return self.connect(other)
 
     def __gt__(self, other: Dest) -> Dest:
         """
@@ -414,23 +413,16 @@ class Source(Traversable, metaclass=abc.ABCMeta):
         """
         if not isinstance(other, Dest):
             return NotImplemented
-        return self.connect_dest(other)
+        return self.connect(other)
 
     @property
     def connected(self) -> bool:
-        return bool(self._edge or self._destinations)
+        return bool(self._outputs)
 
     @property
     @abc.abstractmethod
     def name(self) -> str:
         raise NotImplementedError()
-
-    @property
-    def edge(self) -> Optional[Edge]:
-        """
-        :returns: an edge connected to current source.
-        """
-        return self._edge
 
     @property
     def kind(self) -> StreamType:
@@ -446,42 +438,38 @@ class Source(Traversable, metaclass=abc.ABCMeta):
         """
         return self._meta
 
-    def connect_edge(self, other: Node) -> Node:
-        # FIXME: check dest?
-        if self._edge is not None:
-            raise RuntimeError("Source %s is already connected to %s"
-                               % (self.name, self._edge))
-        edge = Edge(input=self, output=other)
-        self._edge = other.connect_edge(edge)
-        return other
+    @overload
+    def connect(self, other: Node) -> Node:
+        ...
 
-    def connect_dest(self, other: Dest) -> Dest:
-        # FIXME: check edge?
-        if not isinstance(other, Dest):
+    @overload
+    def connect(self, other: Dest) -> Dest:
+        ...
+
+    def connect(self, other: OutputType) -> OutputType:
+        if not isinstance(other, (Node, Dest)):
             raise ValueError("only node or dest allowed")
         edge = Edge(input=self, output=other)
         other.connect_edge(edge)
-        self._destinations.append(edge)
+        self._outputs.append(edge)
         return other
 
     def get_meta_data(self, dst: OutputType) -> Optional[Meta]:
         return self._meta
 
     def render(self, partial: bool = False) -> List[str]:
-        if self._edge is None:
-            return []
-
-        node = self._edge.output
-        # if output node is disabled, use next edge identifier.
-        if isinstance(node, Node) and not node.enabled:
-            edge: Optional[Edge] = node.outputs[0]
-            if edge is None:
-                if partial:
-                    return []
-                raise RuntimeError("Skipped node is not ready for render")
-        else:
-            edge = self._edge
-        return edge.render(partial=partial)
+        result = []
+        for edge in self._outputs:
+            node = edge.output
+            # if output node is disabled, use next edge identifier.
+            if isinstance(node, Node) and not node.enabled:
+                edge: Optional[Edge] = node.outputs[0]
+                if edge is None:
+                    if partial:
+                        return []
+                    raise RuntimeError("Skipped node is not ready for render")
+            result.extend(edge.render(partial=partial))
+        return result
 
 
 Obj = TypeVar('Obj')
