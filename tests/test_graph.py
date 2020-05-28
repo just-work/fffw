@@ -1,7 +1,7 @@
 from unittest import TestCase
 
 from fffw.graph import *
-from fffw.graph import base, sources
+from fffw.graph import meta, inputs
 
 
 class FilterGraphTestCase(TestCase):
@@ -15,14 +15,11 @@ class FilterGraphTestCase(TestCase):
                                             |
                                             ------<Scale>--[O/720p]
         """
+        logo = inputs.Input(inputs.Stream(VIDEO), input_file='logo.png')
+        main = inputs.Input(input_file='main.mp4')
+        il = inputs.InputList(main, logo)
 
-        inputs = 2  # number of input files - logo + video
-
-        video_streams = [base.Source("%i:v" % i, VIDEO) for i in range(inputs)]
-        audio_streams = [base.Source("0:a", AUDIO)]
-
-        fc = FilterComplex(video=sources.Input(video_streams, VIDEO),
-                           audio=sources.Input(audio_streams, AUDIO))
+        fc = FilterComplex(il)
 
         deint = Deint(enabled=False)  # deinterlace is disabled
 
@@ -73,11 +70,11 @@ class FilterGraphTestCase(TestCase):
             '[v:split0]scale=640x480[vout0]',
             '[v:split1]scale=1280x720[vout1]',
 
+            # split audio to two streams
+            '[0:a]asplit[aout0][aout1]',
+
             # logo scaling
             '[1:v]scale=200x50[v:scale0]',
-
-            # split audio to two streams
-            '[0:a]asplit[aout0][aout1]'
         ])
 
         self.assertEqual(expected.replace(';', ';\n'),
@@ -85,30 +82,32 @@ class FilterGraphTestCase(TestCase):
 
     def test_disabled_filters(self):
         """ Filter skipping."""
-        fc = FilterComplex(video=sources.Input(
-            [base.Source("0:v", VIDEO)], VIDEO))
+        source = inputs.Input(inputs.Stream(VIDEO), input_file="input.mp4")
+        fc = FilterComplex(inputs.InputList(source))
 
         dest = fc.get_video_dest(0)
         fc.video | Scale(640, 360) | Deint(enabled=False) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
-        fc = FilterComplex(video=sources.Input(
-            [base.Source("0:v", VIDEO)], VIDEO))
+        source = inputs.Input(inputs.Stream(VIDEO), input_file="input.mp4")
+        fc = FilterComplex(inputs.InputList(source))
 
         dest = fc.get_video_dest(0)
         fc.video | Deint(enabled=False) | Scale(640, 360) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
-        fc = FilterComplex(video=sources.Input(
-            [base.Source("0:v", VIDEO)], VIDEO))
+        source = inputs.Input(inputs.Stream(VIDEO), input_file="input.mp4")
+        fc = FilterComplex(inputs.InputList(source))
+
         dest = fc.get_video_dest(0)
         tmp = fc.video | Deint(enabled=False)
         tmp = tmp | Deint(enabled=False)
         tmp | Scale(640, 360) | dest
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
 
-        fc = FilterComplex(video=sources.Input(
-            [base.Source("0:v", VIDEO)], VIDEO))
+        source = inputs.Input(inputs.Stream(VIDEO), input_file="input.mp4")
+        fc = FilterComplex(inputs.InputList(source))
+
         dest = fc.get_video_dest(0)
         tmp = fc.video | Scale(640, 360)
         tmp = tmp | Deint(enabled=False)
@@ -118,12 +117,26 @@ class FilterGraphTestCase(TestCase):
     def test_skip_not_connected_sources(self):
         """ Skip unused sources in filter complex.
         """
-        fc = FilterComplex(
-            video=sources.Input(
-                [base.Source("0:v", VIDEO)], VIDEO),
-            audio=sources.Input(
-                [base.Source("0:a", AUDIO)], AUDIO))
+        source = inputs.Input(input_file='input.mp4')
+        il = inputs.InputList(source)
+        # passing only video to FilterComplex
+        fc = FilterComplex(il)
         dest = fc.get_video_dest(0)
         fc.video | Scale(640, 360) | dest
 
         self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
+
+    def test_pass_metadata(self):
+        """
+        stream metadata is passed from source to destination
+        """
+        metadata = meta.video_meta_data()
+
+        source = inputs.Input(inputs.Stream(VIDEO, meta=metadata),
+                              input_file='input.mp4')
+        il = inputs.InputList(source)
+        fc = FilterComplex(il)
+        dest = fc.get_video_dest(0)
+        fc.video | Scale(640, 360) | dest
+
+        self.assertIs(dest.get_meta_data(dest), metadata)
