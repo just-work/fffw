@@ -382,8 +382,15 @@ class Node(Traversable):
         self.inputs[self.inputs.index(None)] = edge
         return edge
 
-    def connect_dest(self,
-                     other: Union["Node", "Dest"]) -> Union["Node", "Dest"]:
+    @overload
+    def connect_dest(self, other: Dest) -> Dest:
+        ...
+
+    @overload
+    def connect_dest(self, other: "Node") -> "Node":
+        ...
+
+    def connect_dest(self, other: Union["Node", Dest]) -> Union["Node", Dest]:
         """ Connects next filter or output to one of filter outputs.
 
         :param other: next filter or output stream

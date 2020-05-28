@@ -117,9 +117,10 @@ class FFMPEG(BaseWrapper):
         """
         node: Union[base.Source, base.Dest]
         if c.map:
-            return
+            return None
         node = self._get_free_source(c.kind)
-        node > c
+        node.connect_dest(c)
+        return c
 
     def init_filter_complex(self) -> FilterComplex:
         # TODO #9 refactor filter complex initialization

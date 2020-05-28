@@ -1,6 +1,6 @@
 import os
 from itertools import chain
-from typing import List, Tuple, cast, Optional
+from typing import List, Tuple, cast, Optional, Any
 
 from fffw.graph import base
 from fffw.wrapper import BaseWrapper, ensure_binary
@@ -17,7 +17,8 @@ class Codec(base.Dest, BaseWrapper):
         ('abitrate', '-b:a '),
     ]
 
-    def __init__(self, kind: base.StreamType, codec: str, **kwargs) -> None:
+    def __init__(self, kind: base.StreamType, codec: str,
+                 **kwargs: Any) -> None:
         super().__init__('', kind)
         BaseWrapper.__init__(self, **kwargs)
         self._codec = codec
@@ -25,17 +26,22 @@ class Codec(base.Dest, BaseWrapper):
     @property
     def map(self) -> Optional[base.InputType]:
         """ Returns a source or a filter connected to this codec."""
-        return self.edge and self.edge.input
+        if not self.edge:
+            return None
+        return self.edge.input
 
     @property
-    def name(self):
+    def name(self) -> str:
         return f'{self.kind.value}out{self.index}'
 
     def get_args(self) -> List[bytes]:
-        if isinstance(self.map, base.Node):
+        if self.edge is None:
+            raise RuntimeError("Codec not connected to source")
+        source = self.edge.input
+        if isinstance(source, base.Node):
             mapping = f'[{self.edge.name}]'
         else:
-            mapping = self.map.name
+            mapping = source.name
         args = [
             '-map', mapping,
             f'-c:{self.kind.value}', self._codec,
@@ -48,7 +54,7 @@ class Output(BaseWrapper):
         ('format', '-f '),
     ]
 
-    def __init__(self, output_file: str, *codecs: Codec, **kwargs):
+    def __init__(self, output_file: str, *codecs: Codec, **kwargs: Any) -> None:
         ext = os.path.splitext(output_file)[-1].lstrip('.')
         kwargs.setdefault('format', ext)
         super().__init__(**kwargs)
@@ -96,7 +102,7 @@ class OutputList:
             self.__set_index(codec)
         self.__outputs.append(output)
 
-    def __set_index(self, codec):
+    def __set_index(self, codec: Codec) -> None:
         if codec.kind == base.VIDEO:
             codec.index = self.__video_index
             self.__video_index += 1
