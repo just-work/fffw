@@ -1,16 +1,16 @@
+from dataclasses import dataclass
 from unittest import TestCase
 
+from fffw.encoding.filters import *
 from fffw.graph import *
-from fffw.graph import base, VIDEO
+from fffw.graph import VIDEO
 
 
-class Deint(base.Node):
+@dataclass
+class Deint(Filter):
     kind = VIDEO
     filter = 'yadif'
-
-    def __init__(self, mode: str = '0', enabled: bool = True):
-        super(Deint, self).__init__(enabled=enabled)
-        self.mode = mode
+    mode: str = '0'
 
     @property
     def args(self) -> str:
@@ -37,7 +37,8 @@ class FilterGraphTestCase(TestCase):
 
         fc = FilterComplex(il, ol)
 
-        deint = Deint(enabled=False)  # deinterlace is disabled
+        deint = Deint()
+        deint.enabled = False  # deinterlace is skipped
 
         # first video stream is deinterlaced
         next_node = fc.video | deint
@@ -71,7 +72,7 @@ class FilterGraphTestCase(TestCase):
         for out, size in zip(ol.outputs, sizes):
             # add scale filters to video streams
             w, h = size
-            scale = Scale(w, h, enabled=True)
+            scale = Scale(w, h)
             # connect scaled streams to video destinations
             split | scale > out
 
@@ -83,14 +84,14 @@ class FilterGraphTestCase(TestCase):
             # split video to two streams
             '[v:overlay0]split[v:split0][v:split1]',
             # each video is scaled to own size
-            '[v:split0]scale=640x480[vout0]',
-            '[v:split1]scale=1280x720[vout1]',
+            '[v:split0]scale=width=640:height=480[vout0]',
+            '[v:split1]scale=width=1280:height=720[vout1]',
 
             # split audio to two streams
             '[0:a]asplit[aout0][aout1]',
 
             # logo scaling
-            '[1:v]scale=200x50[v:scale0]',
+            '[1:v]scale=width=200:height=50[v:scale0]',
         ])
 
         self.assertEqual(expected.replace(';', ';\n'),
@@ -106,29 +107,34 @@ class FilterGraphTestCase(TestCase):
             fc = FilterComplex(InputList(src), OutputList(dst))
             return fc, dst
 
-        fc, dst = fc_factory()
-
-        fc.video | Scale(640, 360) | Deint(enabled=False) > dst.video
-        self.assertEqual('[0:v]scale=640x360[vout0]', fc.render())
-
-        fc, dst = fc_factory()
-
-        fc.video | Deint(enabled=False) | Scale(640, 360) > dst.video
-        self.assertEqual('[0:v]scale=640x360[vout0]', fc.render())
+        def deint_factory():
+            d = Deint()
+            d.enabled = False
+            return d
 
         fc, dst = fc_factory()
 
-        tmp = fc.video | Deint(enabled=False)
-        tmp = tmp | Deint(enabled=False)
+        fc.video | Scale(640, 360) | deint_factory() > dst.video
+        self.assertEqual('[0:v]scale=width=640:height=360[vout0]', fc.render())
+
+        fc, dst = fc_factory()
+
+        fc.video | deint_factory() | Scale(640, 360) > dst.video
+        self.assertEqual('[0:v]scale=width=640:height=360[vout0]', fc.render())
+
+        fc, dst = fc_factory()
+
+        tmp = fc.video | deint_factory()
+        tmp = tmp | deint_factory()
         tmp | Scale(640, 360) > dst.video
-        self.assertEqual('[0:v]scale=640x360[vout0]', fc.render())
+        self.assertEqual('[0:v]scale=width=640:height=360[vout0]', fc.render())
 
         fc, dst = fc_factory()
 
         tmp = fc.video | Scale(640, 360)
-        tmp = tmp | Deint(enabled=False)
-        tmp | Deint(enabled=False) > dst.video
-        self.assertEqual('[0:v]scale=640x360[vout0]', fc.render())
+        tmp = tmp | deint_factory()
+        tmp | deint_factory() > dst.video
+        self.assertEqual('[0:v]scale=width=640:height=360[vout0]', fc.render())
 
     def test_skip_not_connected_sources(self):
         """ Skip unused sources in filter complex.
@@ -141,7 +147,7 @@ class FilterGraphTestCase(TestCase):
         fc = FilterComplex(il, ol)
         fc.video | Scale(640, 360) > output
 
-        self.assertEqual('[0:v]scale=640x360[vout0]', fc.render())
+        self.assertEqual('[0:v]scale=width=640:height=360[vout0]', fc.render())
 
     def test_pass_metadata(self):
         """

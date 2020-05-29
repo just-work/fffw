@@ -1,31 +1,28 @@
+from dataclasses import dataclass
 from unittest import TestCase, expectedFailure
 
 from fffw.encoding import *
 from fffw.graph import *
-from fffw.graph import base, VIDEO, AUDIO
+from fffw.graph import VIDEO, AUDIO
 from fffw.wrapper import ensure_binary
 
 
-class SetSAR(base.Node):
+@dataclass
+class SetSAR(Filter):
     kind = VIDEO
     filter = "setsar"
-
-    def __init__(self, sar: float, enabled: bool = True):
-        super(SetSAR, self).__init__(enabled=enabled)
-        self.sar = sar
+    sar: float
 
     @property
     def args(self) -> str:
         return "%s" % self.sar
 
 
-class Volume(base.Node):
+@dataclass
+class Volume(Filter):
     kind = AUDIO
     filter = 'volume'
-
-    def __init__(self, volume: float, enabled: bool = True):
-        super(Volume, self).__init__(enabled=enabled)
-        self.volume = volume
+    volume: float
 
     @property
     def args(self) -> str:
@@ -62,7 +59,7 @@ class FFMPEGTestCase(TestCase):
             'ffmpeg',
             '-i', '/tmp/input.mp4',
             '-filter_complex',
-            '[0:v]scale=640x360[vout0];[0:a]asplit[aout0][aout1]',
+            '[0:v]scale=width=640:height=360[vout0];[0:a]asplit[aout0][aout1]',
 
             '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '700000',
             '-map', '[aout0]', '-c:a', 'aac', '-b:a', '128000',
@@ -91,7 +88,7 @@ class FFMPEGTestCase(TestCase):
             'ffmpeg',
             '-i', '/tmp/input.mp4',
             '-filter_complex',
-            '[0:v]scale=640x360[vout0]',
+            '[0:v]scale=width=640:height=360[vout0]',
             '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '700000',
             '-map', '0:a', '-c:a', 'aac', '-b:a', '128000',
             '-f', 'flv',
@@ -143,9 +140,9 @@ class FFMPEGTestCase(TestCase):
             '-i', '/tmp/input.mp4',
             '-filter_complex',
             (
-                '[0:v]scale=640x360[v:scale0];'
+                '[0:v]scale=width=640:height=360[v:scale0];'
                 '[v:scale0][v:scale1]overlay=x=0:y=0[vout0];'
-                '[1:v]scale=1280x720[v:scale1];'
+                '[1:v]scale=width=1280:height=720[v:scale1];'
                 '[1:a]volume=-20.00[aout0]'),
             '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '700000',
             '-map', '[aout0]', '-c:a', 'aac', '-b:a', '128000',
@@ -241,7 +238,7 @@ class FFMPEGTestCase(TestCase):
             'ffmpeg',
             '-i', '/tmp/input.mp4',
             '-filter_complex',
-            '[0:v]scale=640x360[vout0]',
+            '[0:v]scale=width=640:height=360[vout0]',
             '-map', '0:v',
             '-c:v', 'copy',
             '-map', '0:a',
@@ -327,7 +324,7 @@ class FFMPEGTestCase(TestCase):
             '-i', 'preroll.mp4',
             '-i', 'input.mp4',
             '-filter_complex',
-            "[0:v]scale=640x480[v:scale0];"
+            "[0:v]scale=width=640:height=480[v:scale0];"
             "[v:scale0]setsar=1[v:setsar0];"
             "[v:setsar0][1:v]concat[vout0];"
             "[0:a][1:a]concat=v=0:a=1:n=2[aout0]",

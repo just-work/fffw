@@ -209,16 +209,17 @@ class Edge(Traversable):
         return self.__output.render(partial=partial)
 
 
-class Node(Traversable):
+class Node(Traversable, abc.ABC):
     """ Graph node describing ffmpeg filter."""
-
+    # Should be overridden in derived classes
     kind: StreamType  # filter type (VIDEO/AUDIO)
     filter: str  # filter name
+
     input_count: int = 1  # number of inputs
     output_count: int = 1  # number of outputs
 
-    def __init__(self, enabled: bool = True):
-        self.enabled = enabled
+    def __init__(self) -> None:
+        self.enabled = True
         self.inputs: List[Optional[Edge]] = [None] * self.input_count
         self.outputs: List[Optional[Edge]] = [None] * self.output_count
 
@@ -247,22 +248,20 @@ class Node(Traversable):
         return self.connect_dest(other)
 
     @property
+    @abc.abstractmethod
+    def args(self) -> str:
+        raise NotImplementedError()
+
+    @property
     def enabled(self) -> bool:
-        return self.__enabled
+        return self.__dict__['enabled']
 
     @enabled.setter
     def enabled(self, value: bool) -> None:
         if not value:
             assert self.input_count == 1
             assert self.output_count == 1
-        self.__enabled = value
-
-    @property
-    def args(self) -> str:
-        """
-        Generates filter params as a string
-        """
-        return ''
+        self.__dict__['enabled'] = value
 
     # noinspection PyMethodMayBeStatic
     def transform(self, *metadata: Meta) -> Meta:
