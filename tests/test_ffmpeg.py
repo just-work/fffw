@@ -2,7 +2,34 @@ from unittest import TestCase, expectedFailure
 
 from fffw.encoding import *
 from fffw.graph import *
+from fffw.graph import base, VIDEO, AUDIO
 from fffw.wrapper import ensure_binary
+
+
+class SetSAR(base.Node):
+    kind = VIDEO
+    filter = "setsar"
+
+    def __init__(self, sar: float, enabled: bool = True):
+        super(SetSAR, self).__init__(enabled=enabled)
+        self.sar = sar
+
+    @property
+    def args(self) -> str:
+        return "%s" % self.sar
+
+
+class Volume(base.Node):
+    kind = AUDIO
+    filter = 'volume'
+
+    def __init__(self, volume: float, enabled: bool = True):
+        super(Volume, self).__init__(enabled=enabled)
+        self.volume = volume
+
+    @property
+    def args(self) -> str:
+        return "%.2f" % self.volume
 
 
 class FFMPEGTestCase(TestCase):
@@ -18,7 +45,7 @@ class FFMPEGTestCase(TestCase):
 
         fc = ff.init_filter_complex()
 
-        asplit = fc.audio | AudioSplit()
+        asplit = fc.audio | Split(AUDIO)
 
         fc.video | Scale(640, 360) > cv0
 
@@ -193,6 +220,7 @@ class FFMPEGTestCase(TestCase):
         v = Stream(VIDEO)
         a = Stream(AUDIO)
         ff = FFMPEG(Input(v, a, input_file='/tmp/input.mp4'))
+        ff.init_filter_complex()
 
         cv0 = Codec(VIDEO, 'copy')
         ca0 = Codec(AUDIO, 'copy')
@@ -287,7 +315,7 @@ class FFMPEGTestCase(TestCase):
 
         concat > cv0
 
-        aconcat = AudioConcat()
+        aconcat = Concat(AUDIO)
         fc.audio | aconcat
         fc.audio | aconcat
 

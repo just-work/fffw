@@ -1,6 +1,20 @@
 from unittest import TestCase
 
 from fffw.graph import *
+from fffw.graph import base, VIDEO
+
+
+class Deint(base.Node):
+    kind = VIDEO
+    filter = 'yadif'
+
+    def __init__(self, mode: str = '0', enabled: bool = True):
+        super(Deint, self).__init__(enabled=enabled)
+        self.mode = mode
+
+    @property
+    def args(self) -> str:
+        return "%s" % self.mode
 
 
 class FilterGraphTestCase(TestCase):
@@ -41,7 +55,7 @@ class FilterGraphTestCase(TestCase):
         next_node = fc.video | Scale(logo_width, logo_height) | over
 
         # audio is split to two streams
-        asplit = fc.audio | AudioSplit(2)
+        asplit = fc.audio | Split(AUDIO)
 
         for out in ol.outputs:
             asplit > out
@@ -49,7 +63,7 @@ class FilterGraphTestCase(TestCase):
         # video split to two steams
 
         # connect split filter to overlayed video stream
-        split = next_node | Split(2)
+        split = next_node | Split()
 
         # intermediate video stream scaling
         sizes = [(640, 480), (1280, 720)]
@@ -95,26 +109,26 @@ class FilterGraphTestCase(TestCase):
         fc, dst = fc_factory()
 
         fc.video | Scale(640, 360) | Deint(enabled=False) > dst.video
-        self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
+        self.assertEqual('[0:v]scale=640x360[vout0]', fc.render())
 
         fc, dst = fc_factory()
 
         fc.video | Deint(enabled=False) | Scale(640, 360) > dst.video
-        self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
+        self.assertEqual('[0:v]scale=640x360[vout0]', fc.render())
 
         fc, dst = fc_factory()
 
         tmp = fc.video | Deint(enabled=False)
         tmp = tmp | Deint(enabled=False)
         tmp | Scale(640, 360) > dst.video
-        self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
+        self.assertEqual('[0:v]scale=640x360[vout0]', fc.render())
 
         fc, dst = fc_factory()
 
         tmp = fc.video | Scale(640, 360)
         tmp = tmp | Deint(enabled=False)
         tmp | Deint(enabled=False) > dst.video
-        self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
+        self.assertEqual('[0:v]scale=640x360[vout0]', fc.render())
 
     def test_skip_not_connected_sources(self):
         """ Skip unused sources in filter complex.
@@ -127,7 +141,7 @@ class FilterGraphTestCase(TestCase):
         fc = FilterComplex(il, ol)
         fc.video | Scale(640, 360) > output
 
-        self.assertEqual(fc.render(), '[0:v]scale=640x360[vout0]')
+        self.assertEqual('[0:v]scale=640x360[vout0]', fc.render())
 
     def test_pass_metadata(self):
         """

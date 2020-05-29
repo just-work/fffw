@@ -68,10 +68,14 @@ class Dest(Traversable):
     def __repr__(self) -> str:
         return f"Dest('{self.name}')"
 
+    @property
     def name(self) -> str:
+        """
+        :returns: edge name (i.e. [vout0]) for codec `-map` argument only.
+        """
         if self._edge is None:
             raise RuntimeError("Dest not connected")
-        return Namer.name(self._edge)
+        return f'[{self._edge.name}]'
 
     @property
     def kind(self) -> StreamType:
@@ -209,7 +213,7 @@ class Node(Traversable):
     """ Graph node describing ffmpeg filter."""
 
     kind: StreamType  # filter type (VIDEO/AUDIO)
-    name: str  # filter name
+    filter: str  # filter name
     input_count: int = 1  # number of inputs
     output_count: int = 1  # number of outputs
 
@@ -221,7 +225,7 @@ class Node(Traversable):
     def __repr__(self) -> str:
         inputs = [f"[{str(i.name if i else '---')}]" for i in self.inputs]
         outputs = [f"[{str(i.name if i else '---')}]" for i in self.outputs]
-        return f"{''.join(inputs)}{self.name}{''.join(outputs)}"
+        return f"{''.join(inputs)}{self.filter}{''.join(outputs)}"
 
     def __or__(self, other: "Node") -> "Node":
         """
@@ -323,14 +327,19 @@ class Node(Traversable):
         for edge in self.inputs:
             if edge is None:
                 raise RuntimeError("input is none")
-            inputs.append(edge.name)
+            # Add Source name (i.e. 0:v) or unique node name (v:scale1) as
+            # filter input.
+            inputs.append(f'[{edge.name}]')
 
         for edge in self.outputs:
             if edge is None:
                 if partial:
+                    # outputs not connected, using a stub.
                     outputs.append('[---]')
                     continue
                 raise RuntimeError("output is none")
+            # Skip outgoing disabled nodes till Dest node, to get proper
+            # output name if current node is last enabled before destination.
             node = edge.output
             while isinstance(node, Node) and not node.enabled:
                 # if next node is disabled, use next edge id
@@ -340,9 +349,10 @@ class Node(Traversable):
                 if edge is None:
                     raise RuntimeError("output is none")
                 node = edge.output
-            outputs.append(f"{edge.name}")
+            # Add unique output edge name (vout0 or a:volume1) to filter output
+            outputs.append(f"[{edge.name}]")
         args = '=' + self.args if self.args else ''
-        return ''.join(inputs) + self.name + args + ''.join(outputs)
+        return ''.join(inputs) + self.filter + args + ''.join(outputs)
 
     def connect_edge(self, edge: "Edge") -> "Edge":
         """ Connects and edge to one of filter inputs
@@ -516,22 +526,30 @@ class Namer:
     def __exit__(self, *_: Any) -> None:
         self._stack.pop(-1)
 
-    def _name(self, obj: Edge) -> str:
-        if id(obj) not in self._cache:
-            src = obj.input
-            dst = obj.output
+    def _name(self, edge: Edge) -> str:
+        """
+        Generates name for an edge in filter graph.
+
+        :param edge: edge that needs to be named
+        :returns: unique Dest name if edge leads to destination (i.e. vout0),
+        Source name if edge starts from input stream (i.e. 0:v) or unique
+        input Node name generated from node filter (i.e. v:overlay1).
+        """
+        if id(edge) not in self._cache:
+            src = edge.input
+            dst = edge.output
             if isinstance(dst, Dest):
                 prefix = f'{dst.kind.value}out'
                 # generating unique edge id by src node kind and name
-                name = f'[{prefix}{self._counters[prefix]}]'
+                name = f'{prefix}{self._counters[prefix]}'
                 self._counters[prefix] += 1
             elif isinstance(src, Node):
-                prefix = f'{src.kind.value}:{src.name}'
+                prefix = f'{src.kind.value}:{src.filter}'
                 # generating unique edge id by src node kind and name
-                name = f'[{prefix}{self._counters[prefix]}]'
+                name = f'{prefix}{self._counters[prefix]}'
                 self._counters[prefix] += 1
             else:
-                name = f'[{src.name}]'
+                name = f'{src.name}'
             # caching edge name for idempotency
-            self._cache[id(obj)] = name
-        return self._cache[id(obj)]
+            self._cache[id(edge)] = name
+        return self._cache[id(edge)]

@@ -28,21 +28,28 @@ class Codec(base.Dest, BaseWrapper):
         self._codec = codec
 
     @property
-    def map(self) -> Optional[base.InputType]:
-        """ Returns a source or a filter connected to this codec."""
-        if not self.edge:
-            return None
-        return self.edge.input
-
-    def get_args(self) -> List[bytes]:
+    def map(self) -> Optional[str]:
+        """
+        :returns: `-map` argument value depending of a node or a source
+        connected to codec.
+        """
         if self.edge is None:
             raise RuntimeError("Codec not connected to source")
         source = self.edge.input
-        if isinstance(source, base.Node):
-            mapping = self.edge.name
-        else:
-            mapping = source.name
-        args = ['-map', mapping]
+        # Source input has name generated from input file index, stream
+        # specifier and stream index. Node has no attribute index, so we use
+        # Dest name ("[vout0]") as map argument. See also `Node.get_filter_args`
+        return getattr(source, 'name', self.name)
+
+    @property
+    def connected(self) -> bool:
+        """
+        :return: True if codec is already connected to a node or a source.
+        """
+        return bool(self.edge)
+
+    def get_args(self) -> List[bytes]:
+        args = ['-map', self.map]
         if self._codec:
             args.extend([f'-c:{self.kind.value}', self._codec])
         return ensure_binary(args) + super().get_args()
@@ -84,7 +91,7 @@ class Output(BaseWrapper):
 
     def get_free_codec(self, kind: base.StreamType) -> Codec:
         try:
-            codec = next(filter(lambda c: not c.map, self._codecs))
+            codec = next(filter(lambda c: not c.connected, self._codecs))
         except StopIteration:
             codec = Codec(kind)
             self._codecs.append(codec)

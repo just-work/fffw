@@ -116,7 +116,7 @@ class FFMPEG(BaseWrapper):
         :returns: None of codec already connected to filter graph or codec
             itself if it was connected successfully to input stream.
         """
-        if c.map:
+        if c.connected:
             return None
         node = self._get_free_source(c.kind)
         node.connect(c)
