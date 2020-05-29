@@ -1,7 +1,8 @@
 import re
 import subprocess
+from functools import wraps
 from logging import getLogger
-from typing import Tuple, List, Any, Dict, Union, overload, IO, cast
+from typing import Tuple, List, Any, Dict, Union, overload, IO, cast, Callable
 
 
 def quote(token: Any) -> str:
@@ -27,14 +28,45 @@ def ensure_binary(x: Union[int, float, str, bytes, None]) -> bytes:
     ...
 
 
+@overload
+def ensure_binary(x: Callable[..., Tuple[Any]]
+                  ) -> Callable[..., Tuple[bytes]]:
+    ...
+
+
+@overload
+def ensure_binary(x: Callable[..., List[Any]]
+                  ) -> Callable[..., List[bytes]]:
+    ...
+
+
+@overload
+def ensure_binary(x: Callable[..., Union[int, float, str, bytes, None]]
+                  ) -> Callable[..., bytes]:
+    ...
+
+
 def ensure_binary(x: Any) -> Any:
-    """ Recursively ensures that all values except collections are bytes."""
+    """ Recursively ensures that all values except collections are bytes.
+
+    * tuples and lists are encoded recursively
+    * strings are encoded with utf-8
+    * bytes are left intact
+    * functions are decorated with ensuring binary results
+    * all other types are converted to string and encoded
+    """
     if isinstance(x, tuple):
         return tuple(ensure_binary(y) for y in x)
     if isinstance(x, list):
         return list(ensure_binary(y) for y in x)
     if isinstance(x, str):
         return x.encode("utf-8")
+    if callable(x):
+        @wraps(x)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            return ensure_binary(x(*args, **kwargs))
+
+        return wrapper
     if not isinstance(x, bytes):
         return str(x).encode("utf-8")
     return x
@@ -102,7 +134,8 @@ class BaseWrapper:
         else:
             object.__setattr__(self, key, value)
 
-    def get_args(self) -> List[bytes]:
+    @ensure_binary
+    def get_args(self) -> List[Any]:
         result = []
         for k in self._args_order:
             v = self._args[k]
@@ -125,7 +158,7 @@ class BaseWrapper:
                     else:
                         result.append("%s%s" % (param, v))
 
-        return list(map(ensure_binary, result))
+        return result
 
     def set_args(self, **kwargs: Any) -> None:
         for k, v in kwargs.items():

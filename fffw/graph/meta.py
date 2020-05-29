@@ -4,6 +4,15 @@ from typing import List, Union
 
 from pymediainfo import MediaInfo  # type: ignore
 
+__all__ = [
+    'Meta',
+    'VideoMeta',
+    'AudioMeta',
+    'video_meta_data',
+    'audio_meta_data',
+    'TS'
+]
+
 
 class TS(timedelta):
     """
