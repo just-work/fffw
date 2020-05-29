@@ -29,11 +29,8 @@ class Split(base.Node):
         enabled = output_count > 1
         self.output_count = output_count
         self.kind = kind
+        self.filter = 'split' if kind == VIDEO else 'asplit'
         super(Split, self).__init__(enabled=enabled)
-
-    @property
-    def filter(self) -> str:
-        return 'split' if self.kind == VIDEO else 'asplit'
 
     @property
     def args(self) -> str:

@@ -413,7 +413,7 @@ class Source(Traversable, metaclass=abc.ABCMeta):
         """
         if not isinstance(other, Node):
             return NotImplemented
-        return self.connect(other)
+        return self.connect_dest(other)
 
     def __gt__(self, other: Dest) -> Dest:
         """
@@ -423,7 +423,7 @@ class Source(Traversable, metaclass=abc.ABCMeta):
         """
         if not isinstance(other, Dest):
             return NotImplemented
-        return self.connect(other)
+        return self.connect_dest(other)
 
     @property
     def connected(self) -> bool:
@@ -449,14 +449,14 @@ class Source(Traversable, metaclass=abc.ABCMeta):
         return self._meta
 
     @overload
-    def connect(self, other: Node) -> Node:
+    def connect_dest(self, other: Node) -> Node:
         ...
 
     @overload
-    def connect(self, other: Dest) -> Dest:
+    def connect_dest(self, other: Dest) -> Dest:
         ...
 
-    def connect(self, other: OutputType) -> OutputType:
+    def connect_dest(self, other: OutputType) -> OutputType:
         if not isinstance(other, (Node, Dest)):
             raise ValueError("only node or dest allowed")
         edge = Edge(input=self, output=other)
@@ -469,11 +469,12 @@ class Source(Traversable, metaclass=abc.ABCMeta):
 
     def render(self, partial: bool = False) -> List[str]:
         result = []
+        edge: Optional[Edge]
         for edge in self._outputs:
             node = edge.output
             # if output node is disabled, use next edge identifier.
             if isinstance(node, Node) and not node.enabled:
-                edge: Optional[Edge] = node.outputs[0]
+                edge = node.outputs[0]
                 if edge is None:
                     if partial:
                         return []
@@ -540,7 +541,7 @@ class Namer:
             dst = edge.output
             if isinstance(dst, Dest):
                 prefix = f'{dst.kind.value}out'
-                # generating unique edge id by src node kind and name
+                # generating unique edge id by dst kind
                 name = f'{prefix}{self._counters[prefix]}'
                 self._counters[prefix] += 1
             elif isinstance(src, Node):

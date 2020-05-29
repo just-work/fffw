@@ -119,7 +119,7 @@ class FFMPEG(BaseWrapper):
         if c.connected:
             return None
         node = self._get_free_source(c.kind)
-        node.connect(c)
+        node.connect_dest(c)
         return c
 
     def init_filter_complex(self) -> FilterComplex:
