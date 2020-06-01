@@ -1,14 +1,15 @@
-from typing import Optional, List, Tuple, cast, Any, Iterable
+from dataclasses import dataclass
+from typing import Optional, List, Tuple, cast, Iterable, Union, Any
 
 from fffw.graph import base
-from fffw.graph.meta import Meta
-from fffw.wrapper import BaseWrapper, ensure_binary
+from fffw.graph.meta import Meta, TS
+from fffw.wrapper import BaseWrapper, param
 
 __all__ = [
     'Input',
     'InputList',
     'Stream',
-    'Input',
+    'input_file',
 ]
 
 
@@ -33,20 +34,24 @@ class Stream(base.Source):
         return f'{self.source.index}:{self._kind.value}:{self.index}'
 
 
+@dataclass
 class Input(BaseWrapper):
     """
     Input command line params generator for FFMPEG.
     """
-    """ Filename or url, value for `-i` argument."""
-    streams = cast(Tuple[Stream, ...], base.Once("streams"))
-    """ List of audio and video streams for input file."""
     index = cast(int, base.Once("index"))
     """ Internal ffmpeg source file index."""
 
-    def __init__(self, *streams: Stream, input_file: str = ''):
-        super().__init__()
-        self.streams = streams or (Stream(base.VIDEO), Stream(base.AUDIO))
-        self.input_file = input_file
+    fast_seek: Union[TS, float, int] = param(name='ss')
+    input_file: str = param(name='i')
+    slow_seek: Union[TS, float, int] = param(name='ss')
+    duration: Union[TS, float, int] = param(name='t')
+    streams: Tuple[Stream, ...] = param(
+        default=lambda: (Stream(base.VIDEO), Stream(base.AUDIO)), skip=True)
+    """ List of audio and video streams for input file."""
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
         self.__link_streams_to_input()
 
     def __link_streams_to_input(self) -> None:
@@ -69,9 +74,12 @@ class Input(BaseWrapper):
                 raise ValueError(stream.kind)
             stream.source = self
 
-    @ensure_binary
-    def get_args(self) -> List[Any]:
-        return ["-i", self.input_file]
+
+def input_file(filename: str, *streams: Stream, **kwargs: Any) -> Input:
+    kwargs['input_file'] = filename
+    if streams:
+        kwargs['streams'] = streams
+    return Input(**kwargs)
 
 
 class InputList(list):

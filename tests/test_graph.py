@@ -27,8 +27,8 @@ class FilterGraphTestCase(TestCase):
                                             |
                                             ------<Scale>--[O/720p]
         """
-        logo = Input(Stream(VIDEO), input_file='logo.png')
-        main = Input(input_file='main.mp4')
+        logo = input_file('logo.png', Stream(VIDEO))
+        main = input_file('main.mp4')
         il = InputList((main, logo))
         out0 = Output('out0.mp4')
         out1 = Output('out1.mp4')
@@ -101,7 +101,7 @@ class FilterGraphTestCase(TestCase):
 
         # noinspection PyShadowingNames
         def fc_factory():
-            src = Input(Stream(VIDEO), input_file="input.mp4")
+            src = input_file("input.mp4", Stream(VIDEO))
             dst = Output('output.mp4')
             fc = FilterComplex(InputList((src,)), OutputList((dst,)))
             return fc, dst
@@ -154,8 +154,8 @@ class FilterGraphTestCase(TestCase):
         """
         metadata = video_meta_data()
 
-        source = Input(Stream(VIDEO, meta=metadata),
-                       input_file='input.mp4')
+        source = Input(input_file='input.mp4',
+                       streams=(Stream(VIDEO, meta=metadata),))
         output = Output('output.mp4')
         il = InputList((source,))
         ol = OutputList((output,))

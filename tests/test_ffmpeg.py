@@ -46,7 +46,9 @@ class FFMPEGTestCase(TestCase):
     def test_ffmpeg(self):
         """ Smoke test and feature demo."""
         ff = FFMPEG(loglevel='info', realtime=True)
-        ff < Input(input_file='/tmp/input.mp4')
+        ff < input_file('/tmp/input.mp4',
+                        fast_seek=123.2,
+                        duration=TS(123.2))
 
         cv0 = X264(bitrate=700000)
         ca0 = AAC(bitrate=128000)
@@ -69,7 +71,9 @@ class FFMPEGTestCase(TestCase):
             'ffmpeg',
             '-loglevel', 'info',
             '-re',
+            '-ss', '123.2',
             '-i', '/tmp/input.mp4',
+            '-t', '0:02:03.2',
             '-filter_complex',
             '[0:v]scale=width=640:height=360[vout0];[0:a]asplit[aout0][aout1]',
 
@@ -129,7 +133,7 @@ class FFMPEGTestCase(TestCase):
         """ Input stream naming test."""
 
         ff = FFMPEG()
-        ff < Input(Stream(VIDEO), input_file='/tmp/input.jpg')
+        ff < Input(input_file='/tmp/input.jpg', streams=(Stream(VIDEO),))
         ff < Input(input_file='/tmp/input.mp4')
 
         cv0 = X264(bitrate=700000)
@@ -190,7 +194,7 @@ class FFMPEGTestCase(TestCase):
         """ Reuse input files multiple times."""
         v = Stream(VIDEO)
         a = Stream(AUDIO)
-        ff = FFMPEG(Input(v, a, input_file='/tmp/input.mp4'))
+        ff = FFMPEG(Input(input_file='/tmp/input.mp4', streams=(v, a)))
         cv0 = codecs.VideoCodec('copy')
         ca0 = codecs.AudioCodec('copy')
         out0 = Output('/tmp/out0.flv', cv0, ca0)
@@ -224,7 +228,7 @@ class FFMPEGTestCase(TestCase):
         """ vcodec=copy with separate transcoded output."""
         v = Stream(VIDEO)
         a = Stream(AUDIO)
-        ff = FFMPEG(Input(v, a, input_file='/tmp/input.mp4'))
+        ff = FFMPEG(Input(input_file='/tmp/input.mp4', streams=(v, a)))
 
         cv0 = codecs.VideoCodec('copy')
         ca0 = codecs.AudioCodec('copy')
