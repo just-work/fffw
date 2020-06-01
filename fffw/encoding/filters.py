@@ -20,7 +20,7 @@ def as_param(item: Tuple[str, Any]) -> str:
 
 
 @dataclass
-class Filter(Params, base.Node):
+class Filter(base.Node, Params):
     ALLOWED = ('enabled',)
 
     def __post_init__(self) -> None:

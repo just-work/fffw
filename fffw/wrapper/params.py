@@ -1,4 +1,4 @@
-from dataclasses import field
+from dataclasses import field, dataclass
 from typing import Any, Optional, Tuple, cast
 
 
@@ -17,10 +17,12 @@ def param(default: Any = None, name: Optional[str] = None,
 _FROZEN = '__frozen__'
 
 
+@dataclass
 class Params:
     ALLOWED = cast(Tuple[str], tuple())
 
     def __post_init__(self) -> None:
+        getattr(super(), '__post_init__', lambda: None)()
         setattr(self, _FROZEN, True)
 
     def __setattr__(self, key: str, value: Any) -> None:
