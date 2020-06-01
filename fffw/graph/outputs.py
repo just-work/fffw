@@ -141,7 +141,7 @@ class OutputList(list):
         super().extend(outputs)
 
     def get_args(self) -> List[bytes]:
-        result = []
+        result: List[bytes] = []
         for source in self:
             result.extend(source.get_args())
         return result
