@@ -58,10 +58,7 @@ class Dest(Traversable):
     Must connect to single filter output only.
     """
     kind: StreamType
-
-    def __init__(self) -> None:
-        super().__init__()
-        self._edge: Optional[Edge] = None
+    _edge: Optional["Edge"] = None
 
     def __repr__(self) -> str:
         return f"Dest('{self.name}')"

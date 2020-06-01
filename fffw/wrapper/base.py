@@ -1,6 +1,7 @@
+import io
 import re
 import subprocess
-import dataclasses
+from dataclasses import dataclass, Field, fields, asdict
 from functools import wraps
 from logging import getLogger
 from typing import Tuple, List, Any, Union, overload, IO, cast, Callable, Dict
@@ -96,7 +97,7 @@ def ensure_text(x: Any) -> Any:
     return str(x)
 
 
-@dataclasses.dataclass
+@dataclass
 class BaseWrapper(Params):
     """
     Base class for generating command line arguments from params.
@@ -109,18 +110,17 @@ class BaseWrapper(Params):
     * All other: param name and value are added to result
     """
 
-    def __init__(self) -> None:
-        self._output = ''
+    def __post_init__(self) -> None:
         cls = self.__class__
         self.logger = getLogger("%s.%s" % (cls.__module__, cls.__name__))
 
     @ensure_binary
     def get_args(self) -> List[Any]:
         args: List[str] = []
-        fields: Dict[str, dataclasses.Field] = {
-            f.name: f for f in dataclasses.fields(self)}
-        for key, value in dataclasses.asdict(self).items():
-            field = fields[key]
+        local_fields: Dict[str, Field] = {
+            f.name: f for f in fields(self)}
+        for key, value in asdict(self).items():
+            field = local_fields[key]
             if field.default == value and field.init:
                 continue
             if not value:
@@ -150,12 +150,12 @@ class BaseWrapper(Params):
     def get_cmd(self) -> str:
         return ' '.join(map(quote, ensure_text(self.get_args())))
 
-    def handle_stderr(self, line: str) -> None:
+    def handle_stderr(self, line: str) -> str:
         self.logger.debug(line.strip())
-        self._output += line
+        return line
 
     def run(self) -> Tuple[int, str]:
-        self._output = ''
+        output = io.StringIO()
         self.logger.info(self.get_cmd())
         args = self.get_args()
 
@@ -165,6 +165,6 @@ class BaseWrapper(Params):
                 line = stderr.readline()
                 if not line:
                     break
-                self.handle_stderr(ensure_text(line))
+                output.write(self.handle_stderr(ensure_text(line)))
         self.logger.info("%s return code is %s", args[0], proc.returncode)
-        return proc.returncode, self._output
+        return proc.returncode, output.getvalue()

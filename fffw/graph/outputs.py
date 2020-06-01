@@ -20,11 +20,6 @@ class Codec(base.Dest, BaseWrapper):
     codec: str = param(name='c', stream_suffix=True)
     bitrate: int = param(default=0, name='b', stream_suffix=True)
 
-    def __post_init__(self) -> None:
-        # dataclass replaces `__init__` method completely so we need to call it
-        # manually.
-        super().__init__()
-
     @property
     def map(self) -> Optional[str]:
         """

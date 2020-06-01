@@ -122,7 +122,7 @@ class FFMPEG(FFMPEGParams, BaseWrapper):
         for codec in output.codecs:
             self._add_codec(codec)
 
-    def handle_stderr(self, line: str) -> None:
+    def handle_stderr(self, line: str) -> str:
         """
         Handle ffmpeg output.
 
@@ -134,4 +134,5 @@ class FFMPEG(FFMPEGParams, BaseWrapper):
         # capture only lines containing markers
         for marker in self.stderr_markers:
             if marker in line:
-                super().handle_stderr(line)
+                return super().handle_stderr(line)
+        return ''
