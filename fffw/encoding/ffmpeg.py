@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Any, Union, Optional
+from typing import List, Union, Optional
 
 from fffw.graph import base, inputs, outputs
 from fffw.graph.complex import FilterComplex
@@ -30,12 +30,11 @@ class FFMPEG(FFMPEGParams, BaseWrapper):
     stderr_markers = ['[error]', '[fatal]']
 
     def __init__(self, *sources: Union[inputs.Input, str],
-                 output: Union[None, outputs.Output, str] = None, **kw: Any):
+                 output: Union[None, outputs.Output, str] = None) -> None:
         """
         :param sources: list of input files (or another ffmpeg sources)
-        :param kw: ffmpeg command line arguments
         """
-        super(FFMPEG, self).__init__(**kw)
+        super(FFMPEG, self).__init__()
         self.__input_list = inputs.InputList(
             *(
                 inputs.Input(input_file=src)

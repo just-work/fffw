@@ -23,7 +23,7 @@ def as_param(item: Tuple[str, Any]) -> str:
 class Filter(Params, base.Node):
     ALLOWED = ('enabled',)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # Dataclass replaces `__init__` method completely so we need to call it
         # manually.
         super().__init__()

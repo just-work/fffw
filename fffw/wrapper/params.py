@@ -1,23 +1,26 @@
-from dataclasses import Field, MISSING
-from typing import Any, Optional, Tuple
+from dataclasses import field
+from typing import Any, Optional, Tuple, cast
 
 
 def param(default: Any = None, name: Optional[str] = None,
-          stream_suffix: bool = False, init: bool = True) -> Field:
+          stream_suffix: bool = False, init: bool = True) -> Any:
     metadata = {
         'name': name,
         'stream_suffix': stream_suffix,
     }
-    return Field(default, MISSING, init, True, None, True, metadata)
+    if callable(default):
+        return field(default_factory=default, init=init, metadata=metadata)
+    else:
+        return field(default=default, init=init, metadata=metadata)
 
 
 _FROZEN = '__frozen__'
 
 
 class Params:
-    ALLOWED: Tuple[str] = ()
+    ALLOWED = cast(Tuple[str], tuple())
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         setattr(self, _FROZEN, True)
 
     def __setattr__(self, key: str, value: Any) -> None:

@@ -1,19 +1,19 @@
 from dataclasses import dataclass
 from unittest import TestCase, expectedFailure
 
-from fffw.encoding import *
 from fffw.graph import *
+from fffw.encoding import *
 from fffw.wrapper import ensure_binary
 
 
 @dataclass
 class X264(VideoCodec):
-    codec: str = CodecName('libx264')
+    codec: str = codec_name('libx264')
 
 
 @dataclass
 class AAC(AudioCodec):
-    codec: str = CodecName('aac')
+    codec: str = codec_name('aac')
 
 
 @dataclass

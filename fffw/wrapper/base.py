@@ -109,7 +109,7 @@ class BaseWrapper(Params):
     * All other: param name and value are added to result
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._output = ''
         cls = self.__class__
         self.logger = getLogger("%s.%s" % (cls.__module__, cls.__name__))

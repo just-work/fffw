@@ -1,5 +1,5 @@
 import os
-from dataclasses import dataclass, Field, MISSING
+from dataclasses import dataclass
 from itertools import chain
 from typing import List, Tuple, cast, Optional, Any
 
@@ -7,21 +7,9 @@ from fffw.graph import base
 from fffw.wrapper import BaseWrapper, ensure_binary, param
 
 __all__ = [
-    'AudioCodec',
-    'VideoCodec',
-    'CodecName',
     'Output',
     'OutputList'
 ]
-
-
-class CodecName(Field):
-    def __init__(self, name: str):
-        metadata = {
-            'name': 'c',
-            'stream_suffix': True,
-        }
-        super().__init__(name, MISSING, False, True, None, True, metadata)
 
 
 @dataclass
@@ -32,7 +20,7 @@ class Codec(base.Dest, BaseWrapper):
     codec: str = param(name='c', stream_suffix=True)
     bitrate: int = param(default=0, name='b', stream_suffix=True)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # dataclass replaces `__init__` method completely so we need to call it
         # manually.
         super().__init__()
@@ -61,14 +49,6 @@ class Codec(base.Dest, BaseWrapper):
     def get_args(self) -> List[bytes]:
         args = ['-map', self.map]
         return ensure_binary(args) + super().get_args()
-
-
-class VideoCodec(Codec):
-    kind = base.VIDEO
-
-
-class AudioCodec(Codec):
-    kind = base.AUDIO
 
 
 @dataclass
@@ -112,7 +92,8 @@ class Output(OutputParams, BaseWrapper):
         try:
             codec = next(filter(lambda c: not c.connected, self._codecs))
         except StopIteration:
-            codec = VideoCodec() if kind == base.VIDEO else AudioCodec()
+            codec = Codec()
+            codec.kind = kind
             self._codecs.append(codec)
         return codec
 
