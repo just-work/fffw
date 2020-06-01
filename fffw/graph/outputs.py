@@ -7,6 +7,7 @@ from fffw.graph import base
 from fffw.wrapper import BaseWrapper, ensure_binary, param
 
 __all__ = [
+    'Codec',
     'Output',
     'OutputList'
 ]

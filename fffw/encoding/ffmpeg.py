@@ -1,34 +1,58 @@
 from dataclasses import dataclass
-from typing import List, Optional, Literal, Union
+from typing import List, Optional, Literal, Any, TypeVar, Type, Union
 
-from fffw.graph import base, inputs, outputs
+from fffw.graph import base
 from fffw.graph.complex import FilterComplex
+from fffw.graph.inputs import InputList, Input
+from fffw.graph.outputs import OutputList, Output, Codec
 from fffw.wrapper import BaseWrapper, ensure_binary, param
 
-__all__ = ['FFMPEG', 'init_ffmpeg']
+__all__ = ['FFMPEG']
+
+LogLevel = Literal['quiet', 'panic', 'fatal', 'error', 'warning',
+                   'info', 'verbose', 'debug', 'trace']
+
+
+T = TypeVar('T')
+
+
+def ensure(value: Any, cls: Type[T], kwarg: str) -> T:
+    if isinstance(value, cls):
+        return value
+    params = {kwarg: value}
+    return cls(**params)  # type: ignore
 
 
 @dataclass
-class FFMPEGWrapper(BaseWrapper):
+class FFMPEG(BaseWrapper):
     command = 'ffmpeg'
     stderr_markers = ['[error]', '[fatal]']
+    input: Union[str, Input] = param(skip=True)
+    output: Union[str, Output] = param(skip=True)
+
+    loglevel: LogLevel = param()
+    overwrite: bool = param(name='y')
 
     def __post_init__(self) -> None:
-        self.__inputs = inputs.InputList()
-        self.__outputs = outputs.OutputList()
+        self.__inputs = InputList()
+        self.__outputs = OutputList()
+        if self.input:
+            self.__inputs.append(ensure(self.input, Input, 'input_file'))
+        if self.output:
+            self.__outputs.append(ensure(self.output, Output, 'output_file'))
         self.__filter_complex = FilterComplex(self.__inputs, self.__outputs)
         super().__post_init__()
 
-    def __lt__(self, other: inputs.Input) -> None:
+    def __lt__(self, other: Input) -> None:
         """ Adds new source file.
         """
-        if not isinstance(other, inputs.Input):
+        if not isinstance(other, Input):
             return NotImplemented
         self.add_input(other)
 
-    def __gt__(self, other: outputs.Output) -> None:
+    def __gt__(self, other: Output) -> None:
         """ Adds new output file."""
-        if not isinstance(other, outputs.Output):
+        if not isinstance(other, Output):
             return NotImplemented
         self.add_output(other)
 
@@ -52,7 +76,7 @@ class FFMPEGWrapper(BaseWrapper):
         else:
             raise RuntimeError("no free streams")
 
-    def _add_codec(self, c: outputs.Codec) -> Optional[outputs.Codec]:
+    def _add_codec(self, c: Codec) -> Optional[Codec]:
         """ Connect codec to filter graph output or input stream.
 
         :param c: codec to connect to free source
@@ -77,13 +101,13 @@ class FFMPEGWrapper(BaseWrapper):
                     ensure_binary(fc_args) +
                     self.__outputs.get_args())
 
-    def add_input(self, input_file: inputs.Input) -> None:
+    def add_input(self, input_file: Input) -> None:
         """ Adds new source to ffmpeg.
         """
-        assert isinstance(input_file, inputs.Input)
+        assert isinstance(input_file, Input)
         self.__inputs.append(input_file)
 
-    def add_output(self, output: outputs.Output) -> None:
+    def add_output(self, output: Output) -> None:
         """
         Adds output file to ffmpeg and connect it's codecs to free sources.
         """
@@ -105,25 +129,3 @@ class FFMPEGWrapper(BaseWrapper):
             if marker in line:
                 return super().handle_stderr(line)
         return ''
-
-
-LogLevel = Literal['quiet', 'panic', 'fatal', 'error', 'warning',
-                   'info', 'verbose', 'debug', 'trace']
-
-
-@dataclass
-class FFMPEG(FFMPEGWrapper):
-    loglevel: LogLevel = param()
-    overwrite: bool = param(name='y')
-
-
-def init_ffmpeg(*sources: Union[inputs.Input, str],
-                output: Union[None, outputs.Output, str] = None) -> FFMPEG:
-    ff = FFMPEG()
-    for src in sources:
-        ff.add_input(inputs.Input(input_file=src)
-                     if isinstance(src, str) else src)
-    if output:
-        ff.add_output(outputs.Output(output_file=output)
-                      if isinstance(output, str) else output)
-    return ff

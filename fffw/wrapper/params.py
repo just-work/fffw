@@ -1,5 +1,5 @@
-from dataclasses import field, dataclass, Field, fields, asdict
-from typing import Any, Optional, Tuple, cast, List, Dict
+from dataclasses import field, dataclass, Field, fields
+from typing import Any, Optional, Tuple, cast, List
 
 
 def param(default: Any = None, name: Optional[str] = None,
@@ -36,10 +36,9 @@ class Params:
 
     def as_pairs(self) -> List[Tuple[Optional[str], Optional[str]]]:
         args = cast(List[Tuple[Optional[str], Optional[str]]], [])
-        local_fields: Dict[str, Field] = {
-            f.name: f for f in fields(self)}
-        for key, value in asdict(self).items():
-            f = local_fields[key]
+        for f in fields(self):  # type: Field
+            key = f.name
+            value = getattr(self, key)
             if f.default == value and f.init:
                 continue
             if not value:

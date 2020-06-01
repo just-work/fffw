@@ -2,22 +2,27 @@ from dataclasses import dataclass
 from unittest import TestCase, expectedFailure
 
 from fffw.graph import *
-from fffw.encoding import *
-from fffw.wrapper import ensure_binary
+from fffw.encoding import filters, codecs, ffmpeg
+from fffw.wrapper import ensure_binary, param
 
 
 @dataclass
-class X264(VideoCodec):
-    codec: str = codec_name('libx264')
+class FFMPEG(ffmpeg.FFMPEG):
+    realtime: bool = param(name='re')
 
 
 @dataclass
-class AAC(AudioCodec):
-    codec: str = codec_name('aac')
+class X264(codecs.VideoCodec):
+    codec: str = codecs.codec_name('libx264')
 
 
 @dataclass
-class SetSAR(VideoFilter):
+class AAC(codecs.AudioCodec):
+    codec: str = codecs.codec_name('aac')
+
+
+@dataclass
+class SetSAR(filters.VideoFilter):
     filter = "setsar"
     sar: float
 
@@ -27,7 +32,7 @@ class SetSAR(VideoFilter):
 
 
 @dataclass
-class Volume(AudioFilter):
+class Volume(filters.AudioFilter):
     filter = 'volume'
     volume: float
 
@@ -40,17 +45,16 @@ class FFMPEGTestCase(TestCase):
 
     def test_ffmpeg(self):
         """ Smoke test and feature demo."""
-        ff = FFMPEG(loglevel='info')
+        ff = FFMPEG(loglevel='info', realtime=True)
         ff < Input(input_file='/tmp/input.mp4')
 
         cv0 = X264(bitrate=700000)
-        AudioCodec()
         ca0 = AAC(bitrate=128000)
-        ca1 = AudioCodec('libmp3lame', bitrate=394000)
+        ca1 = codecs.AudioCodec('libmp3lame', bitrate=394000)
 
-        asplit = ff.audio | Split(AUDIO)
+        asplit = ff.audio | filters.Split(AUDIO)
 
-        ff.video | Scale(640, 360) > cv0
+        ff.video | filters.Scale(640, 360) > cv0
 
         asplit.connect_dest(ca0)
         asplit.connect_dest(ca1)
@@ -64,6 +68,7 @@ class FFMPEGTestCase(TestCase):
         expected = [
             'ffmpeg',
             '-loglevel', 'info',
+            '-re',
             '-i', '/tmp/input.mp4',
             '-filter_complex',
             '[0:v]scale=width=640:height=360[vout0];[0:a]asplit[aout0][aout1]',
@@ -82,11 +87,11 @@ class FFMPEGTestCase(TestCase):
 
     def test_bypass_with_filter_complex(self):
         """ Audio stream bypass mode."""
-        ff = init_ffmpeg('/tmp/input.mp4')
+        ff = FFMPEG('/tmp/input.mp4')
         cv0 = X264(bitrate=700000)
         ca0 = AAC(bitrate=128000)
 
-        ff.video | Scale(640, 360) > cv0
+        ff.video | filters.Scale(640, 360) > cv0
 
         ff > Output('/tmp/out.flv', cv0, ca0)
 
@@ -104,7 +109,7 @@ class FFMPEGTestCase(TestCase):
 
     def test_bypass_without_filter_complex(self):
         """ Stream bypass with filter_complex missing."""
-        ff = init_ffmpeg('/tmp/input.mp4')
+        ff = FFMPEG('/tmp/input.mp4')
 
         cv0 = X264(bitrate=700000)
         ca0 = AAC(bitrate=128000)
@@ -130,9 +135,9 @@ class FFMPEGTestCase(TestCase):
         cv0 = X264(bitrate=700000)
         ca0 = AAC(bitrate=128000)
 
-        overlay = Overlay(0, 0)
-        ff.video | Scale(640, 360) | overlay
-        ff.video | Scale(1280, 720) | overlay
+        overlay = filters.Overlay(0, 0)
+        ff.video | filters.Scale(640, 360) | overlay
+        ff.video | filters.Scale(1280, 720) | overlay
         ff.audio | Volume(-20) > ca0
         overlay > cv0
 
@@ -158,10 +163,10 @@ class FFMPEGTestCase(TestCase):
 
     def test_handle_codec_copy(self):
         """ vcodec=copy connects source directly to muxer."""
-        ff = init_ffmpeg('/tmp/input.mp4')
+        ff = FFMPEG('/tmp/input.mp4')
 
-        cv0 = VideoCodec('copy')
-        ca0 = AudioCodec('aac', bitrate=128000)
+        cv0 = codecs.VideoCodec('copy')
+        ca0 = codecs.AudioCodec('aac', bitrate=128000)
 
         ff.audio | Volume(20) > ca0
 
@@ -185,14 +190,14 @@ class FFMPEGTestCase(TestCase):
         """ Reuse input files multiple times."""
         v = Stream(VIDEO)
         a = Stream(AUDIO)
-        ff = init_ffmpeg(Input(v, a, input_file='/tmp/input.mp4'))
-        cv0 = VideoCodec('copy')
-        ca0 = AudioCodec('copy')
+        ff = FFMPEG(Input(v, a, input_file='/tmp/input.mp4'))
+        cv0 = codecs.VideoCodec('copy')
+        ca0 = codecs.AudioCodec('copy')
         out0 = Output('/tmp/out0.flv', cv0, ca0)
         ff > out0
 
-        cv1 = VideoCodec('copy')
-        ca1 = AudioCodec('copy')
+        cv1 = codecs.VideoCodec('copy')
+        ca1 = codecs.AudioCodec('copy')
         out1 = Output('/tmp/out1.flv', cv1, ca1)
         v > cv1
         a > ca1
@@ -219,19 +224,19 @@ class FFMPEGTestCase(TestCase):
         """ vcodec=copy with separate transcoded output."""
         v = Stream(VIDEO)
         a = Stream(AUDIO)
-        ff = init_ffmpeg(Input(v, a, input_file='/tmp/input.mp4'))
+        ff = FFMPEG(Input(v, a, input_file='/tmp/input.mp4'))
 
-        cv0 = VideoCodec('copy')
-        ca0 = AudioCodec('copy')
+        cv0 = codecs.VideoCodec('copy')
+        ca0 = codecs.AudioCodec('copy')
         out0 = Output('/tmp/copy.flv', cv0, ca0)
 
         ff > out0
 
-        cv1 = VideoCodec('libx264')
-        ca1 = AudioCodec('aac')
+        cv1 = codecs.VideoCodec('libx264')
+        ca1 = codecs.AudioCodec('aac')
         out1 = Output('/tmp/out.flv', cv1, ca1)
 
-        v | Scale(640, 360) > cv1
+        v | filters.Scale(640, 360) > cv1
         a > ca1
 
         ff.add_output(out1)
@@ -276,8 +281,8 @@ class FFMPEGTestCase(TestCase):
         """ tee muxer args."""
         ff = FFMPEG('/tmp/input.mp4')
 
-        cv0 = VideoCodec('libx264')
-        ca0 = AudioCodec('aac')
+        cv0 = codecs.VideoCodec('libx264')
+        ca0 = codecs.AudioCodec('aac')
         out0 = HLSMuxer('http://ya.ru/1.m3u8', segment_size=2)
 
         out1 = HLSMuxer('http://ya.ru/2.m3u8', manifest_size=5)
@@ -302,17 +307,17 @@ class FFMPEGTestCase(TestCase):
         ff < Input(input_file='preroll.mp4')
         ff < Input(input_file='input.mp4')
 
-        cv0 = VideoCodec('libx264')
-        ca0 = AudioCodec('aac')
+        cv0 = codecs.VideoCodec('libx264')
+        ca0 = codecs.AudioCodec('aac')
 
-        preroll_ready = ff.video | Scale(640, 480) | SetSAR(1)
-        concat = Concat(VIDEO)
+        preroll_ready = ff.video | filters.Scale(640, 480) | SetSAR(1)
+        concat = filters.Concat(VIDEO)
         preroll_ready | concat
         ff.video | concat
 
         concat > cv0
 
-        aconcat = Concat(AUDIO)
+        aconcat = filters.Concat(AUDIO)
         ff.audio | aconcat
         ff.audio | aconcat
 
