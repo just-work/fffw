@@ -40,7 +40,7 @@ class FFMPEGTestCase(TestCase):
 
     def test_ffmpeg(self):
         """ Smoke test and feature demo."""
-        ff = FFMPEG()
+        ff = FFMPEG(loglevel='info')
         ff < Input(input_file='/tmp/input.mp4')
 
         cv0 = X264(bitrate=700000)
@@ -63,6 +63,7 @@ class FFMPEGTestCase(TestCase):
 
         expected = [
             'ffmpeg',
+            '-loglevel', 'info',
             '-i', '/tmp/input.mp4',
             '-filter_complex',
             '[0:v]scale=width=640:height=360[vout0];[0:a]asplit[aout0][aout1]',
@@ -81,7 +82,7 @@ class FFMPEGTestCase(TestCase):
 
     def test_bypass_with_filter_complex(self):
         """ Audio stream bypass mode."""
-        ff = FFMPEG('/tmp/input.mp4')
+        ff = init_ffmpeg('/tmp/input.mp4')
         cv0 = X264(bitrate=700000)
         ca0 = AAC(bitrate=128000)
 
@@ -103,7 +104,7 @@ class FFMPEGTestCase(TestCase):
 
     def test_bypass_without_filter_complex(self):
         """ Stream bypass with filter_complex missing."""
-        ff = FFMPEG('/tmp/input.mp4')
+        ff = init_ffmpeg('/tmp/input.mp4')
 
         cv0 = X264(bitrate=700000)
         ca0 = AAC(bitrate=128000)
@@ -157,7 +158,7 @@ class FFMPEGTestCase(TestCase):
 
     def test_handle_codec_copy(self):
         """ vcodec=copy connects source directly to muxer."""
-        ff = FFMPEG('/tmp/input.mp4')
+        ff = init_ffmpeg('/tmp/input.mp4')
 
         cv0 = VideoCodec('copy')
         ca0 = AudioCodec('aac', bitrate=128000)
@@ -184,7 +185,7 @@ class FFMPEGTestCase(TestCase):
         """ Reuse input files multiple times."""
         v = Stream(VIDEO)
         a = Stream(AUDIO)
-        ff = FFMPEG(Input(v, a, input_file='/tmp/input.mp4'))
+        ff = init_ffmpeg(Input(v, a, input_file='/tmp/input.mp4'))
         cv0 = VideoCodec('copy')
         ca0 = AudioCodec('copy')
         out0 = Output('/tmp/out0.flv', cv0, ca0)
@@ -218,7 +219,7 @@ class FFMPEGTestCase(TestCase):
         """ vcodec=copy with separate transcoded output."""
         v = Stream(VIDEO)
         a = Stream(AUDIO)
-        ff = FFMPEG(Input(v, a, input_file='/tmp/input.mp4'))
+        ff = init_ffmpeg(Input(v, a, input_file='/tmp/input.mp4'))
 
         cv0 = VideoCodec('copy')
         ca0 = AudioCodec('copy')
