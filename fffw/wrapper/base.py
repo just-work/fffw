@@ -1,10 +1,11 @@
 import io
 import re
 import subprocess
-from dataclasses import dataclass, Field, fields, asdict
+from dataclasses import dataclass
 from functools import wraps
 from logging import getLogger
-from typing import Tuple, List, Any, Union, overload, IO, cast, Callable, Dict
+from typing import Tuple, List, Any, Union, overload, IO, cast, Callable, \
+    Optional
 
 from fffw.wrapper.params import Params
 
@@ -116,36 +117,10 @@ class BaseWrapper(Params):
 
     @ensure_binary
     def get_args(self) -> List[Any]:
-        args: List[str] = []
-        local_fields: Dict[str, Field] = {
-            f.name: f for f in fields(self)}
-        for key, value in asdict(self).items():
-            field = local_fields[key]
-            if field.default == value and field.init:
-                continue
-            if not value:
-                continue
-
-            meta = field.metadata
-            name = meta['name']
-            stream_suffix = meta['stream_suffix']
-            if not name:
-                name = key
-            if stream_suffix:
-                name = f'{name}:{getattr(self, "kind").value}'
-            arg = f'-{name}'
-
-            if callable(value):
-                value = value()
-
-            if isinstance(value, (list, tuple)):
-                for v in value:
-                    args.extend([arg, str(v)])
-            elif value is True:
-                args.append(arg)
-            else:
-                args.extend([arg, str(value)])
-        return args
+        args: List[Optional[str]] = []
+        for pair in self.as_pairs():
+            args.extend(pair)
+        return list(filter(None, args))
 
     def get_cmd(self) -> str:
         return ' '.join(map(quote, ensure_text(self.get_args())))
