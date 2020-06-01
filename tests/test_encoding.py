@@ -17,9 +17,9 @@ class InputsTestCase(TestCase):
 
     def test_input_list(self):
         """ Inputs and streams are properly enumerated."""
-        il = inputs.InputList(self.i1, self.i2)
-        self.assertEqual(il.inputs[0].index, 0)
-        self.assertEqual(il.inputs[1].index, 1)
+        il = inputs.InputList((self.i1, self.i2))
+        self.assertEqual(il[0].index, 0)
+        self.assertEqual(il[1].index, 1)
         self.assertEqual(self.v1.name, '0:v')
         self.assertEqual(self.a1.name, '0:a')
         self.assertEqual(self.v2.name, '1:v')

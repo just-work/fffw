@@ -29,7 +29,7 @@ class FilterGraphTestCase(TestCase):
         """
         logo = Input(Stream(VIDEO), input_file='logo.png')
         main = Input(input_file='main.mp4')
-        il = InputList(main, logo)
+        il = InputList((main, logo))
         out0 = Output('out0.mp4')
         out1 = Output('out1.mp4')
         ol = OutputList(out0, out1)
@@ -103,7 +103,7 @@ class FilterGraphTestCase(TestCase):
         def fc_factory():
             src = Input(Stream(VIDEO), input_file="input.mp4")
             dst = Output('output.mp4')
-            fc = FilterComplex(InputList(src), OutputList(dst))
+            fc = FilterComplex(InputList((src,)), OutputList(dst))
             return fc, dst
 
         def deint_factory():
@@ -140,7 +140,7 @@ class FilterGraphTestCase(TestCase):
         """
         source = Input(input_file='input.mp4')
         output = Output('output.mp4')
-        il = InputList(source)
+        il = InputList((source,))
         ol = OutputList(output)
         # passing only video to FilterComplex
         fc = FilterComplex(il, ol)
@@ -157,7 +157,7 @@ class FilterGraphTestCase(TestCase):
         source = Input(Stream(VIDEO, meta=metadata),
                        input_file='input.mp4')
         output = Output('output.mp4')
-        il = InputList(source)
+        il = InputList((source,))
         ol = OutputList(output)
         fc = FilterComplex(il, ol)
         dest = output.video

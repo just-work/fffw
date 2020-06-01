@@ -1,4 +1,4 @@
-from typing import Optional, List, Tuple, cast, Any
+from typing import Optional, List, Tuple, cast, Any, Iterable
 
 from fffw.graph import base
 from fffw.graph.meta import Meta
@@ -74,24 +74,20 @@ class Input(BaseWrapper):
         return ["-i", self.input_file]
 
 
-class InputList:
+class InputList(list):
     """ List of inputs in FFMPEG."""
 
-    def __init__(self, *sources: Input) -> None:
+    def __init__(self, sources: Iterable[Input] = ()) -> None:
         """
         :param sources: list of input files
         """
-        self.__inputs: List[Input] = []
-        self.extend(*sources)
-
-    @property
-    def inputs(self) -> Tuple[Input, ...]:
-        return tuple(self.__inputs)
+        super().__init__()
+        self.extend(sources)
 
     @property
     def streams(self) -> List[Stream]:
         result: List[Stream] = []
-        for source in self.__inputs:
+        for source in self:
             if source.streams is None:
                 raise RuntimeError("Source streams not initialized")
             result.extend(source.streams)
@@ -103,21 +99,21 @@ class InputList:
 
         :param source: input file
         """
-        source.index = len(self.__inputs)
-        self.__inputs.append(source)
+        source.index = len(self)
+        super().append(source)
 
-    def extend(self, *sources: Input) -> None:
+    def extend(self, sources: Iterable[Input]) -> None:
         """
         Adds multiple source files to input list.
 
         :param sources: list of input files
         """
-        for i, source in enumerate(sources, start=len(self.__inputs)):
+        for i, source in enumerate(sources, start=len(self)):
             source.index = i
-        self.__inputs.extend(sources)
+        super().extend(sources)
 
     def get_args(self) -> List[bytes]:
         result: List[bytes] = []
-        for source in self.__inputs:
+        for source in self:
             result.extend(source.get_args())
         return result
