@@ -18,7 +18,6 @@ class AAC(AudioCodec):
 
 @dataclass
 class SetSAR(VideoFilter):
-    kind = VIDEO
     filter = "setsar"
     sar: float
 
@@ -29,7 +28,6 @@ class SetSAR(VideoFilter):
 
 @dataclass
 class Volume(AudioFilter):
-    kind = AUDIO
     filter = 'volume'
     volume: float
 
