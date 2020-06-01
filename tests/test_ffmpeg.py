@@ -61,8 +61,8 @@ class FFMPEGTestCase(TestCase):
         asplit.connect_dest(ca0)
         asplit.connect_dest(ca1)
 
-        out0 = Output('/tmp/out.flv', cv0, ca0)
-        out1 = Output('/tmp/out.mp3', ca1)
+        out0 = output_file('/tmp/out.flv', cv0, ca0)
+        out1 = output_file('/tmp/out.mp3', ca1)
 
         ff.add_output(out0)
         ff.add_output(out1)
@@ -80,11 +80,9 @@ class FFMPEGTestCase(TestCase):
             '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '700000',
             '-map', '[aout0]', '-c:a', 'aac', '-b:a', '128000',
 
-            '-f', 'flv',
             '/tmp/out.flv',
 
             '-map', '[aout1]', '-c:a', 'libmp3lame', '-b:a', '394000',
-            '-f', 'mp3',
             '/tmp/out.mp3'
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
@@ -97,7 +95,7 @@ class FFMPEGTestCase(TestCase):
 
         ff.video | filters.Scale(640, 360) > cv0
 
-        ff > Output('/tmp/out.flv', cv0, ca0)
+        ff > output_file('/tmp/out.flv', cv0, ca0)
 
         expected = [
             'ffmpeg',
@@ -106,7 +104,6 @@ class FFMPEGTestCase(TestCase):
             '[0:v]scale=width=640:height=360[vout0]',
             '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '700000',
             '-map', '0:a', '-c:a', 'aac', '-b:a', '128000',
-            '-f', 'flv',
             '/tmp/out.flv'
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
@@ -117,14 +114,13 @@ class FFMPEGTestCase(TestCase):
 
         cv0 = X264(bitrate=700000)
         ca0 = AAC(bitrate=128000)
-        ff > Output('/tmp/out.flv', cv0, ca0)
+        ff > output_file('/tmp/out.flv', cv0, ca0)
 
         expected = [
             'ffmpeg',
             '-i', '/tmp/input.mp4',
             '-map', '0:v', '-c:v', 'libx264', '-b:v', '700000',
             '-map', '0:a', '-c:a', 'aac', '-b:a', '128000',
-            '-f', 'flv',
             '/tmp/out.flv'
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
@@ -145,7 +141,7 @@ class FFMPEGTestCase(TestCase):
         ff.audio | Volume(-20) > ca0
         overlay > cv0
 
-        out0 = Output('/tmp/out.flv', cv0, ca0)
+        out0 = output_file('/tmp/out.flv', cv0, ca0)
         ff.add_output(out0)
 
         expected = [
@@ -160,7 +156,6 @@ class FFMPEGTestCase(TestCase):
                 '[1:a]volume=-20.00[aout0]'),
             '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '700000',
             '-map', '[aout0]', '-c:a', 'aac', '-b:a', '128000',
-            '-f', 'flv',
             '/tmp/out.flv'
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
@@ -174,7 +169,7 @@ class FFMPEGTestCase(TestCase):
 
         ff.audio | Volume(20) > ca0
 
-        out0 = Output('/tmp/out.flv', cv0, ca0)
+        out0 = output_file('/tmp/out.flv', cv0, ca0)
         ff.add_output(out0)
         expected = [
             'ffmpeg',
@@ -185,7 +180,6 @@ class FFMPEGTestCase(TestCase):
             '-c:v', 'copy',
             '-map', '[aout0]',
             '-c:a', 'aac', '-b:a', '128000',
-            '-f', 'flv',
             '/tmp/out.flv'
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
@@ -197,12 +191,12 @@ class FFMPEGTestCase(TestCase):
         ff = FFMPEG(Input(input_file='/tmp/input.mp4', streams=(v, a)))
         cv0 = codecs.VideoCodec('copy')
         ca0 = codecs.AudioCodec('copy')
-        out0 = Output('/tmp/out0.flv', cv0, ca0)
+        out0 = output_file('/tmp/out0.flv', cv0, ca0)
         ff > out0
 
         cv1 = codecs.VideoCodec('copy')
         ca1 = codecs.AudioCodec('copy')
-        out1 = Output('/tmp/out1.flv', cv1, ca1)
+        out1 = output_file('/tmp/out1.flv', cv1, ca1)
         v > cv1
         a > ca1
         ff > out1
@@ -213,13 +207,11 @@ class FFMPEGTestCase(TestCase):
             '-c:v', 'copy',
             '-map', '0:a',
             '-c:a', 'copy',
-            '-f', 'flv',
             '/tmp/out0.flv',
             '-map', '0:v',
             '-c:v', 'copy',
             '-map', '0:a',
             '-c:a', 'copy',
-            '-f', 'flv',
             '/tmp/out1.flv',
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))
@@ -232,13 +224,13 @@ class FFMPEGTestCase(TestCase):
 
         cv0 = codecs.VideoCodec('copy')
         ca0 = codecs.AudioCodec('copy')
-        out0 = Output('/tmp/copy.flv', cv0, ca0)
+        out0 = output_file('/tmp/copy.flv', cv0, ca0)
 
         ff > out0
 
         cv1 = codecs.VideoCodec('libx264')
         ca1 = codecs.AudioCodec('aac')
-        out1 = Output('/tmp/out.flv', cv1, ca1)
+        out1 = output_file('/tmp/out.flv', cv1, ca1)
 
         v | filters.Scale(640, 360) > cv1
         a > ca1
@@ -254,13 +246,11 @@ class FFMPEGTestCase(TestCase):
             '-c:v', 'copy',
             '-map', '0:a',
             '-c:a', 'copy',
-            '-f', 'flv',
             '/tmp/copy.flv',
             '-map', '[vout0]',
             '-c:v', 'libx264',
             '-map', '0:a',
             '-c:a', 'aac',
-            '-f', 'flv',
             '/tmp/out.flv'
 
         ]
@@ -270,7 +260,7 @@ class FFMPEGTestCase(TestCase):
         """ Transcoding works without filter graph."""
         ff = FFMPEG()
         ff < Input(input_file='input.mp4')
-        ff.add_output(Output('/dev/null', format='null'))
+        ff.add_output(output_file('/dev/null', format='null'))
         expected = [
             'ffmpeg',
             '-i', 'input.mp4',
@@ -326,7 +316,7 @@ class FFMPEGTestCase(TestCase):
         ff.audio | aconcat
 
         aconcat > ca0
-        ff.add_output(Output('output.mp4', cv0, ca0))
+        ff.add_output(output_file('output.mp4', cv0, ca0))
 
         expected = [
             'ffmpeg',
@@ -341,7 +331,6 @@ class FFMPEGTestCase(TestCase):
             '-c:v', 'libx264',
             '-map', '[aout0]',
             '-c:a', 'aac',
-            '-f', 'mp4',
             'output.mp4'
         ]
         self.assertEqual(ff.get_args(), ensure_binary(expected))

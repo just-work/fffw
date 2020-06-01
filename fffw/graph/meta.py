@@ -38,7 +38,7 @@ class TS(timedelta):
             value = seconds + fractional
         return super().__new__(cls, seconds=value)  # type: ignore
 
-    def __str__(self):
+    def __str__(self) -> str:
         v = super().__str__()
         if '.' in v:
             v = v.rstrip('0')

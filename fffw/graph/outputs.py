@@ -1,7 +1,6 @@
-import os
 from dataclasses import dataclass
 from itertools import chain
-from typing import List, Tuple, cast, Optional, Any, Iterable
+from typing import List, cast, Optional, Iterable, Any
 
 from fffw.graph import base
 from fffw.wrapper import BaseWrapper, ensure_binary, param
@@ -9,7 +8,8 @@ from fffw.wrapper import BaseWrapper, ensure_binary, param
 __all__ = [
     'Codec',
     'Output',
-    'OutputList'
+    'OutputList',
+    'output_file',
 ]
 
 
@@ -48,19 +48,10 @@ class Codec(base.Dest, BaseWrapper):
 
 
 @dataclass
-class OutputParams:
-    """ Output file parameters"""
+class Output(BaseWrapper):
+    codecs: List[Codec] = param(skip=True)
     format: str = param(name="f")
-
-
-class Output(OutputParams, BaseWrapper):
-
-    def __init__(self, output_file: str, *codecs: Codec, **kwargs: Any) -> None:
-        ext = os.path.splitext(output_file)[-1].lstrip('.')
-        kwargs.setdefault('format', ext)
-        super().__init__(**kwargs)
-        self._output_file = output_file
-        self._codecs = list(codecs)
+    output_file: str = param(name="")
 
     def __lt__(self, other: base.InputType) -> Codec:
         """
@@ -73,10 +64,6 @@ class Output(OutputParams, BaseWrapper):
         return codec
 
     @property
-    def codecs(self) -> Tuple[Codec, ...]:
-        return tuple(self._codecs)
-
-    @property
     def video(self) -> Codec:
         return self.get_free_codec(base.VIDEO)
 
@@ -86,20 +73,23 @@ class Output(OutputParams, BaseWrapper):
 
     def get_free_codec(self, kind: base.StreamType) -> Codec:
         try:
-            codec = next(filter(lambda c: not c.connected, self._codecs))
+            codec = next(filter(lambda c: not c.connected, self.codecs))
         except StopIteration:
             codec = Codec()
             codec.kind = kind
-            self._codecs.append(codec)
+            self.codecs.append(codec)
         return codec
 
     def get_args(self) -> List[bytes]:
         args = (
-                list(chain(*(codec.get_args() for codec in self._codecs))) +
-                super().get_args() +
-                ensure_binary([self._output_file])
+                list(chain(*(codec.get_args() for codec in self.codecs))) +
+                super().get_args()
         )
         return args
+
+
+def output_file(filename: str, *codecs: Codec, **kwargs: Any) -> Output:
+    return Output(output_file=filename, codecs=list(codecs), **kwargs)
 
 
 class OutputList(list):

@@ -30,8 +30,8 @@ class FilterGraphTestCase(TestCase):
         logo = input_file('logo.png', Stream(VIDEO))
         main = input_file('main.mp4')
         il = InputList((main, logo))
-        out0 = Output('out0.mp4')
-        out1 = Output('out1.mp4')
+        out0 = output_file('out0.mp4')
+        out1 = output_file('out1.mp4')
         ol = OutputList((out0, out1))
 
         fc = FilterComplex(il, ol)
@@ -102,7 +102,7 @@ class FilterGraphTestCase(TestCase):
         # noinspection PyShadowingNames
         def fc_factory():
             src = input_file("input.mp4", Stream(VIDEO))
-            dst = Output('output.mp4')
+            dst = output_file('output.mp4')
             fc = FilterComplex(InputList((src,)), OutputList((dst,)))
             return fc, dst
 
@@ -139,7 +139,7 @@ class FilterGraphTestCase(TestCase):
         """ Skip unused sources in filter complex.
         """
         source = Input(input_file='input.mp4')
-        output = Output('output.mp4')
+        output = output_file('output.mp4')
         il = InputList((source,))
         ol = OutputList((output,))
         # passing only video to FilterComplex
@@ -156,7 +156,7 @@ class FilterGraphTestCase(TestCase):
 
         source = Input(input_file='input.mp4',
                        streams=(Stream(VIDEO, meta=metadata),))
-        output = Output('output.mp4')
+        output = output_file('output.mp4')
         il = InputList((source,))
         ol = OutputList((output,))
         fc = FilterComplex(il, ol)
