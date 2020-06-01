@@ -7,8 +7,7 @@ from fffw.graph import VIDEO
 
 
 @dataclass
-class Deint(Filter):
-    kind = VIDEO
+class Deint(VideoFilter):
     filter = 'yadif'
     mode: str = '0'
 
