@@ -1,7 +1,7 @@
 import os
 from dataclasses import dataclass
 from itertools import chain
-from typing import List, Tuple, cast, Optional, Any
+from typing import List, Tuple, cast, Optional, Any, Iterable
 
 from fffw.graph import base
 from fffw.wrapper import BaseWrapper, ensure_binary, param
@@ -101,26 +101,22 @@ class Output(OutputParams, BaseWrapper):
         return args
 
 
-class OutputList:
+class OutputList(list):
     """ Supports unique output streams names generation."""
 
-    def __init__(self, *outputs: Output) -> None:
+    def __init__(self, outputs: Iterable[Output] = ()) -> None:
         """
         :param outputs: list of output files
         """
-        self.__outputs: List[Output] = []
+        super().__init__()
         self.__video_index = 0
         self.__audio_index = 0
-        self.extend(*outputs)
-
-    @property
-    def outputs(self) -> Tuple[Output, ...]:
-        return tuple(self.__outputs)
+        self.extend(outputs)
 
     @property
     def codecs(self) -> List[Codec]:
         result: List[Codec] = []
-        for output in self.__outputs:
+        for output in self:
             result.extend(output.codecs)
         return result
 
@@ -132,9 +128,9 @@ class OutputList:
         """
         for codec in output.codecs:
             self.__set_index(codec)
-        self.__outputs.append(output)
+        super().append(output)
 
-    def extend(self, *outputs: Output) -> None:
+    def extend(self, outputs: Iterable[Output]) -> None:
         """
         Adds multiple output files to output list.
 
@@ -142,11 +138,11 @@ class OutputList:
         """
         for codec in chain(*map(lambda output: output.codecs, outputs)):
             self.__set_index(codec)
-        self.__outputs.extend(outputs)
+        super().extend(outputs)
 
     def get_args(self) -> List[bytes]:
         result = []
-        for source in self.__outputs:
+        for source in self:
             result.extend(source.get_args())
         return result
 

@@ -32,7 +32,7 @@ class FilterGraphTestCase(TestCase):
         il = InputList((main, logo))
         out0 = Output('out0.mp4')
         out1 = Output('out1.mp4')
-        ol = OutputList(out0, out1)
+        ol = OutputList((out0, out1))
 
         fc = FilterComplex(il, ol)
 
@@ -57,7 +57,7 @@ class FilterGraphTestCase(TestCase):
         # audio is split to two streams
         asplit = fc.audio | Split(AUDIO)
 
-        for out in ol.outputs:
+        for out in ol:
             asplit > out
 
         # video split to two steams
@@ -68,7 +68,7 @@ class FilterGraphTestCase(TestCase):
         # intermediate video stream scaling
         sizes = [(640, 480), (1280, 720)]
 
-        for out, size in zip(ol.outputs, sizes):
+        for out, size in zip(ol, sizes):
             # add scale filters to video streams
             w, h = size
             scale = Scale(w, h)
@@ -103,7 +103,7 @@ class FilterGraphTestCase(TestCase):
         def fc_factory():
             src = Input(Stream(VIDEO), input_file="input.mp4")
             dst = Output('output.mp4')
-            fc = FilterComplex(InputList((src,)), OutputList(dst))
+            fc = FilterComplex(InputList((src,)), OutputList((dst,)))
             return fc, dst
 
         def deint_factory():
@@ -141,7 +141,7 @@ class FilterGraphTestCase(TestCase):
         source = Input(input_file='input.mp4')
         output = Output('output.mp4')
         il = InputList((source,))
-        ol = OutputList(output)
+        ol = OutputList((output,))
         # passing only video to FilterComplex
         fc = FilterComplex(il, ol)
         fc.video | Scale(640, 360) > output
@@ -158,7 +158,7 @@ class FilterGraphTestCase(TestCase):
                        input_file='input.mp4')
         output = Output('output.mp4')
         il = InputList((source,))
-        ol = OutputList(output)
+        ol = OutputList((output,))
         fc = FilterComplex(il, ol)
         dest = output.video
         fc.video | Scale(640, 360) > dest
