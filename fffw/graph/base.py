@@ -57,13 +57,11 @@ class Dest(Traversable):
 
     Must connect to single filter output only.
     """
+    kind: StreamType
 
-    def __init__(self, kind: StreamType) -> None:
-        """
-        :param kind: stream kind (VIDEO/AUDIO)
-        """
+    def __init__(self) -> None:
+        super().__init__()
         self._edge: Optional[Edge] = None
-        self._kind = kind
 
     def __repr__(self) -> str:
         return f"Dest('{self.name}')"
@@ -76,10 +74,6 @@ class Dest(Traversable):
         if self._edge is None:
             raise RuntimeError("Dest not connected")
         return f'[{self._edge.name}]'
-
-    @property
-    def kind(self) -> StreamType:
-        return self._kind
 
     @property
     def meta(self) -> Optional[Meta]:

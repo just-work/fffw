@@ -1,31 +1,41 @@
 import os
+from dataclasses import dataclass, Field, MISSING
 from itertools import chain
 from typing import List, Tuple, cast, Optional, Any
 
 from fffw.graph import base
-from fffw.wrapper import BaseWrapper, ensure_binary
+from fffw.wrapper import BaseWrapper, ensure_binary, param
 
 __all__ = [
-    'Codec',
+    'AudioCodec',
+    'VideoCodec',
+    'CodecName',
     'Output',
     'OutputList'
 ]
 
 
+class CodecName(Field):
+    def __init__(self, name: str):
+        metadata = {
+            'name': 'c',
+            'stream_suffix': True,
+        }
+        super().__init__(name, MISSING, False, True, None, True, metadata)
+
+
+@dataclass
 class Codec(base.Dest, BaseWrapper):
     index = cast(int, base.Once('index'))
     """ Index of current codec in ffmpeg output streams."""
-    # TODO #9: implement single argument with stream type modifier
-    arguments = [
-        ('vbitrate', '-b:v '),
-        ('abitrate', '-b:a '),
-    ]
 
-    def __init__(self, kind: base.StreamType, codec: str = None,
-                 **kwargs: Any) -> None:
-        super().__init__(kind)
-        BaseWrapper.__init__(self, **kwargs)
-        self._codec = codec
+    codec: str = param(name='c', stream_suffix=True)
+    bitrate: int = param(default=0, name='b', stream_suffix=True)
+
+    def __post_init__(self):
+        # dataclass replaces `__init__` method completely so we need to call it
+        # manually.
+        super().__init__()
 
     @property
     def map(self) -> Optional[str]:
@@ -50,15 +60,24 @@ class Codec(base.Dest, BaseWrapper):
 
     def get_args(self) -> List[bytes]:
         args = ['-map', self.map]
-        if self._codec:
-            args.extend([f'-c:{self.kind.value}', self._codec])
         return ensure_binary(args) + super().get_args()
 
 
-class Output(BaseWrapper):
-    arguments = [
-        ('format', '-f '),
-    ]
+class VideoCodec(Codec):
+    kind = base.VIDEO
+
+
+class AudioCodec(Codec):
+    kind = base.AUDIO
+
+
+@dataclass
+class OutputParams:
+    """ Output file parameters"""
+    format: str = param(name="f")
+
+
+class Output(OutputParams, BaseWrapper):
 
     def __init__(self, output_file: str, *codecs: Codec, **kwargs: Any) -> None:
         ext = os.path.splitext(output_file)[-1].lstrip('.')
@@ -93,7 +112,7 @@ class Output(BaseWrapper):
         try:
             codec = next(filter(lambda c: not c.connected, self._codecs))
         except StopIteration:
-            codec = Codec(kind)
+            codec = VideoCodec() if kind == base.VIDEO else AudioCodec()
             self._codecs.append(codec)
         return codec
 

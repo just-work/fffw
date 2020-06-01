@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import List, Any, Union, Optional
 
 from fffw.graph import base, inputs, outputs
@@ -19,37 +20,14 @@ class InputList(list):
         return result
 
 
-class FFMPEG(BaseWrapper):
+@dataclass
+class FFMPEGParams:
+    pass
+
+
+class FFMPEG(FFMPEGParams, BaseWrapper):
     command = 'ffmpeg'
     stderr_markers = ['[error]', '[fatal]']
-
-    arguments = [
-        ('loglevel', '-loglevel '),
-        ('strict', '-strict '),
-        ('realtime', '-re '),
-        ('threads', '-threads '),
-        ('time_offset', '-ss '),
-        ('no_autorotate', '-noautorotate'),
-        ('inputformat', '-f '),
-        ('pix_fmt', '-pix_fmt '),
-        ('presize_offset', '-ss '),
-        ('filter_complex', '-filter_complex '),
-        ('time_limit', '-t '),
-        ('vframes', '-vframes '),
-        ('overwrite', '-y '),
-        ('verbose', '-v '),
-        ('novideo', '-vn '),
-        ('noaudio', '-an '),
-        ('vfilter', '-vf '),
-        ('afilter', '-af '),
-        ('metadata', '-metadata '),
-        ('map_chapters', '-map_chapters '),
-        ('map_metadata', '-map_metadata '),
-        ('vbsf', '-bsf:v '),
-        ('absf', '-bsf:a '),
-        ('format', '-f '),
-        ('segment_list_flags', '-segment_list_flags '),
-    ]
 
     def __init__(self, *sources: Union[inputs.Input, str],
                  output: Union[None, outputs.Output, str] = None, **kw: Any):
@@ -70,6 +48,8 @@ class FFMPEG(BaseWrapper):
                 outputs.Output(output_file=output)
                 if isinstance(output, str) else output
             )
+        self.__filter_complex = FilterComplex(self.__input_list,
+                                              self.__output_list)
 
     def __lt__(self, other: inputs.Input) -> None:
         """ Adds new source file.
@@ -84,18 +64,13 @@ class FFMPEG(BaseWrapper):
             return NotImplemented
         self.add_output(other)
 
-    def __setattr__(self, key: str, value: Any) -> None:
-        # TODO: #9 refactor working with args
-        if key == 'filter_complex':
-            raise NotImplementedError("use init_filter_complex instead")
-        if key == 'inputfile':
-            raise NotImplementedError("use add_input instead")
-        return super(FFMPEG, self).__setattr__(key, value)
+    @property
+    def video(self) -> base.Source:
+        return self._get_free_source(base.VIDEO)
 
     @property
-    def filter_complex(self) -> FilterComplex:
-        # TODO #9 refactor filter complex initialization
-        return self._args['filter_complex']
+    def audio(self) -> base.Source:
+        return self._get_free_source(base.AUDIO)
 
     def _get_free_source(self, kind: base.StreamType) -> base.Source:
         """
@@ -122,18 +97,16 @@ class FFMPEG(BaseWrapper):
         node.connect_dest(c)
         return c
 
-    def init_filter_complex(self) -> FilterComplex:
-        # TODO #9 refactor filter complex initialization
-        fc = FilterComplex(self.__input_list, self.__output_list)
-        self._args['filter_complex'] = fc
-        return fc
-
     def get_args(self) -> List[bytes]:
         with base.Namer():
+            fc = str(self.__filter_complex)
+            fc_args = ['-filter_complex', fc] if fc else []
+
             # Namer context is used to generate unique output stream names
             return (ensure_binary([self.command]) +
                     self.__input_list.get_args() +
                     super(FFMPEG, self).get_args() +
+                    ensure_binary(fc_args) +
                     self.__output_list.get_args())
 
     def add_input(self, input_file: inputs.Input) -> None:

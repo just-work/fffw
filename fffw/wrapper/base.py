@@ -1,8 +1,11 @@
 import re
 import subprocess
+import dataclasses
 from functools import wraps
 from logging import getLogger
-from typing import Tuple, List, Any, Dict, Union, overload, IO, cast, Callable
+from typing import Tuple, List, Any, Union, overload, IO, cast, Callable, Dict
+
+from fffw.wrapper.params import Params
 
 
 def quote(token: Any) -> str:
@@ -11,11 +14,6 @@ def quote(token: Any) -> str:
     if re.search(r'[ ()[\];]', token):
         return '"%s"' % token.replace('\"', '\\"')
     return token
-
-
-@overload
-def ensure_binary(x: Tuple[Any, ...]) -> Tuple[bytes, ...]:
-    ...
 
 
 @overload
@@ -98,71 +96,56 @@ def ensure_text(x: Any) -> Any:
     return str(x)
 
 
-class BaseWrapper:
+@dataclasses.dataclass
+class BaseWrapper(Params):
     """
     Base class for generating command line arguments from params.
 
     Values meanings:
-    * True: flag presense
-    * False/None: flag absense
+    * True: flag presence
+    * False/None: flag absence
     * List/Tuple: param name is repeated multiple times with values
     * Callable: function call result is added to result
     * All other: param name and value are added to result
     """
-    arguments: List[Tuple[str, str]] = []
 
-    def __init_args(self) -> None:
-        self._key_mapping = {}
-        self._args: Dict[str, Any] = {}
-        self._args_order = []
-        for (name, key) in self.arguments:
-            self._key_mapping[name] = key
-            self._args[name] = None
-            self._args_order.append(name)
-
-    def __init__(self, **kw: Any):
-        self.__init_args()
-        for k, v in kw.items():
-            setattr(self, k, v)
+    def __init__(self):
         self._output = ''
         cls = self.__class__
         self.logger = getLogger("%s.%s" % (cls.__module__, cls.__name__))
 
-    def __setattr__(self, key: str, value: Any) -> None:
-        if key in getattr(self, '_key_mapping', {}):
-            self._args[key] = value
-        else:
-            object.__setattr__(self, key, value)
-
     @ensure_binary
     def get_args(self) -> List[Any]:
-        result = []
-        for k in self._args_order:
-            v = self._args[k]
-            if v is not None and v is not False:
-                param = self._key_mapping[k]
-                if callable(v):
-                    value = v()
-                    if isinstance(value, list):
-                        result.extend(value)
-                    else:
-                        result.append(value)
-                elif isinstance(v, list):
-                    for item in v:
-                        result.extend([param.strip(), item])
-                elif v is True:
-                    result.append(param.strip())
-                else:
-                    if param.endswith(' '):
-                        result.extend([param.strip(), str(v)])
-                    else:
-                        result.append("%s%s" % (param, v))
+        args: List[str] = []
+        fields: Dict[str, dataclasses.Field] = {
+            f.name: f for f in dataclasses.fields(self)}
+        for key, value in dataclasses.asdict(self).items():
+            field = fields[key]
+            if field.default == value and field.init:
+                continue
+            if not value:
+                continue
 
-        return result
+            meta = field.metadata
+            name = meta['name']
+            stream_suffix = meta['stream_suffix']
+            if not name:
+                name = key
+            if stream_suffix:
+                name = f'{name}:{getattr(self, "kind").value}'
+            arg = f'-{name}'
 
-    def set_args(self, **kwargs: Any) -> None:
-        for k, v in kwargs.items():
-            setattr(self, k, v)
+            if callable(value):
+                value = value()
+
+            if isinstance(value, (list, tuple)):
+                for v in value:
+                    args.extend([arg, str(v)])
+            elif value is True:
+                args.append(arg)
+            else:
+                args.extend([arg, str(value)])
+        return args
 
     def get_cmd(self) -> str:
         return ' '.join(map(quote, ensure_text(self.get_args())))

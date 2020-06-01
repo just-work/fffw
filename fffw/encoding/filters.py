@@ -2,7 +2,9 @@ from dataclasses import dataclass, asdict
 from typing import Any, Tuple
 
 from fffw.graph import base
+
 from fffw.graph.base import VIDEO
+from fffw.wrapper.params import Params
 
 __all__ = [
     'Filter',
@@ -18,21 +20,16 @@ def as_param(item: Tuple[str, Any]) -> str:
     return f'{k}={v}'
 
 
-_FROZEN = '__filter_frozen__'
-
-
 @dataclass
-class Filter(base.Node):
+class Filter(Params, base.Node):
+    ALLOWED = ('enabled',)
 
-    def __post_init__(self) -> None:
-        base.Node.__init__(self)
-        setattr(self, _FROZEN, True)
-
-    def __setattr__(self, key: str, value: Any) -> None:
-        frozen = getattr(self, _FROZEN, False)
-        if frozen and key != 'enabled':
-            raise RuntimeError("Filter parameters are frozen")
-        object.__setattr__(self, key, value)
+    def __post_init__(self):
+        # Dataclass replaces `__init__` method completely so we need to call it
+        # manually.
+        super().__init__()
+        # Freeze filter params only after `__init__`
+        super().__post_init__()
 
     @property
     def args(self) -> str:
