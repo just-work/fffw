@@ -64,7 +64,7 @@ class FilterGraphTestCase(TestCase):
         # video split to two steams
 
         # connect split filter to overlayed video stream
-        split = next_node | Split()
+        split = next_node | Split(VIDEO)
 
         # intermediate video stream scaling
         sizes = [(640, 480), (1280, 720)]

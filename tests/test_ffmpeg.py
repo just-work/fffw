@@ -307,7 +307,7 @@ class FFMPEGTestCase(TestCase):
         ca0 = AudioCodec('aac')
 
         preroll_ready = ff.video | Scale(640, 480) | SetSAR(1)
-        concat = Concat()
+        concat = Concat(VIDEO)
         preroll_ready | concat
         ff.video | concat
 

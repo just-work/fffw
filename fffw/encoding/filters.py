@@ -2,12 +2,11 @@ from dataclasses import dataclass, asdict
 from typing import Any, Tuple
 
 from fffw.graph import base
-
-from fffw.graph.base import VIDEO
 from fffw.wrapper.params import Params
 
 __all__ = [
-    'Filter',
+    'AudioFilter',
+    'VideoFilter',
     'Scale',
     'Split',
     'Concat',
@@ -37,9 +36,16 @@ class Filter(Params, base.Node):
         return ':'.join(map(as_param, args.items()))
 
 
+class VideoFilter(Filter):
+    kind = base.VIDEO
+
+
+class AudioFilter(Filter):
+    kind = base.AUDIO
+
+
 @dataclass
-class Scale(Filter):
-    kind = VIDEO
+class Scale(VideoFilter):
     filter = "scale"
 
     width: int
@@ -48,12 +54,12 @@ class Scale(Filter):
 
 @dataclass
 class Split(Filter):
-    kind: base.StreamType = VIDEO
+    kind: base.StreamType
     output_count: int = 2
 
     def __post_init__(self) -> None:
         self.enabled = self.output_count > 1
-        self.filter = 'split' if self.kind == VIDEO else 'asplit'
+        self.filter = 'split' if self.kind == base.VIDEO else 'asplit'
         super().__post_init__()
 
     @property
@@ -66,7 +72,7 @@ class Split(Filter):
 @dataclass
 class Concat(Filter):
     filter = 'concat'
-    kind: base.StreamType = VIDEO
+    kind: base.StreamType
     input_count: int = 2
 
     def __post_init__(self) -> None:
@@ -75,7 +81,7 @@ class Concat(Filter):
 
     @property
     def args(self) -> str:
-        if self.kind == VIDEO:
+        if self.kind == base.VIDEO:
             if self.input_count == 2:
                 return ''
             return 'n=%s' % self.input_count
@@ -83,8 +89,7 @@ class Concat(Filter):
 
 
 @dataclass
-class Overlay(Filter):
-    kind = VIDEO
+class Overlay(VideoFilter):
     input_count = 2
     filter = "overlay"
     x: int
