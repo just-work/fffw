@@ -66,8 +66,11 @@ class Input(BaseWrapper):
     duration: Union[TS, float, int] = param(name='t')
 
     def __post_init__(self) -> None:
-        super().__post_init__()
+        """
+        Enumerate streams in input file and freeze instance.
+        """
         self.__link_streams_to_input()
+        super().__post_init__()
 
     def __link_streams_to_input(self) -> None:
         """
