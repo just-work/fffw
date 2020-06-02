@@ -27,10 +27,13 @@ class BaseWrapper(Params):
 
     @ensure_binary
     def get_args(self) -> List[Any]:
-        args: List[Optional[str]] = []
-        for pair in self.as_pairs():
-            args.extend(pair)
-        return list(filter(None, args))
+        args: List[str] = []
+        for key, value in self.as_pairs():
+            if key:
+                args.append(f'-{key}')
+            if value:
+                args.append(value)
+        return args
 
     def get_cmd(self) -> str:
         return ' '.join(map(quote, ensure_text(self.get_args())))

@@ -84,14 +84,14 @@ class FilterGraphTestCase(TestCase):
             # split video to two streams
             '[v:overlay0]split[v:split0][v:split1]',
             # each video is scaled to own size
-            '[v:split0]scale=width=640:height=480[vout0]',
-            '[v:split1]scale=width=1280:height=720[vout1]',
+            '[v:split0]scale=w=640:h=480[vout0]',
+            '[v:split1]scale=w=1280:h=720[vout1]',
 
             # split audio to two streams
             '[0:a]asplit[aout0][aout1]',
 
             # logo scaling
-            '[1:v]scale=width=200:height=50[v:scale0]',
+            '[1:v]scale=w=200:h=50[v:scale0]',
         ])
 
         self.assertEqual(expected.replace(';', ';\n'),
@@ -115,26 +115,26 @@ class FilterGraphTestCase(TestCase):
         fc, src, dst = fc_factory()
 
         src.streams[0] | Scale(640, 360) | deint_factory() > dst.video
-        self.assertEqual('[0:v]scale=width=640:height=360[vout0]', fc.render())
+        self.assertEqual('[0:v]scale=w=640:h=360[vout0]', fc.render())
 
         fc, src, dst = fc_factory()
 
         src.streams[0] | deint_factory() | Scale(640, 360) > dst.video
-        self.assertEqual('[0:v]scale=width=640:height=360[vout0]', fc.render())
+        self.assertEqual('[0:v]scale=w=640:h=360[vout0]', fc.render())
 
         fc, src, dst = fc_factory()
 
         tmp = src.streams[0] | deint_factory()
         tmp = tmp | deint_factory()
         tmp | Scale(640, 360) > dst.video
-        self.assertEqual('[0:v]scale=width=640:height=360[vout0]', fc.render())
+        self.assertEqual('[0:v]scale=w=640:h=360[vout0]', fc.render())
 
         fc, src, dst = fc_factory()
 
         tmp = src.streams[0] | Scale(640, 360)
         tmp = tmp | deint_factory()
         tmp | deint_factory() > dst.video
-        self.assertEqual('[0:v]scale=width=640:height=360[vout0]', fc.render())
+        self.assertEqual('[0:v]scale=w=640:h=360[vout0]', fc.render())
 
     def test_skip_not_connected_sources(self):
         """ Skip unused sources in filter complex.
@@ -147,7 +147,7 @@ class FilterGraphTestCase(TestCase):
         fc = FilterComplex(il, ol)
         source.streams[0] | Scale(640, 360) > output
 
-        self.assertEqual('[0:v]scale=width=640:height=360[vout0]', fc.render())
+        self.assertEqual('[0:v]scale=w=640:h=360[vout0]', fc.render())
 
     def test_pass_metadata(self):
         """

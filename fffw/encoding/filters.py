@@ -1,8 +1,8 @@
-from dataclasses import dataclass, asdict
-from typing import Any, Tuple
+from dataclasses import dataclass
+from typing import Tuple, List, Optional
 
 from fffw.graph import base
-from fffw.wrapper.params import Params
+from fffw.wrapper.params import Params, param
 
 __all__ = [
     'AudioFilter',
@@ -12,17 +12,6 @@ __all__ = [
     'Concat',
     'Overlay',
 ]
-
-
-def as_param(item: Tuple[str, Any]) -> str:
-    """
-    Formats a tuple as ffmpeg filter parameter.
-
-    :param item: a tuple with filter parameter name and corresponding value
-    :returns: formatted parameter value definition
-    """
-    k, v = item
-    return f'{k}={v}'
 
 
 @dataclass
@@ -37,15 +26,19 @@ class Filter(base.Node, Params):
 
     @property
     def args(self) -> str:
-        args = asdict(self)
-        return ':'.join(map(as_param, args.items()))
+        """ Formats filter args as k=v pairs separated by colon."""
+        args = self.as_pairs()
+        result = []
+        for key, value in args:
+            if key and value:
+                result.append(f'{key}={value}')
+        return ':'.join(result)
 
 
 class VideoFilter(Filter):
     """
     Base class for video filters.
 
-    >>> from fffw.wrapper.params import param
     >>> @dataclass
     ... class Deinterlace(VideoFilter):
     ...     filter = 'yadif'
@@ -60,7 +53,6 @@ class AudioFilter(Filter):
     """
     Base class for audio filters.
 
-    >>> from fffw.wrapper.params import param
     >>> @dataclass
     ... class Volume(AudioFilter):
     ...     filter = 'volume'
@@ -76,8 +68,11 @@ class Scale(VideoFilter):
     """ Video scaling filter."""
     filter = "scale"
 
-    width: int
-    height: int
+    width: int = param(name='w')
+    height: int = param(name='h')
+
+    def as_pairs(self) -> List[Tuple[Optional[str], Optional[str]]]:
+        return super().as_pairs()
 
 
 @dataclass

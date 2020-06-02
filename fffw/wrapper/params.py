@@ -101,7 +101,6 @@ class Params:
                 # append stream suffix (':v' or ':a') to parameter name
                 name = f'{name}:{getattr(self, "kind").value}'
             # support position command line arguments
-            arg = name and f'-{name}'
 
             if callable(value):
                 # get lazy parameter value
@@ -109,12 +108,12 @@ class Params:
 
             if isinstance(value, (list, tuple)):
                 # output multiple parameter values (-i file1 -i file2 ...)
-                args.extend((arg, str(v)) for v in value)
+                args.extend((name, str(v)) for v in value)
             elif value is True:
                 # support flag without a value
-                assert arg
-                args.append((arg, None))
+                assert name
+                args.append((name, None))
             else:
                 # output parameter name and value converted to string
-                args.append((arg, str(value)))
+                args.append((name, str(value)))
         return args

@@ -75,7 +75,7 @@ class FFMPEGTestCase(TestCase):
             '-i', '/tmp/input.mp4',
             '-t', '0:02:03.2',
             '-filter_complex',
-            '[0:v]scale=width=640:height=360[vout0];[0:a]asplit[aout0][aout1]',
+            '[0:v]scale=w=640:h=360[vout0];[0:a]asplit[aout0][aout1]',
 
             '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '700000',
             '-map', '[aout0]', '-c:a', 'aac', '-b:a', '128000',
@@ -101,7 +101,7 @@ class FFMPEGTestCase(TestCase):
             'ffmpeg',
             '-i', '/tmp/input.mp4',
             '-filter_complex',
-            '[0:v]scale=width=640:height=360[vout0]',
+            '[0:v]scale=w=640:h=360[vout0]',
             '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '700000',
             '-map', '0:a', '-c:a', 'aac', '-b:a', '128000',
             '/tmp/out.flv'
@@ -150,9 +150,9 @@ class FFMPEGTestCase(TestCase):
             '-i', '/tmp/input.mp4',
             '-filter_complex',
             (
-                '[0:v]scale=width=640:height=360[v:scale0];'
-                '[v:scale0][v:scale1]overlay=x=0:y=0[vout0];'
-                '[1:v]scale=width=1280:height=720[v:scale1];'
+                '[0:v]scale=w=640:h=360[v:scale0];'
+                '[v:scale0][v:scale1]overlay[vout0];'
+                '[1:v]scale=w=1280:h=720[v:scale1];'
                 '[1:a]volume=-20.00[aout0]'),
             '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '700000',
             '-map', '[aout0]', '-c:a', 'aac', '-b:a', '128000',
@@ -241,7 +241,7 @@ class FFMPEGTestCase(TestCase):
             'ffmpeg',
             '-i', '/tmp/input.mp4',
             '-filter_complex',
-            '[0:v]scale=width=640:height=360[vout0]',
+            '[0:v]scale=w=640:h=360[vout0]',
             '-map', '0:v',
             '-c:v', 'copy',
             '-map', '0:a',
@@ -323,7 +323,7 @@ class FFMPEGTestCase(TestCase):
             '-i', 'preroll.mp4',
             '-i', 'input.mp4',
             '-filter_complex',
-            "[0:v]scale=width=640:height=480[v:scale0];"
+            "[0:v]scale=w=640:h=480[v:scale0];"
             "[v:scale0]setsar=1[v:setsar0];"
             "[v:setsar0][1:v]concat[vout0];"
             "[0:a][1:a]concat=v=0:a=1:n=2[aout0]",

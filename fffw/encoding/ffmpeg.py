@@ -31,7 +31,7 @@ class FFMPEG(BaseWrapper):
     ...                  AudioCodec('libfdk_aac', bitrate=192_000))
     >>> b' '.join(ff.get_args()).decode('utf-8')
     'ffmpeg -y -i /tmp/input.mp4
-    -filter_complex [0:v]scale=width=1280:height=720[vout0]
+    -filter_complex [0:v]scale=w=1280:h=720[vout0]
     -map [vout0] -c:v libx264 -b:v 4000000
     -map 0:a -c:a libfdk_aac -b:a 192000
     /tmp/output.mp4'
