@@ -1,4 +1,5 @@
-from .base import ensure_binary, BaseWrapper
+from .base import BaseWrapper
+from .helpers import ensure_binary
 from .params import param
 
 __all__ = [
