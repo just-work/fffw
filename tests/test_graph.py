@@ -27,8 +27,9 @@ class FilterGraphTestCase(TestCase):
                                             |
                                             ------<Scale>--[O/720p]
         """
-        logo = input_file('logo.png', Stream(VIDEO))
+        vs = Stream(VIDEO)
         main = input_file('main.mp4')
+        logo = input_file('logo.png', vs)
         il = InputList((main, logo))
         out0 = output_file('out0.mp4')
         out1 = output_file('out1.mp4')
@@ -40,7 +41,7 @@ class FilterGraphTestCase(TestCase):
         deint.enabled = False  # deinterlace is skipped
 
         # first video stream is deinterlaced
-        next_node = fc.video | deint
+        next_node = main.streams[0] | deint
 
         left, top = 20, 20  # logo position
 
@@ -52,10 +53,10 @@ class FilterGraphTestCase(TestCase):
 
         # second input stream is connected to logo scaler, followed by overlay
         # filter
-        next_node = fc.video | Scale(logo_width, logo_height) | over
+        next_node = vs | Scale(logo_width, logo_height) | over
 
         # audio is split to two streams
-        asplit = fc.audio | Split(AUDIO)
+        asplit = main.streams[1] | Split(AUDIO)
 
         for out in ol:
             asplit > out
@@ -104,33 +105,33 @@ class FilterGraphTestCase(TestCase):
             src = input_file("input.mp4", Stream(VIDEO))
             dst = output_file('output.mp4')
             fc = FilterComplex(InputList((src,)), OutputList((dst,)))
-            return fc, dst
+            return fc, src, dst
 
         def deint_factory():
             d = Deint()
             d.enabled = False
             return d
 
-        fc, dst = fc_factory()
+        fc, src, dst = fc_factory()
 
-        fc.video | Scale(640, 360) | deint_factory() > dst.video
+        src.streams[0] | Scale(640, 360) | deint_factory() > dst.video
         self.assertEqual('[0:v]scale=width=640:height=360[vout0]', fc.render())
 
-        fc, dst = fc_factory()
+        fc, src, dst = fc_factory()
 
-        fc.video | deint_factory() | Scale(640, 360) > dst.video
+        src.streams[0] | deint_factory() | Scale(640, 360) > dst.video
         self.assertEqual('[0:v]scale=width=640:height=360[vout0]', fc.render())
 
-        fc, dst = fc_factory()
+        fc, src, dst = fc_factory()
 
-        tmp = fc.video | deint_factory()
+        tmp = src.streams[0] | deint_factory()
         tmp = tmp | deint_factory()
         tmp | Scale(640, 360) > dst.video
         self.assertEqual('[0:v]scale=width=640:height=360[vout0]', fc.render())
 
-        fc, dst = fc_factory()
+        fc, src, dst = fc_factory()
 
-        tmp = fc.video | Scale(640, 360)
+        tmp = src.streams[0] | Scale(640, 360)
         tmp = tmp | deint_factory()
         tmp | deint_factory() > dst.video
         self.assertEqual('[0:v]scale=width=640:height=360[vout0]', fc.render())
@@ -144,7 +145,7 @@ class FilterGraphTestCase(TestCase):
         ol = OutputList((output,))
         # passing only video to FilterComplex
         fc = FilterComplex(il, ol)
-        fc.video | Scale(640, 360) > output
+        source.streams[0] | Scale(640, 360) > output
 
         self.assertEqual('[0:v]scale=width=640:height=360[vout0]', fc.render())
 
@@ -161,6 +162,6 @@ class FilterGraphTestCase(TestCase):
         ol = OutputList((output,))
         fc = FilterComplex(il, ol)
         dest = output.video
-        fc.video | Scale(640, 360) > dest
+        fc.get_free_source(VIDEO) | Scale(640, 360) > dest
 
         self.assertIs(dest.get_meta_data(dest), metadata)
