@@ -15,6 +15,14 @@ __all__ = [
 
 @dataclass
 class Codec(base.Dest, BaseWrapper):
+    # noinspection PyUnresolvedReferences
+    """
+    Base class for output codecs.
+
+    :arg codec: ffmpeg codec name.
+    :arg bitrate: output bitrate in bps.
+    """
+
     index = cast(int, base.Once('index'))
     """ Index of current codec in ffmpeg output streams."""
 
@@ -54,6 +62,14 @@ class Codec(base.Dest, BaseWrapper):
 
 @dataclass
 class Output(BaseWrapper):
+    # noinspection PyUnresolvedReferences
+    """
+    Base class for ffmpeg output.
+
+    :arg codecs: list of codecs used in output.
+    :arg format: output file format.
+    :arg output_file: output file name.
+    """
     codecs: List[Codec] = param(skip=True)
     format: str = param(name="f")
     output_file: str = param(name="")
@@ -70,13 +86,30 @@ class Output(BaseWrapper):
 
     @property
     def video(self) -> Codec:
+        """
+        :returns: first video codec not connected to source.
+
+        If no free codecs left, new one codec stub is appended to output.
+        """
         return self.get_free_codec(base.VIDEO)
 
     @property
     def audio(self) -> Codec:
+        """
+        :returns: first audio codec not connected to source.
+
+        If no free codecs left, new one codec stub is appended to output.
+        """
         return self.get_free_codec(base.AUDIO)
 
     def get_free_codec(self, kind: base.StreamType) -> Codec:
+        """
+        Finds first codec not connected to filter graph or to an input, or
+        creates a new unnamed codec stub if no free codecs left.
+
+        :param kind: desired codec stream type
+        :return: first free codec or a new codec stub.
+        """
         try:
             codec = next(filter(lambda c: not c.connected, self.codecs))
         except StopIteration:
@@ -86,6 +119,9 @@ class Output(BaseWrapper):
         return codec
 
     def get_args(self) -> List[bytes]:
+        """
+        :returns: codec args and output file parameters for ffmpeg
+        """
         args = (
                 list(chain(*(codec.get_args() for codec in self.codecs))) +
                 super().get_args()
@@ -94,6 +130,13 @@ class Output(BaseWrapper):
 
 
 def output_file(filename: str, *codecs: Codec, **kwargs: Any) -> Output:
+    """
+    A shortcut to create proper output file.
+    :param filename: output file name.
+    :param codecs: codec list for this output.
+    :param kwargs: output parameters.
+    :return: configured ffmpeg output.
+    """
     return Output(output_file=filename, codecs=list(codecs), **kwargs)
 
 
