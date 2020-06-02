@@ -21,6 +21,11 @@ class Codec(base.Dest, BaseWrapper):
     codec: str = param(name='c', stream_suffix=True)
     bitrate: int = param(default=0, name='b', stream_suffix=True)
 
+    def __post_init__(self) -> None:
+        if self.codec is None:
+            self.codec = self.__class__.codec
+        super().__post_init__()
+
     @property
     def map(self) -> Optional[str]:
         """

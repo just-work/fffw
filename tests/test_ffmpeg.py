@@ -13,12 +13,12 @@ class FFMPEG(ffmpeg.FFMPEG):
 
 @dataclass
 class X264(codecs.VideoCodec):
-    codec: str = codecs.codec_name('libx264')
+    codec = 'libx264'
 
 
 @dataclass
 class AAC(codecs.AudioCodec):
-    codec: str = codecs.codec_name('aac')
+    codec = 'aac'
 
 
 @dataclass
