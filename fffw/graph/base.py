@@ -57,13 +57,8 @@ class Dest(Traversable):
 
     Must connect to single filter output only.
     """
-
-    def __init__(self, kind: StreamType) -> None:
-        """
-        :param kind: stream kind (VIDEO/AUDIO)
-        """
-        self._edge: Optional[Edge] = None
-        self._kind = kind
+    kind: StreamType
+    _edge: Optional["Edge"] = None
 
     def __repr__(self) -> str:
         return f"Dest('{self.name}')"
@@ -76,10 +71,6 @@ class Dest(Traversable):
         if self._edge is None:
             raise RuntimeError("Dest not connected")
         return f'[{self._edge.name}]'
-
-    @property
-    def kind(self) -> StreamType:
-        return self._kind
 
     @property
     def meta(self) -> Optional[Meta]:
@@ -209,18 +200,14 @@ class Edge(Traversable):
         return self.__output.render(partial=partial)
 
 
-class Node(Traversable):
+class Node(Traversable, abc.ABC):
     """ Graph node describing ffmpeg filter."""
-
+    # Should be overridden in derived classes
     kind: StreamType  # filter type (VIDEO/AUDIO)
     filter: str  # filter name
+
     input_count: int = 1  # number of inputs
     output_count: int = 1  # number of outputs
-
-    def __init__(self, enabled: bool = True):
-        self.enabled = enabled
-        self.inputs: List[Optional[Edge]] = [None] * self.input_count
-        self.outputs: List[Optional[Edge]] = [None] * self.output_count
 
     def __repr__(self) -> str:
         inputs = [f"[{str(i.name if i else '---')}]" for i in self.inputs]
@@ -247,22 +234,38 @@ class Node(Traversable):
         return self.connect_dest(other)
 
     @property
+    @abc.abstractmethod
+    def args(self) -> str:
+        raise NotImplementedError()
+
+    @property
+    def inputs(self) -> List[Optional[Edge]]:
+        """
+        :returns: list of placeholders for input edges.
+        """
+        if 'inputs' not in self.__dict__:
+            self.__dict__['inputs'] = [None] * self.input_count
+        return self.__dict__['inputs']
+
+    @property
+    def outputs(self) -> List[Optional[Edge]]:
+        """
+        :returns: list of placeholders for output edges.
+        """
+        if 'outputs' not in self.__dict__:
+            self.__dict__['outputs'] = [None] * self.output_count
+        return self.__dict__['outputs']
+
+    @property
     def enabled(self) -> bool:
-        return self.__enabled
+        return self.__dict__.get('enabled', True)
 
     @enabled.setter
     def enabled(self, value: bool) -> None:
         if not value:
             assert self.input_count == 1
             assert self.output_count == 1
-        self.__enabled = value
-
-    @property
-    def args(self) -> str:
-        """
-        Generates filter params as a string
-        """
-        return ''
+        self.__dict__['enabled'] = value
 
     # noinspection PyMethodMayBeStatic
     def transform(self, *metadata: Meta) -> Meta:

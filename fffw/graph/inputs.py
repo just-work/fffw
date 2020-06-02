@@ -1,14 +1,15 @@
-from typing import Optional, List, Tuple, cast, Any
+from dataclasses import dataclass
+from typing import Optional, List, Tuple, cast, Iterable, Union, Any
 
 from fffw.graph import base
-from fffw.graph.meta import Meta
-from fffw.wrapper import BaseWrapper, ensure_binary
+from fffw.graph.meta import Meta, TS
+from fffw.wrapper import BaseWrapper, param
 
 __all__ = [
     'Input',
     'InputList',
     'Stream',
-    'Input',
+    'input_file',
 ]
 
 
@@ -33,21 +34,43 @@ class Stream(base.Source):
         return f'{self.source.index}:{self._kind.value}:{self.index}'
 
 
+def default_streams() -> Tuple[Stream, ...]:
+    """
+    Generates default streams definition for input file
+
+    :returns: a tuple with one video and one audio stream.
+    """
+    return Stream(base.VIDEO), Stream(base.AUDIO)
+
+
+@dataclass
 class Input(BaseWrapper):
+    # noinspection PyUnresolvedReferences
     """
     Input command line params generator for FFMPEG.
+
+    :arg fast_seek: seek input file over key frames
+    :arg input_file: input file name
+    :arg slow_seek: perform whole file decoding and output frames only
+        from offset to end of file.
+    :arg duration: stop decoding frames after an interval
     """
-    """ Filename or url, value for `-i` argument."""
-    streams = cast(Tuple[Stream, ...], base.Once("streams"))
-    """ List of audio and video streams for input file."""
     index = cast(int, base.Once("index"))
     """ Internal ffmpeg source file index."""
+    streams: Tuple[Stream, ...] = param(default=default_streams, skip=True)
+    """ List of audio and video streams for input file."""
 
-    def __init__(self, *streams: Stream, input_file: str = ''):
-        super().__init__()
-        self.streams = streams or (Stream(base.VIDEO), Stream(base.AUDIO))
-        self.input_file = input_file
+    fast_seek: Union[TS, float, int] = param(name='ss')
+    input_file: str = param(name='i')
+    slow_seek: Union[TS, float, int] = param(name='ss')
+    duration: Union[TS, float, int] = param(name='t')
+
+    def __post_init__(self) -> None:
+        """
+        Enumerate streams in input file and freeze instance.
+        """
         self.__link_streams_to_input()
+        super().__post_init__()
 
     def __link_streams_to_input(self) -> None:
         """
@@ -69,29 +92,28 @@ class Input(BaseWrapper):
                 raise ValueError(stream.kind)
             stream.source = self
 
-    @ensure_binary
-    def get_args(self) -> List[Any]:
-        return ["-i", self.input_file]
+
+def input_file(filename: str, *streams: Stream, **kwargs: Any) -> Input:
+    kwargs['input_file'] = filename
+    if streams:
+        kwargs['streams'] = streams
+    return Input(**kwargs)
 
 
-class InputList:
+class InputList(list):
     """ List of inputs in FFMPEG."""
 
-    def __init__(self, *sources: Input) -> None:
+    def __init__(self, sources: Iterable[Input] = ()) -> None:
         """
         :param sources: list of input files
         """
-        self.__inputs: List[Input] = []
-        self.extend(*sources)
-
-    @property
-    def inputs(self) -> Tuple[Input, ...]:
-        return tuple(self.__inputs)
+        super().__init__()
+        self.extend(sources)
 
     @property
     def streams(self) -> List[Stream]:
         result: List[Stream] = []
-        for source in self.__inputs:
+        for source in self:
             if source.streams is None:
                 raise RuntimeError("Source streams not initialized")
             result.extend(source.streams)
@@ -103,21 +125,21 @@ class InputList:
 
         :param source: input file
         """
-        source.index = len(self.__inputs)
-        self.__inputs.append(source)
+        source.index = len(self)
+        super().append(source)
 
-    def extend(self, *sources: Input) -> None:
+    def extend(self, sources: Iterable[Input]) -> None:
         """
         Adds multiple source files to input list.
 
         :param sources: list of input files
         """
-        for i, source in enumerate(sources, start=len(self.__inputs)):
+        for i, source in enumerate(sources, start=len(self)):
             source.index = i
-        self.__inputs.extend(sources)
+        super().extend(sources)
 
     def get_args(self) -> List[bytes]:
         result: List[bytes] = []
-        for source in self.__inputs:
+        for source in self:
             result.extend(source.get_args())
         return result

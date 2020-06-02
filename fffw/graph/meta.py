@@ -23,6 +23,11 @@ class TS(timedelta):
     """
 
     def __new__(cls, value: Union[int, float, str]) -> "TS":
+        """
+        :param value: integer duration in milliseconds, float duration in
+            seconds or string ffmpeg interval definition (123:59:59.999).
+        :returns new timestamp from value.
+        """
         if isinstance(value, int):
             value = value / 1000.0
         elif isinstance(value, str):
@@ -37,6 +42,17 @@ class TS(timedelta):
                 seconds += part
             value = seconds + fractional
         return super().__new__(cls, seconds=value)  # type: ignore
+
+    def __str__(self) -> str:
+        """
+        Removes non-valuable zeros from fractional part.
+
+        :returns: ffmpeg interval definition (123:59:59.999).
+        """
+        v = super().__str__()
+        if '.' in v:
+            v = v.rstrip('0')
+        return v
 
 
 @dataclass

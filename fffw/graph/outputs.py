@@ -1,31 +1,38 @@
-import os
+from dataclasses import dataclass
 from itertools import chain
-from typing import List, Tuple, cast, Optional, Any
+from typing import List, cast, Optional, Iterable, Any
 
 from fffw.graph import base
-from fffw.wrapper import BaseWrapper, ensure_binary
+from fffw.wrapper import BaseWrapper, ensure_binary, param
 
 __all__ = [
     'Codec',
     'Output',
-    'OutputList'
+    'OutputList',
+    'output_file',
 ]
 
 
+@dataclass
 class Codec(base.Dest, BaseWrapper):
+    # noinspection PyUnresolvedReferences
+    """
+    Base class for output codecs.
+
+    :arg codec: ffmpeg codec name.
+    :arg bitrate: output bitrate in bps.
+    """
+
     index = cast(int, base.Once('index'))
     """ Index of current codec in ffmpeg output streams."""
-    # TODO #9: implement single argument with stream type modifier
-    arguments = [
-        ('vbitrate', '-b:v '),
-        ('abitrate', '-b:a '),
-    ]
 
-    def __init__(self, kind: base.StreamType, codec: str = None,
-                 **kwargs: Any) -> None:
-        super().__init__(kind)
-        BaseWrapper.__init__(self, **kwargs)
-        self._codec = codec
+    codec: str = param(name='c', stream_suffix=True)
+    bitrate: int = param(default=0, name='b', stream_suffix=True)
+
+    def __post_init__(self) -> None:
+        if self.codec is None:
+            self.codec = self.__class__.codec
+        super().__post_init__()
 
     @property
     def map(self) -> Optional[str]:
@@ -50,22 +57,22 @@ class Codec(base.Dest, BaseWrapper):
 
     def get_args(self) -> List[bytes]:
         args = ['-map', self.map]
-        if self._codec:
-            args.extend([f'-c:{self.kind.value}', self._codec])
         return ensure_binary(args) + super().get_args()
 
 
+@dataclass
 class Output(BaseWrapper):
-    arguments = [
-        ('format', '-f '),
-    ]
+    # noinspection PyUnresolvedReferences
+    """
+    Base class for ffmpeg output.
 
-    def __init__(self, output_file: str, *codecs: Codec, **kwargs: Any) -> None:
-        ext = os.path.splitext(output_file)[-1].lstrip('.')
-        kwargs.setdefault('format', ext)
-        super().__init__(**kwargs)
-        self._output_file = output_file
-        self._codecs = list(codecs)
+    :arg codecs: list of codecs used in output.
+    :arg format: output file format.
+    :arg output_file: output file name.
+    """
+    codecs: List[Codec] = param(skip=True)
+    format: str = param(name="f")
+    output_file: str = param(name="")
 
     def __lt__(self, other: base.InputType) -> Codec:
         """
@@ -78,54 +85,77 @@ class Output(BaseWrapper):
         return codec
 
     @property
-    def codecs(self) -> Tuple[Codec, ...]:
-        return tuple(self._codecs)
-
-    @property
     def video(self) -> Codec:
+        """
+        :returns: first video codec not connected to source.
+
+        If no free codecs left, new one codec stub is appended to output.
+        """
         return self.get_free_codec(base.VIDEO)
 
     @property
     def audio(self) -> Codec:
+        """
+        :returns: first audio codec not connected to source.
+
+        If no free codecs left, new one codec stub is appended to output.
+        """
         return self.get_free_codec(base.AUDIO)
 
     def get_free_codec(self, kind: base.StreamType) -> Codec:
+        """
+        Finds first codec not connected to filter graph or to an input, or
+        creates a new unnamed codec stub if no free codecs left.
+
+        :param kind: desired codec stream type
+        :return: first free codec or a new codec stub.
+        """
         try:
-            codec = next(filter(lambda c: not c.connected, self._codecs))
+            codec = next(filter(lambda c: not c.connected, self.codecs))
         except StopIteration:
-            codec = Codec(kind)
-            self._codecs.append(codec)
+            codec = Codec()
+            codec.kind = kind
+            self.codecs.append(codec)
         return codec
 
     def get_args(self) -> List[bytes]:
+        """
+        :returns: codec args and output file parameters for ffmpeg
+        """
         args = (
-                list(chain(*(codec.get_args() for codec in self._codecs))) +
-                super().get_args() +
-                ensure_binary([self._output_file])
+                list(chain(*(codec.get_args() for codec in self.codecs))) +
+                super().get_args()
         )
         return args
 
 
-class OutputList:
+def output_file(filename: str, *codecs: Codec, **kwargs: Any) -> Output:
+    """
+    A shortcut to create proper output file.
+    :param filename: output file name.
+    :param codecs: codec list for this output.
+    :param kwargs: output parameters.
+    :return: configured ffmpeg output.
+    """
+    return Output(output_file=filename, codecs=list(codecs), **kwargs)
+
+
+class OutputList(list):
     """ Supports unique output streams names generation."""
 
-    def __init__(self, *outputs: Output) -> None:
+    def __init__(self, outputs: Iterable[Output] = ()) -> None:
         """
         :param outputs: list of output files
         """
-        self.__outputs: List[Output] = []
+        super().__init__()
         self.__video_index = 0
         self.__audio_index = 0
-        self.extend(*outputs)
-
-    @property
-    def outputs(self) -> Tuple[Output, ...]:
-        return tuple(self.__outputs)
+        self.extend(outputs)
 
     @property
     def codecs(self) -> List[Codec]:
         result: List[Codec] = []
-        for output in self.__outputs:
+        for output in self:
             result.extend(output.codecs)
         return result
 
@@ -137,9 +167,9 @@ class OutputList:
         """
         for codec in output.codecs:
             self.__set_index(codec)
-        self.__outputs.append(output)
+        super().append(output)
 
-    def extend(self, *outputs: Output) -> None:
+    def extend(self, outputs: Iterable[Output]) -> None:
         """
         Adds multiple output files to output list.
 
@@ -147,11 +177,11 @@ class OutputList:
         """
         for codec in chain(*map(lambda output: output.codecs, outputs)):
             self.__set_index(codec)
-        self.__outputs.extend(outputs)
+        super().extend(outputs)
 
     def get_args(self) -> List[bytes]:
-        result = []
-        for source in self.__outputs:
+        result: List[bytes] = []
+        for source in self:
             result.extend(source.get_args())
         return result
 

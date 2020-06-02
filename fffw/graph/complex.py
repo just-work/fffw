@@ -20,18 +20,6 @@ class FilterComplex:
         self.__input_list = input_list
         self.__output_list = output_list
 
-    @property
-    def video(self) -> base.Source:
-        """ Returns first free video stream."""
-        # TODO: #9 replace with __lt__ method
-        return self.get_free_source(base.VIDEO)
-
-    @property
-    def audio(self) -> base.Source:
-        """ Returns first free audio stream."""
-        # TODO: #9 replace with __lt__ method
-        return self.get_free_source(base.AUDIO)
-
     def get_free_source(self, kind: base.StreamType) -> base.Source:
         """
         :param kind: stream type
