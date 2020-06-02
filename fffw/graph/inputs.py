@@ -41,14 +41,14 @@ class Input(BaseWrapper):
     """
     index = cast(int, base.Once("index"))
     """ Internal ffmpeg source file index."""
+    streams: Tuple[Stream, ...] = param(
+        default=lambda: (Stream(base.VIDEO), Stream(base.AUDIO)), skip=True)
+    """ List of audio and video streams for input file."""
 
     fast_seek: Union[TS, float, int] = param(name='ss')
     input_file: str = param(name='i')
     slow_seek: Union[TS, float, int] = param(name='ss')
     duration: Union[TS, float, int] = param(name='t')
-    streams: Tuple[Stream, ...] = param(
-        default=lambda: (Stream(base.VIDEO), Stream(base.AUDIO)), skip=True)
-    """ List of audio and video streams for input file."""
 
     def __post_init__(self) -> None:
         super().__post_init__()
