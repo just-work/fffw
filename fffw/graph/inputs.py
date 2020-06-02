@@ -34,15 +34,30 @@ class Stream(base.Source):
         return f'{self.source.index}:{self._kind.value}:{self.index}'
 
 
+def default_streams() -> Tuple[Stream, ...]:
+    """
+    Generates default streams definition for input file
+
+    :returns: a tuple with one video and one audio stream.
+    """
+    return Stream(base.VIDEO), Stream(base.AUDIO)
+
+
 @dataclass
 class Input(BaseWrapper):
+    # noinspection PyUnresolvedReferences
     """
     Input command line params generator for FFMPEG.
+
+    :arg fast_seek: seek input file over key frames
+    :arg input_file: input file name
+    :arg slow_seek: perform whole file decoding and output frames only
+        from offset to end of file.
+    :arg duration: stop decoding frames after an interval
     """
     index = cast(int, base.Once("index"))
     """ Internal ffmpeg source file index."""
-    streams: Tuple[Stream, ...] = param(
-        default=lambda: (Stream(base.VIDEO), Stream(base.AUDIO)), skip=True)
+    streams: Tuple[Stream, ...] = param(default=default_streams, skip=True)
     """ List of audio and video streams for input file."""
 
     fast_seek: Union[TS, float, int] = param(name='ss')
