@@ -209,11 +209,6 @@ class Node(Traversable, abc.ABC):
     input_count: int = 1  # number of inputs
     output_count: int = 1  # number of outputs
 
-    def __init__(self) -> None:
-        self.enabled = True
-        self.inputs: List[Optional[Edge]] = [None] * self.input_count
-        self.outputs: List[Optional[Edge]] = [None] * self.output_count
-
     def __repr__(self) -> str:
         inputs = [f"[{str(i.name if i else '---')}]" for i in self.inputs]
         outputs = [f"[{str(i.name if i else '---')}]" for i in self.outputs]
@@ -244,8 +239,26 @@ class Node(Traversable, abc.ABC):
         raise NotImplementedError()
 
     @property
+    def inputs(self) -> List[Optional[Edge]]:
+        """
+        :returns: list of placeholders for input edges.
+        """
+        if 'inputs' not in self.__dict__:
+            self.__dict__['inputs'] = [None] * self.input_count
+        return self.__dict__['inputs']
+
+    @property
+    def outputs(self) -> List[Optional[Edge]]:
+        """
+        :returns: list of placeholders for output edges.
+        """
+        if 'outputs' not in self.__dict__:
+            self.__dict__['outputs'] = [None] * self.output_count
+        return self.__dict__['outputs']
+
+    @property
     def enabled(self) -> bool:
-        return self.__dict__['enabled']
+        return self.__dict__.get('enabled', True)
 
     @enabled.setter
     def enabled(self, value: bool) -> None:
