@@ -180,6 +180,10 @@ class SetPTS(AutoFilter):
             return replace(meta, start=TS(0), duration=duration)
         raise NotImplementedError()
 
+    @property
+    def args(self) -> str:
+        return self.expr
+
 
 @dataclass
 class Concat(Filter):
