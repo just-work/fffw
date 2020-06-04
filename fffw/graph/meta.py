@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import List, Union
+from typing import List, Union, Any
 
 from pymediainfo import MediaInfo  # type: ignore
 
@@ -53,6 +53,11 @@ class TS(timedelta):
         if '.' in v:
             v = v.rstrip('0')
         return v
+
+    def __add__(self, other: timedelta) -> "TS":
+        if not isinstance(other, timedelta):
+            return NotImplemented
+        return TS(self.total_seconds() + other.total_seconds())
 
 
 @dataclass
@@ -127,7 +132,7 @@ class AudioMeta(Meta):
             assert self.sampling_rate == 0
 
 
-def audio_meta_data(**kwargs: str) -> AudioMeta:
+def audio_meta_data(**kwargs: Any) -> AudioMeta:
     return AudioMeta(
         duration=TS(kwargs.get('duration', 0)),
         start=TS(kwargs.get('start', 0)),
@@ -138,7 +143,7 @@ def audio_meta_data(**kwargs: str) -> AudioMeta:
     )
 
 
-def video_meta_data(**kwargs: str) -> VideoMeta:
+def video_meta_data(**kwargs: Any) -> VideoMeta:
     duration = TS(kwargs.get('duration', 0))
     width = int(kwargs.get('width', 0))
     height = int(kwargs.get('height', 0))

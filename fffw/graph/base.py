@@ -80,7 +80,7 @@ class Dest(Traversable):
     def edge(self) -> Optional["Edge"]:
         return self._edge
 
-    def get_meta_data(self, dst: OutputType) -> Optional[Meta]:
+    def get_meta_data(self, dst: OutputType = None) -> Optional[Meta]:
         if self._edge is None:
             raise RuntimeError("Dest not connected")
         return self._edge.get_meta_data(self)

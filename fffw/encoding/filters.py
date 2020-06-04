@@ -1,16 +1,20 @@
-from dataclasses import dataclass
-from typing import Tuple, List, Optional
+from dataclasses import dataclass, replace
+from typing import Union
 
-from fffw.graph import base
+from fffw.graph import base, Meta, VideoMeta, TS
 from fffw.wrapper.params import Params, param
 
 __all__ = [
+    'AutoFilter',
+
     'AudioFilter',
     'VideoFilter',
-    'Scale',
-    'Split',
     'Concat',
     'Overlay',
+    'Scale',
+    'SetPTS',
+    'Split',
+    'Trim',
 ]
 
 
@@ -64,6 +68,21 @@ class AudioFilter(Filter):
 
 
 @dataclass
+class AutoFilter(Filter):
+    """
+    Base class for stream kind autodetect.
+    """
+
+    kind: base.StreamType
+
+    def __post_init__(self) -> None:
+        """ Adds audio prefix to filter name for audio filters."""
+        if self.kind == base.AUDIO:
+            self.filter = f'a{self.filter}'
+        super().__post_init__()
+
+
+@dataclass
 class Scale(VideoFilter):
     """ Video scaling filter."""
     filter = "scale"
@@ -71,12 +90,16 @@ class Scale(VideoFilter):
     width: int = param(name='w')
     height: int = param(name='h')
 
-    def as_pairs(self) -> List[Tuple[Optional[str], Optional[str]]]:
-        return super().as_pairs()
+    def transform(self, *metadata: Meta) -> Meta:
+        meta = metadata[0]
+        if not isinstance(meta, VideoMeta):
+            raise TypeError(meta)
+        par = meta.dar / (self.width / self.height)
+        return replace(meta, width=self.width, height=self.height, par=par)
 
 
 @dataclass
-class Split(Filter):
+class Split(AutoFilter):
     # noinspection PyUnresolvedReferences
     """
     Audio or video split filter.
@@ -85,18 +108,18 @@ class Split(Filter):
     Unlike ffmpeg `split` filter this one does not allow to pass multiple
     inputs.
 
+    :arg kind: stream type.
     :arg output_count: number of output streams.
     """
-    kind: base.StreamType
+    filter = 'split'
+
     output_count: int = 2
 
     def __post_init__(self) -> None:
         """
-        Sets filter name from stream kind and disables filter if `output_count`
-        is set to 1 (no real split is preformed).
+        Disables filter if `output_count` equals 1 (no real split is preformed).
         """
         self.enabled = self.output_count > 1
-        self.filter = 'split' if self.kind == base.VIDEO else 'asplit'
         super().__post_init__()
 
     @property
@@ -107,6 +130,59 @@ class Split(Filter):
         if self.output_count == 2:
             return ''
         return str(self.output_count)
+
+
+@dataclass
+class Trim(AutoFilter):
+    # noinspection PyUnresolvedReferences
+    """
+    Cut the input so that the output contains one continuous subpart
+    of the input.
+
+    :arg kind: stream kind (for proper concatenated streams definitions).
+    :arg start: start time of trimmed output
+    :arg end: end time of trimmed output
+    """
+    filter = 'trim'
+
+    start: Union[int, float, str, TS]
+    end: Union[int, float, str, TS]
+
+    def transform(self, *metadata: Meta) -> Meta:
+        meta = metadata[0]
+        start = self.start if isinstance(self.start, TS) else TS(self.start)
+        end = self.end if isinstance(self.end, TS) else TS(self.end)
+        return replace(meta, start=start, duration=end)
+
+
+@dataclass
+class SetPTS(AutoFilter):
+    """
+    Change the PTS (presentation timestamp) of the input frames.
+
+    $  ffmpeg -y -i source.mp4 \
+    -vf trim=start=3:end=4,setpts=PTS-STARTPTS -an test.mp4
+
+    Supported cases for metadata handling:
+
+    * "PTS-STARTPTS" - resets stream start to zero.
+    """
+    RESET_PTS = 'PTS-STARTPTS'
+    filter = 'setpts'
+
+    expr: str = param(default=RESET_PTS)
+
+    def transform(self, *metadata: Meta) -> Meta:
+        meta = metadata[0]
+        expr = self.expr.replace(' ', '')
+        if expr == self.RESET_PTS:
+            duration = meta.duration - meta.start
+            return replace(meta, start=TS(0), duration=duration)
+        raise NotImplementedError()
+
+    @property
+    def args(self) -> str:
+        return self.expr
 
 
 @dataclass
@@ -138,6 +214,12 @@ class Concat(Filter):
                 return ''
             return 'n=%s' % self.input_count
         return 'v=0:a=1:n=%s' % self.input_count
+
+    def transform(self, *metadata: Meta) -> Meta:
+        duration = TS(0)
+        for meta in metadata:
+            duration += meta.duration
+        return replace(metadata[0], duration=duration)
 
 
 @dataclass
