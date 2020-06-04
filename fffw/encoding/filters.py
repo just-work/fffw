@@ -212,7 +212,9 @@ class Concat(Filter):
         return 'v=0:a=1:n=%s' % self.input_count
 
     def transform(self, *metadata: Meta) -> Meta:
-        duration = sum([m.duration for m in metadata], start=TS(0))
+        duration = TS(0)
+        for meta in metadata:
+            duration += meta.duration
         return replace(metadata[0], duration=duration)
 
 

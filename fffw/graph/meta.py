@@ -54,6 +54,11 @@ class TS(timedelta):
             v = v.rstrip('0')
         return v
 
+    def __add__(self, other: timedelta) -> "TS":
+        if not isinstance(other, timedelta):
+            return NotImplemented
+        return TS(self.total_seconds() + other.total_seconds())
+
 
 @dataclass
 class Meta:
