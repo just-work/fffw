@@ -76,24 +76,6 @@ class VectorTestCase(TestCase):
             'output2.mp5'])
         self.assertEqual(expected, self.vector.ffmpeg.get_args())
 
-    def test_same_filter_with_another_mask(self):
-        cursor = self.vector.audio.connect(Volume(30), mask=[True, False])
-        cursor.finalize()
-        expected = ensure_binary([
-            'ffmpeg',
-            '-i',
-            'input.mp4',
-            '-filter_complex',
-            '[0:a]asplit[a:asplit0][aout0];'
-            '[a:asplit0]volume=30.00[aout1]',
-            '-map', '0:v', '-c:v', 'libx264',
-            '-map', '[aout1]', '-c:a', 'aac',
-            'output1.mp4',
-            '-map', '0:v', '-c:v', 'libx265',
-            '-map', '[aout0]', '-c:a', 'libfdk_aac',
-            'output2.mp5'])
-        self.assertEqual(expected, self.vector.ffmpeg.get_args())
-
     def test_multiple_disabled_filters(self):
         cursor = self.vector.audio.connect(Volume(30), mask=[False, False])
         cursor.finalize()
@@ -103,6 +85,43 @@ class VectorTestCase(TestCase):
             'input.mp4',
             '-filter_complex',
             '[0:a]asplit[aout0][aout1]',
+            '-map', '0:v', '-c:v', 'libx264',
+            '-map', '[aout0]', '-c:a', 'aac',
+            'output1.mp4',
+            '-map', '0:v', '-c:v', 'libx265',
+            '-map', '[aout1]', '-c:a', 'libfdk_aac',
+            'output2.mp5'])
+        self.assertEqual(expected, self.vector.ffmpeg.get_args())
+
+    def test_apply_filter_with_params_vector(self):
+        cursor = self.vector.audio.connect(Volume, params=[20, 30])
+        cursor.finalize()
+        expected = ensure_binary([
+            'ffmpeg',
+            '-i',
+            'input.mp4',
+            '-filter_complex',
+            '[0:a]asplit[a:asplit0][a:asplit1];'
+            '[a:asplit0]volume=20.00[aout0];'
+            '[a:asplit1]volume=30.00[aout1]',
+            '-map', '0:v', '-c:v', 'libx264',
+            '-map', '[aout0]', '-c:a', 'aac',
+            'output1.mp4',
+            '-map', '0:v', '-c:v', 'libx265',
+            '-map', '[aout1]', '-c:a', 'libfdk_aac',
+            'output2.mp5'])
+        self.assertEqual(expected, self.vector.ffmpeg.get_args())
+
+    def test_apply_filter_with_equal_params(self):
+        cursor = self.vector.audio.connect(Volume, params=[30, 30])
+        cursor.finalize()
+        expected = ensure_binary([
+            'ffmpeg',
+            '-i',
+            'input.mp4',
+            '-filter_complex',
+            '[0:a]volume=30.00[a:volume0];'
+            '[a:volume0]asplit[aout0][aout1]',
             '-map', '0:v', '-c:v', 'libx264',
             '-map', '[aout0]', '-c:a', 'aac',
             'output1.mp4',

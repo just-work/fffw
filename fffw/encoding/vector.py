@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import List, Union, Type, Optional, Dict, Any, Tuple, cast, Callable
+from typing import List, Union, Type, Optional, Dict, Any, cast, Callable
 
 from fffw.encoding import ffmpeg, codecs, filters
 from fffw.graph import inputs, outputs, meta, base, InputList, OutputList
@@ -141,9 +141,12 @@ class Cursor:
     def connect(self,
                 other: Union[filters.Filter, Type[filters.Filter]],
                 mask: Optional[List[bool]] = None,
-                params: Optional[List[Union[List[Any],
-                                            Tuple[Any],
-                                            Dict[str, Any]]]] = None,
+                params: Union[
+                    None,
+                    List[Dict[str, Any]],
+                    List[List[Any]],
+                    List[Any],
+                ] = None,
                 ) -> "Cursor":
         # noinspection PyUnresolvedReferences
         """
@@ -171,11 +174,19 @@ class Cursor:
                 raise ValueError("params vector doesn't match streams vector")
             vector = []
             factory = cast(Callable[..., filters.Filter], other)
+            seen_filters = dict()
             for param in params:
-                if isinstance(param, dict):
-                    vector.append(factory(**param))
-                else:
-                    vector.append(factory(*param))
+                try:
+                    f = seen_filters[repr(param)]
+                except KeyError:
+                    if isinstance(param, dict):
+                        f = factory(**param)
+                    elif isinstance(param, list):
+                        f = factory(*param)
+                    else:
+                        f = factory(param)
+                    seen_filters[repr(param)] = f
+                vector.append(f)
 
         if mask is None:
             mask = [True] * len(self.streams)
