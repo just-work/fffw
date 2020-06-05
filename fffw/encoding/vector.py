@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import List, Union, Type, Optional, Dict, Any, Tuple, cast, Callable
 
 from fffw.encoding import ffmpeg, codecs, filters
@@ -72,10 +73,25 @@ class Vector:
 
         return self.init_wrapper(self.__inputs, self.__outputs)
 
+    @property
+    def video(self) -> "Cursor":
+        return Cursor(self, *self.get_streams(base.VIDEO))
+
+    @property
+    def audio(self) -> "Cursor":
+        return Cursor(self, *self.get_streams(base.AUDIO))
+
+    def get_streams(self, kind: base.StreamType) -> List[inputs.Stream]:
+        for stream in self.__source.streams:
+            if stream.kind == kind:
+                return [stream] * len(self.__outputs)
+        raise KeyError(kind)
+
     def get_codecs(self, kind: base.StreamType) -> List[outputs.Codec]:
         result = []
         for output in self.__outputs:
-            result.append(output.get_free_codec(kind))
+            result.append(next(filter(lambda c: c.kind == kind,
+                                      output.codecs)))
         return result
 
 
@@ -90,6 +106,33 @@ class Cursor:
         if not isinstance(other, filters.Filter):
             return NotImplemented
         return self.connect(other)
+
+    def __apply(self, vector: Union[List[filters.Filter], List[outputs.Codec]],
+                mask: List[bool] = None) -> "Cursor":
+        """ Applies each filter in list to it's corresponding stream.
+
+        :param vector: list of filters or list of codecs
+        :param mask: flag for skipping a filter in list
+        :returns: new streams vector.
+        """
+        if mask and not all(mask):
+            raise NotImplementedError()
+        sources = dict()
+        destinations = dict()
+        src_to_dst = defaultdict(set)
+        for src, dst in zip(self.streams, vector):
+            sources[id(src)] = src
+            destinations[id(dst)] = dst
+            # Splitting single source to connect to multiple outputs
+            src_to_dst[id(src)].add(id(dst))
+        for src_id, dst_ids in src_to_dst.items():
+            src = sources[src_id]
+            split = filters.Split(self.kind, output_count=len(dst_ids))
+            src.connect_dest(split)
+            for dst_id in dst_ids:
+                dst = destinations[dst_id]
+                split.connect_dest(dst)
+        return Cursor(self.vector, *vector)
 
     def connect(self,
                 other: Union[filters.Filter, Type[filters.Filter]],
@@ -134,25 +177,8 @@ class Cursor:
         if len(mask) != len(self.streams):
             raise ValueError("mask vector doesn't match streams vector")
 
-        return self.__apply_filters(vector, mask)
-
-    def __apply_filters(self, vector: List[filters.Filter],
-                        mask: List[bool]) -> "Cursor":
-        """ Applies each filter in list to it's corresponding stream.
-
-        :param vector: list of filters
-        :param mask: flag for skipping a filter in list
-        :returns: new streams vector.
-        """
-        if not all(mask):
-            raise NotImplementedError()
-        streams = []
-        for src, dst in zip(self.streams, vector):
-            streams.append(cast(filters.Filter, src.connect_dest(dst)))
-        return Cursor(self.vector, *streams)
+        return self.__apply(vector, mask)
 
     def finalize(self) -> None:
         """ Connect streams to codecs."""
-        dst = self.vector.get_codecs(self.kind)
-        for stream, codec in zip(self.streams, dst):
-            stream > codec
+        self.__apply(self.vector.get_codecs(self.kind))

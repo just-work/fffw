@@ -4,6 +4,7 @@ from fffw.encoding import *
 from fffw.encoding.vector import Vector
 from fffw.graph import *
 from fffw.wrapper import ensure_binary
+from tests.test_ffmpeg import Volume
 
 
 class VectorTestCase(TestCase):
@@ -35,4 +36,22 @@ class VectorTestCase(TestCase):
             'output2.mp5'
 
         ])
+        self.assertEqual(expected, self.vector.ffmpeg.get_args())
+
+    def test_same_filter_for_all_streams(self):
+        cursor = self.vector.audio.connect(Volume(30))
+        cursor.finalize()
+        expected = ensure_binary([
+            'ffmpeg',
+            '-i',
+            'input.mp4',
+            '-filter_complex',
+            '[0:a]volume=30.00[a:volume0];'
+            '[a:volume0]asplit[aout0][aout1]',
+            '-map', '0:v', '-c:v', 'libx264',
+            '-map', '[aout0]', '-c:a', 'aac',
+            'output1.mp4',
+            '-map', '0:v', '-c:v', 'libx265',
+            '-map', '[aout1]', '-c:a', 'libfdk_aac',
+            'output2.mp5'])
         self.assertEqual(expected, self.vector.ffmpeg.get_args())
