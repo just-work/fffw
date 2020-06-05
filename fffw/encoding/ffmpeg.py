@@ -39,8 +39,8 @@ class FFMPEG(BaseWrapper):
     """
     command = 'ffmpeg'
     stderr_markers = ['[error]', '[fatal]']
-    input: Union[str, Input] = param(skip=True)
-    output: Union[str, Output] = param(skip=True)
+    input: Union[str, Input, InputList] = param(skip=True)
+    output: Union[str, Output, OutputList] = param(skip=True)
 
     loglevel: LogLevel = param()
     overwrite: bool = param(name='y')
@@ -53,14 +53,18 @@ class FFMPEG(BaseWrapper):
 
         self.__inputs = InputList()
         if self.input:
-            if not isinstance(self.input, Input):
+            if isinstance(self.input, InputList):
+                self.__inputs = self.input
+            elif not isinstance(self.input, Input):
                 self.__inputs.append(Input(input_file=self.input))
             else:
                 self.__inputs.append(self.input)
 
         self.__outputs = OutputList()
         if self.output:
-            if not isinstance(self.output, Output):
+            if isinstance(self.output, OutputList):
+                self.__outputs = self.output
+            elif not isinstance(self.output, Output):
                 self.__outputs.append(Output(output_file=self.output))
             else:
                 self.__outputs.append(self.output)
