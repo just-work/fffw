@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, List, Tuple, cast, Iterable, Union, Any
 
+from fffw.encoding import filters
 from fffw.graph import base
 from fffw.graph.meta import Meta, TS
 from fffw.wrapper import BaseWrapper, param
@@ -32,6 +33,19 @@ class Stream(base.Source):
         if self.index == 0:
             return f'{self.source.index}:{self._kind.value}'
         return f'{self.source.index}:{self._kind.value}:{self.index}'
+
+    def split(self, count: int = 1) -> List[filters.Filter]:
+        """
+        Splits input stream to reuse it as input node for multiple output nodes.
+
+        >>> stream = Stream(base.VIDEO)
+        >>> s1, s2 = stream.split(2)
+        >>> s1 | filters.Scale(1280, 720)
+        >>> s2 | filters.Scale(640, 360)
+        """
+        split = filters.Split(self.kind, output_count=count)
+        self.connect_dest(split)
+        return [split] * count
 
 
 def default_streams() -> Tuple[Stream, ...]:

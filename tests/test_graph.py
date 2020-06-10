@@ -2,6 +2,9 @@ from dataclasses import dataclass
 from typing import cast
 from unittest import TestCase
 
+from fffw.encoding import Input, InputList, Stream, input_file, output_file, \
+    OutputList
+from fffw.encoding.complex import FilterComplex
 from fffw.encoding.filters import *
 from fffw.graph import *
 from fffw.graph import VIDEO

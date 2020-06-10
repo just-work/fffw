@@ -1,7 +1,8 @@
-from dataclasses import dataclass, replace
-from typing import Union
+from dataclasses import dataclass, replace, asdict
+from typing import Union, List
 
-from fffw.graph import base, Meta, VideoMeta, TS
+from fffw.graph import base
+from fffw.graph.meta import Meta, VideoMeta, TS
 from fffw.wrapper.params import Params, param
 
 __all__ = [
@@ -37,6 +38,54 @@ class Filter(base.Node, Params):
             if key and value:
                 result.append(f'{key}={value}')
         return ':'.join(result)
+
+    def split(self, count: int = 1) -> List["Filter"]:
+        """
+        Adds a split filter to "fork" current node and reuse it as input node
+        for multiple destinations.
+
+        >>> d = VideoFilter("deint")
+        >>> d1, d2 = d.split(count=2)
+        >>> d1 | Scale(1280, 720)
+        >>> d2 | Scale(480, 360)
+
+        :returns: a list with `count` copies of Split() filter. These are
+        multiple references for the same object, so each element is intended
+        to be reused only once.
+        """
+        split = Split(self.kind, output_count=count)
+        self.connect_dest(split)
+        return [split] * count
+
+    def clone(self, count: int = 1) -> List["Filter"]:
+        """
+        Creates multiple copies of self to reuse it as output node for multiple
+        sources.
+
+        Any connected input node is being split and connected to a corresponding
+        copy of current filter.
+        """
+        result = []
+        for _ in range(count):
+            result.append(self._clone())
+
+        for i, edge in enumerate(self.inputs):
+            if edge is None:
+                continue
+            split = edge.input | Split(self.kind, output_count=count)
+            for dst in result:
+                split | dst
+
+        return result
+
+    def _clone(self) -> "Filter":
+        """
+        Creates a copy of current filter with same parameters.
+
+        Inputs and outputs are not copied.
+        """
+        kwargs = asdict(self)
+        return type(self)(**kwargs)
 
 
 class VideoFilter(Filter):

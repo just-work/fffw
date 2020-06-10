@@ -390,6 +390,9 @@ class Node(Traversable, abc.ABC):
         return other
 
 
+N = TypeVar('N', bound=Node)
+
+
 class Source(Traversable, metaclass=abc.ABCMeta):
     """ Graph node containing audio or video input.
 
@@ -409,7 +412,7 @@ class Source(Traversable, metaclass=abc.ABCMeta):
     def __repr__(self) -> str:
         return f"Source('[{self.name}]')"
 
-    def __or__(self, other: Node) -> Node:
+    def __or__(self, other: N) -> N:
         """
         Connect a filter to a source
         :return: connected filter

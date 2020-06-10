@@ -1,6 +1,7 @@
 import collections
 
-from fffw.graph import base, inputs, outputs
+from fffw.graph import base
+from fffw.encoding import inputs, outputs
 
 __all__ = [
     'FilterComplex'

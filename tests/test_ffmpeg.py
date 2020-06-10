@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from unittest import TestCase, expectedFailure
 
 from fffw.graph import *
-from fffw.encoding import filters, codecs, ffmpeg
+from fffw.encoding import filters, codecs, ffmpeg, Input, Stream, input_file, \
+    output_file
 from fffw.wrapper import ensure_binary, param
 
 
