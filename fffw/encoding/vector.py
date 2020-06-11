@@ -194,10 +194,13 @@ class SIMD:
         self.__finalized = False
         self.__ffmpeg = ffmpeg.FFMPEG(input=source)
 
-    def __lt__(self, other: Vector) -> None:
-        if not isinstance(other, Vector):
+    def __lt__(self, other: Union[Vector, inputs.Input]) -> None:
+        if isinstance(other, Vector):
+            other.connect(self.get_codecs(other.kind))
+        elif isinstance(other, inputs.Input):
+            self.add_input(other)
+        else:
             return NotImplemented
-        other.connect(self.get_codecs(other.kind))
 
     def __or__(self, other: filters.Filter) -> Vector:
         if not isinstance(other, filters.Filter):
@@ -248,6 +251,10 @@ class SIMD:
         for output in self.__results:
             result.append(output.get_free_codec(kind, create=False))
         return Vector(result)
+
+    def add_input(self, source: inputs.Input) -> None:
+        self.validate_input_file(source)
+        self.__ffmpeg.add_input(source)
 
 
 class Cursor:

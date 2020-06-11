@@ -217,3 +217,33 @@ class VectorTestCase(TestCase):
             '-map', '[vout1]', '-c:v', 'libx265',
             '-map', '0:a', '-c:a', 'libfdk_aac',
             'output2.mp5')
+
+    def test_clone_streams(self):
+        """
+        If necessary, streams may be also split.
+        """
+        logo = input_file('logo.png', Stream(VIDEO, video_meta_data()))
+        self.simd < logo
+        overlay = logo.streams[0] | Overlay(0, 0)
+
+        v = self.simd.video.connect(Scale, params=[(1280, 720), (640, 360)])
+        v.connect(overlay) > self.simd
+
+        self.assert_simd_args(
+            'ffmpeg',
+            '-i', 'input.mp4',
+            '-i', 'logo.png',
+            '-filter_complex',
+            '[0:v]split[v:split0][v:split1];'
+            '[1:v]split[v:split2][v:split3];'
+            '[v:split0]scale=w=1280:h=720[v:scale0];'
+            '[v:split1]scale=w=640:h=360[v:scale1];'
+            '[v:split2][v:scale0]overlay[vout0];'
+            '[v:split3][v:scale1]overlay[vout1]',
+            '-map', '[vout0]', '-c:v', 'libx264',
+            '-map', '0:a', '-c:a', 'aac',
+            'output1.mp4',
+            '-map', '[vout1]', '-c:v', 'libx265',
+            '-map', '0:a', '-c:a', 'libfdk_aac',
+            'output2.mp5'
+        )
