@@ -42,13 +42,13 @@ class VectorTestCase(TestCase):
                                    AudioCodec('libfdk_aac'))
         self.simd = SIMD(self.source, self.output1, self.output2)
 
-    def assert_simd_args(self, *expected: str):
-        expected = list(expected)
+    def assert_simd_args(self, *arguments: str):
+        expected = list(arguments)
         args = ensure_text(self.simd.ffmpeg.get_args())
         try:
             idx = expected.index('-filter_complex')
             expected_fc = expected[idx + 1].split(';')
-            expected[idx:idx + 2] = []
+            expected[idx: idx + 2] = []
         except ValueError:
             expected_fc = []
         try:

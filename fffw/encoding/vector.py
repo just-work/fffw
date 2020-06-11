@@ -1,8 +1,7 @@
-from collections import defaultdict
 from typing import List, Union, Type, Optional, Dict, Any, cast, Callable, \
     Iterable, overload, Set, Tuple
 
-from fffw.encoding import ffmpeg, filters, inputs, outputs
+from fffw.encoding import ffmpeg, filters, inputs, outputs, FFMPEG
 from fffw.graph import base
 
 Group = Dict[int, Set[int]]
@@ -251,7 +250,7 @@ class SIMD:
         self.__source = source
         self.__results = results
         self.__finalized = False
-        self.__ffmpeg = ffmpeg.FFMPEG(input=source)
+        self.__ffmpeg = FFMPEG(input=source)
 
     def __lt__(self, other: Union[Vector, inputs.Input]) -> None:
         if isinstance(other, Vector):
@@ -280,7 +279,7 @@ class SIMD:
             raise ValueError("codecs must be set for output file")
 
     @property
-    def ffmpeg(self) -> ffmpeg.FFMPEG:
+    def ffmpeg(self) -> FFMPEG:
         if not self.__finalized:
             self.__finalized = True
             for output in self.__results:
@@ -314,108 +313,3 @@ class SIMD:
     def add_input(self, source: inputs.Input) -> None:
         self.validate_input_file(source)
         self.__ffmpeg.add_input(source)
-
-
-class Cursor:
-    def __init__(self, vector: Vector,
-                 *streams: Union[inputs.Stream, filters.Filter]) -> None:
-        self.vector = vector
-        self.streams = streams
-        self.kind = streams[0].kind
-
-    def __or__(self, other: filters.Filter) -> "Cursor":
-        if not isinstance(other, filters.Filter):
-            return NotImplemented
-        return self.connect(other)
-
-    def __apply(self, vector: Union[List[Optional[filters.Filter]],
-                                    List[outputs.Codec]]) -> "Cursor":
-        """ Applies each filter in list to it's corresponding stream.
-
-        :param vector: list of filters or list of codecs
-        :returns: new streams vector.
-        """
-        sources = dict()
-        destinations = dict()
-        indices = defaultdict(list)
-        src_to_dst = defaultdict(set)
-        for src, dst, i in zip(self.streams, vector, range(len(vector))):
-            sources[id(src)] = src
-            destinations[id(dst)] = dst
-            # Splitting single source to connect to multiple outputs
-            src_to_dst[id(src)].add(id(dst))
-            indices[id(src), id(dst)].append(i)
-
-        for src_id, dst_ids in src_to_dst.items():
-            src = sources[src_id]
-            split = filters.Split(self.kind, output_count=len(dst_ids))
-            src.connect_dest(split)
-            for dst_id in dst_ids:
-                dst = destinations[dst_id]
-                if dst is not None:
-                    split.connect_dest(dst)
-                else:
-                    for idx in indices[id(src), id(dst)]:
-                        vector[idx] = split
-        return Cursor(self.vector, *vector)
-
-    def connect(self,
-                other: Union[filters.Filter, Type[filters.Filter]],
-                mask: Optional[List[bool]] = None,
-                params: Union[
-                    None,
-                    List[Dict[str, Any]],
-                    List[List[Any]],
-                    List[Any],
-                ] = None,
-                ) -> "Cursor":
-        # noinspection PyUnresolvedReferences
-        """
-        Applies a filter to a stream vector.
-
-        :param other: filter instance or class
-        :param mask: stream mask (whether to apply filter or not)
-        :param params: filter params if they differs between streams
-        :return: new streams vector.
-
-        >>> cursor.connect(Volume, params=[10, 20, 30])
-        >>> cursor.connect(Scale(640, 360))
-        >>> cursor.connect(overlay, mask=[True, False, True])
-
-        """
-        vector: List[Optional[filters.Filter]]
-        if isinstance(other, filters.Filter):
-            if params is not None:
-                raise ValueError("params already passed to filter instance")
-            vector = [other] * len(self.streams)
-        else:
-            if params is None:
-                raise ValueError("params must be passed with filter class")
-            if len(params) != len(self.streams):
-                raise ValueError("params vector doesn't match streams vector")
-            vector = []
-            factory = cast(Callable[..., filters.Filter], other)
-            seen_filters = dict()
-            for param in params:
-                try:
-                    f = seen_filters[repr(param)]
-                except KeyError:
-                    if isinstance(param, dict):
-                        f = factory(**param)
-                    elif isinstance(param, list):
-                        f = factory(*param)
-                    else:
-                        f = factory(param)
-                    seen_filters[repr(param)] = f
-                vector.append(f)
-
-        if mask is None:
-            mask = [True] * len(self.streams)
-
-        if len(mask) != len(self.streams):
-            raise ValueError("mask vector doesn't match streams vector")
-        else:
-            for i, enabled in enumerate(mask):
-                if not enabled:
-                    vector[i] = None
-        return self.__apply(vector)
