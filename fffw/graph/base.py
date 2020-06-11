@@ -116,8 +116,8 @@ class Edge(Traversable):
         :param output: output node
         """
         super().__init__()
-        self.__input: InputType = input
-        self.__output: OutputType = output
+        self.__input = input
+        self.__output = output
 
     def __repr__(self) -> str:
         return f'Edge#{self.name}[{self.input}, {self.output}]'
@@ -200,6 +200,9 @@ class Edge(Traversable):
         return self.__output.render(partial=partial)
 
     def reconnect(self, dest: OutputType) -> None:
+        """
+        Allows to detach an edge from one output and connect to another one.
+        """
         if isinstance(self.__output, Node):
             inputs = self.__output.inputs
             inputs[inputs.index(self)] = None
@@ -397,9 +400,6 @@ class Node(Traversable, abc.ABC):
         return other
 
 
-N = TypeVar('N', bound=Node)
-
-
 class Source(Traversable, metaclass=abc.ABCMeta):
     """ Graph node containing audio or video input.
 
@@ -419,14 +419,14 @@ class Source(Traversable, metaclass=abc.ABCMeta):
     def __repr__(self) -> str:
         return f"Source('[{self.name}]')"
 
-    def __or__(self, other: N) -> N:
+    def __or__(self, other: Node) -> Node:
         """
         Connect a filter to a source
         :return: connected filter
         """
         if not isinstance(other, Node):
             return NotImplemented
-        return cast(N, self.connect_dest(other))
+        return self.connect_dest(other)
 
     def __gt__(self, other: Dest) -> Dest:
         """

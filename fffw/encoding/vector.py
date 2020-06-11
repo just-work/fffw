@@ -235,6 +235,7 @@ class Vector(tuple):
         if isinstance(source, filters.Filter):
             iterable = [source]
         elif isinstance(source, inputs.Stream):
+            # This branch is separated from previous for mypy.
             iterable = [source]
         else:
             iterable = source
@@ -361,6 +362,13 @@ class Vector(tuple):
                                            destinations, dst_clones)
 
 
+class FFMPEGFactory:
+    """ MyPy-respected FFMPEG factory definition."""
+
+    def __call__(self, **kwargs: Any) -> FFMPEG:
+        return FFMPEG(**kwargs)
+
+
 class SIMD:
     """
     Single Instruction Multiple Data helper for video file processing.
@@ -368,19 +376,23 @@ class SIMD:
     Handles Vector initialization from source streams and output codecs
     connections.
     """
+    ffmpeg_wrapper = FFMPEGFactory()
 
-    def __init__(self, source: inputs.Input, *results: outputs.Output) -> None:
+    def __init__(self, source: inputs.Input, *results: outputs.Output,
+                 **kwargs: Any) -> None:
         """
         :param source: input file for ffmpeg.
         :param results: list of ffmpeg output files.
+        :param kwargs: ffmpeg command line arguments.
         """
         self.validate_input_file(source)
         for output in results:
             self.validate_output_file(output)
         self.__source = source
+        self.__extra: List[inputs.Input] = []
         self.__results = results
-        self.__finalized = False
-        self.__ffmpeg = FFMPEG(input=source)
+        self.__ffmpeg: Optional[FFMPEG] = None
+        self.__kwargs = kwargs
 
     def __lt__(self, other: Union[Vector, inputs.Input]) -> None:
         """
@@ -430,14 +442,28 @@ class SIMD:
 
     @property
     def ffmpeg(self) -> FFMPEG:
-        if not self.__finalized:
-            self.__finalized = True
+        """
+        Initializes ffmpeg wrapper with input/output files and command line
+        arguments.
+
+        Note that ffmpeg instance can't be instantiated twice, because existing
+        output files could be connected to input streams only once.
+
+        :returns: cached FFMPEG instance.
+        """
+        if self.__ffmpeg is None:
+            self.__ffmpeg = self.ffmpeg_wrapper(input=self.__source, **self.__kwargs)
+
+            for source in self.__extra:
+                self.__ffmpeg.add_input(source)
+
             for output in self.__results:
                 for codec in output.codecs:
                     if codec.connected:
                         continue
                     self.get_stream(codec.kind).connect_dest(codec)
                 self.__ffmpeg.add_output(output)
+
         return self.__ffmpeg
 
     @property
@@ -481,4 +507,4 @@ class SIMD:
         :param source: additional input file
         """
         self.validate_input_file(source)
-        self.__ffmpeg.add_input(source)
+        self.__extra.append(source)
