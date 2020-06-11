@@ -5,19 +5,106 @@ from typing import List, Union, Type, Optional, Dict, Any, cast, Callable, \
 from fffw.encoding import ffmpeg, filters, inputs, outputs
 from fffw.graph import base
 
+Group = Dict[int, Set[int]]
 
 Incoming = Union[inputs.Stream, filters.Filter]
 Outgoing = Union[filters.Filter, outputs.Codec]
+
+
+def group(first: Iterable[Any], second: Iterable[Any]
+          ) -> Group:
+    """
+    Group second iterable by first.
+    """
+    src_to_dst: Group = dict()
+    for src, dst in zip(first, second):
+        if src is None:
+            continue
+        dst_set = src_to_dst.setdefault(id(src), set())
+        dst_set.add(id(dst))
+    return src_to_dst
+
+
+def prepare_src_splits(sources: Dict[int, Incoming],
+                       groups: Group
+                       ) -> Dict[Tuple[int, int], filters.Filter]:
+    """ Initialize split filter for each unique group.
+
+    :returns: split for each src/dst pair.
+    """
+    src_splits: Dict[Tuple[int, int], filters.Filter] = dict()
+    for src_id, dst_set in groups.items():
+        src = sources[src_id]
+        # Split incoming stream for each destination that will be connected
+        # to it.
+        for dst_id, s in zip(dst_set, src.split(len(dst_set))):
+            src_splits[src_id, dst_id] = s
+    return src_splits
+
+
+def prepare_dst_clones(destinations: Dict[int, Outgoing],
+                       groups: Group) -> Dict[Tuple[int, int], Outgoing]:
+    """ Prepares copies of filter for each unique group.
+
+    :returns: destination filter copy for each src/dst pair.
+    """
+    dst_clones: Dict[Tuple[int, int], Outgoing] = dict()
+    for dst_id, src_set in groups.items():
+        dst = destinations[dst_id]
+        # Clone destination filter for each source that will be connected
+        # to it.
+        clones = cast(List[Outgoing], dst.clone(len(src_set)))
+        for src_id, c in zip(src_set, clones):
+            dst_clones[dst_id, src_id] = c
+    return dst_clones
+
+
+def map_sources_to_destinations(
+        sources: List[Incoming],
+        src_splits: Dict[Tuple[int, int], filters.Filter],
+        destinations: List[Optional[Outgoing]],
+        dst_clones: Dict[Tuple[int, int], Outgoing]
+) -> "Vector":
+    links: Dict[Tuple[int, int], Outgoing] = dict()
+    results: List[Outgoing] = list()
+    # connecting sources to destinations and gathering results
+    for src, dst in zip(sources, destinations):
+        # use split instead of initial incoming node
+        split = src_splits[id(src), id(dst)]
+        if dst is None:
+            # Skip via mask, pass split to output. We can't use src here
+            # because it is already connected to split filter
+            results.append(split)
+            continue
+        clone = dst_clones[id(dst), id(src)]
+
+        key = id(split), id(clone)
+
+        if key not in links:
+            # connect same src to same dst only once
+            links[key] = cast(Outgoing, split.connect_dest(clone))
+
+        # add destination node to results
+        results.append(links[key])
+    return Vector(cast(Union[List[filters.Filter], List[outputs.Codec]],
+                       results))
 
 
 class Vector(tuple):
 
     def __new__(cls, source: Union[inputs.Stream, filters.Filter,
                                    Iterable[filters.Filter],
-                                   Iterable[outputs.Codec]]):
-        if not hasattr(source, '__iter__'):
-            source = [source]
-        return tuple.__new__(cls, source)  # noqa
+                                   Iterable[outputs.Codec]]) -> "Vector":
+        iterable: Union[Iterable[inputs.Stream],
+                        Iterable[filters.Filter],
+                        Iterable[outputs.Codec]]
+        if isinstance(source, filters.Filter):
+            iterable = [source]
+        elif isinstance(source, inputs.Stream):
+            iterable = [source]
+        else:
+            iterable = source
+        return tuple.__new__(cls, iterable)  # noqa
 
     def __or__(self, other: filters.Filter) -> "Vector":
         return self.connect(other)
@@ -54,24 +141,7 @@ class Vector(tuple):
                     List[List[Any]],
                     List[Any],
                 ] = None) -> "Vector":
-        if isinstance(dst, type):
-            assert issubclass(dst, filters.Filter), "filter class needed"
-            assert params is not None, "params not specified for filter class"
-            dst = self._init_filter_vector(dst, params)
-        elif isinstance(dst, filters.Filter):
-            dst = Vector(dst)
-        elif not isinstance(dst, Vector):
-            raise TypeError(dst)
-
-        if mask is not None:
-            if len(dst) == 1:
-                dst = dst * len(mask)
-            assert len(dst) == len(mask)
-        else:
-            mask = [True] * len(dst)
-
-        if not isinstance(dst, Vector):
-            dst = Vector(dst)
+        dst, mask = self.__normalize_args(dst, mask, params)
 
         # input list
         sources: List[Union[Incoming]] = list(self)
@@ -96,65 +166,55 @@ class Vector(tuple):
         # sources cache
         src_by_id: Dict[int, Incoming] = {id(src): src for src in sources}
         # destinations cache
-        dst_by_id: Dict[int, Outgoing] = {id(dst): dst for dst in destinations}
+        dst_by_id: Dict[int, Outgoing] = {
+            id(dst): dst for dst in destinations if dst is not None}
 
         # Group destinations by source to prepare Split() filters at next step.
-        src_to_dst: Dict[int, Set[int]] = dict()
-        for src, dst in zip(sources, destinations):
-            dst_set = src_to_dst.setdefault(id(src), set())
-            dst_set.add(id(dst))
+        src_to_dst = group(sources, destinations)
 
         # Group sources by destination to prepare destination clone() calls.
-        dst_to_src: Dict[int, Set[int]] = dict()
-        for src, dst in zip(sources, destinations):
-            if dst is None:
-                continue
-            src_set = dst_to_src.setdefault(id(dst), set())
-            src_set.add(id(src))
+        dst_to_src = group(destinations, sources)
 
-        # initialize Split filter for each unique source
-        src_splits: Dict[int, Dict[int, filters.Filter]] = dict()
-        for src_id, dst_set in src_to_dst.items():
-            src = src_by_id[src_id]
-            # Split incoming stream for each destination that will be connected
-            # to it.
-            src_splits[src_id] = dict()
-            for dst_id, s in zip(dst_set, src.split(len(dst_set))):
-                src_splits[src_id][dst_id] = s
+        # Split sources to have unique input for each unique destination
+        # connected to same source
+        src_splits = prepare_src_splits(src_by_id, src_to_dst)
 
-        dst_clones: Dict[int, Dict[int, filters.Filter]] = dict()
-        for dst_id, src_set in dst_to_src.items():
-            dst = dst_by_id[dst_id]
-            # Clone destination filter for each source that will be connected
-            # to it.
-            dst_clones[dst_id] = dict()
-            for src_id, c in zip(src_set, dst.clone(len(src_set))):
-                dst_clones[dst_id][src_id] = c
+        # Split destinations (with their inputs) to have unique output for each
+        # unique source connected to same destination
+        dst_clones = prepare_dst_clones(dst_by_id, dst_to_src)
 
-        links: Dict[Tuple[int, int], Outgoing] = dict()
-        used_dst: Set[int] = set()
-        results = list()
-        # connecting sources to destinations and gathering results
-        for src, dst in zip(sources, destinations):
-            # use split instead of initial incoming node
-            split = src_splits[id(src)][id(dst)]
-            if dst is None:
-                # Skip via mask, pass split to output. We can't use src here
-                # because it is already connected to split filter
-                results.append(split)
-                continue
-            clone = dst_clones[id(dst)][id(src)]
+        return map_sources_to_destinations(sources, src_splits,
+                                           destinations, dst_clones)
 
-            key = id(split), id(clone)
+    def __normalize_args(self,
+                         dst: Union[filters.Filter,
+                                    Type[filters.Filter],
+                                    "Vector"],
+                         mask: Optional[List[bool]] = None,
+                         params: Union[
+                             None,
+                             List[Dict[str, Any]],
+                             List[List[Any]],
+                             List[Any],
+                         ] = None) -> Tuple["Vector", List[bool]]:
+        if isinstance(dst, type):
+            assert issubclass(dst, filters.Filter), "filter class needed"
+            assert params is not None, "params not specified for filter class"
+            dst = self._init_filter_vector(dst, params)
+        elif isinstance(dst, filters.Filter):
+            dst = Vector(dst)
+        elif not isinstance(dst, Vector):
+            raise TypeError(dst)
 
-            if key not in links:
-                # connect same src to same dst only once
-                links[key] = cast(Outgoing, split.connect_dest(clone))
-
-            # add destination node to results
-            results.append(links[key])
-
-        return Vector(results)
+        if mask is not None:
+            if len(dst) == 1:
+                dst = cast(Vector, dst * len(mask))
+            assert len(dst) == len(mask)
+        else:
+            mask = [True] * len(dst)
+        if not isinstance(dst, Vector):
+            dst = Vector(dst)
+        return dst, mask
 
     @staticmethod
     def _init_filter_vector(filter_class: Type[filters.Filter],
@@ -165,7 +225,7 @@ class Vector(tuple):
                             ]) -> "Vector":
         vector = []
         factory = cast(Callable[..., filters.Filter], filter_class)
-        seen_filters = dict()
+        seen_filters: Dict[str, filters.Filter] = dict()
         for param in params:
             try:
                 f = seen_filters[repr(param)]
@@ -178,8 +238,7 @@ class Vector(tuple):
                     f = factory(param)
                 seen_filters[repr(param)] = f
             vector.append(f)
-        filter_class = Vector(vector)
-        return filter_class
+        return Vector(vector)
 
 
 class SIMD:

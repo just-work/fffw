@@ -89,7 +89,8 @@ class Filter(base.Node, Params):
         Inputs and outputs are not copied.
         """
         kwargs = asdict(self)
-        return type(self)(**kwargs)
+        # noinspection PyArgumentList
+        return type(self)(**kwargs)  # type: ignore
 
 
 class VideoFilter(Filter):
