@@ -247,3 +247,28 @@ class VectorTestCase(TestCase):
             '-map', '0:a', '-c:a', 'libfdk_aac',
             'output2.mp5'
         )
+
+    def test_overlay_with_mask(self):
+        """
+        Overlay may be applied conditionally.
+        """
+        logo = input_file('logo.png', Stream(VIDEO, video_meta_data()))
+        self.simd < logo
+        overlay = logo.streams[0] | Overlay(0, 0)
+
+        self.simd.video.connect(overlay, mask=[True, False]) > self.simd
+
+        self.assert_simd_args(
+            'ffmpeg',
+            '-i', 'input.mp4',
+            '-i', 'logo.png',
+            '-filter_complex',
+            '[0:v]split[v:split0][vout0];'
+            '[1:v][v:split0]overlay[vout1]',
+            '-map', '[vout1]', '-c:v', 'libx264',
+            '-map', '0:a', '-c:a', 'aac',
+            'output1.mp4',
+            '-map', '[vout0]', '-c:v', 'libx265',
+            '-map', '0:a', '-c:a', 'libfdk_aac',
+            'output2.mp5'
+        )
