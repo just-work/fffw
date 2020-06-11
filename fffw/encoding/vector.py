@@ -172,7 +172,7 @@ class Vector(tuple):
             except KeyError:
                 if isinstance(param, dict):
                     f = factory(**param)
-                elif isinstance(param, list):
+                elif hasattr(param, '__iter__'):
                     f = factory(*param)
                 else:
                     f = factory(param)
@@ -353,7 +353,3 @@ class Cursor:
                 if not enabled:
                     vector[i] = None
         return self.__apply(vector)
-
-    def finalize(self) -> None:
-        """ Connect streams to codecs."""
-        self.__apply(self.vector.get_codecs(self.kind))

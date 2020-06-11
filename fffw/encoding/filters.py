@@ -65,6 +65,8 @@ class Filter(base.Node, Params):
         Any connected input node is being split and connected to a corresponding
         copy of current filter.
         """
+        if count == 1:
+            return [self]
         result = []
         for _ in range(count):
             result.append(self._clone())
@@ -72,7 +74,9 @@ class Filter(base.Node, Params):
         for i, edge in enumerate(self.inputs):
             if edge is None:
                 continue
-            split = edge.input | Split(self.kind, output_count=count)
+            # reconnecting incoming edge to split filter
+            split = Split(self.kind, output_count=count)
+            edge.reconnect(split)
             for dst in result:
                 split | dst
 
@@ -145,6 +149,9 @@ class Scale(VideoFilter):
             raise TypeError(meta)
         par = meta.dar / (self.width / self.height)
         return replace(meta, width=self.width, height=self.height, par=par)
+
+    def get_filter_cmd(self, partial: bool = False) -> str:
+        return super().get_filter_cmd(partial)
 
 
 @dataclass

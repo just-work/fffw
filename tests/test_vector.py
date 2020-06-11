@@ -1,10 +1,12 @@
 from dataclasses import dataclass
+from typing import cast, Tuple
 from unittest import TestCase
 
 from fffw.encoding import *
-from fffw.encoding.vector import SIMD
+from fffw.encoding.vector import SIMD, Vector
 from fffw.graph import *
 from fffw.wrapper import ensure_binary, param
+from fffw.wrapper.helpers import ensure_text
 from tests.test_ffmpeg import Volume
 
 
@@ -12,6 +14,16 @@ from tests.test_ffmpeg import Volume
 class StubFilter(AudioFilter):
     filter = 'stub'
     p: int = param()
+
+
+@dataclass
+class SomeFilter(VideoFilter):
+    filter = 'some'
+
+
+@dataclass
+class AnotherFilter(VideoFilter):
+    filter = 'another'
 
 
 class VectorTestCase(TestCase):
@@ -30,9 +42,27 @@ class VectorTestCase(TestCase):
                                    AudioCodec('libfdk_aac'))
         self.simd = SIMD(self.source, self.output1, self.output2)
 
+    def assert_simd_args(self, *expected: str):
+        expected = list(expected)
+        args = ensure_text(self.simd.ffmpeg.get_args())
+        try:
+            idx = expected.index('-filter_complex')
+            expected_fc = expected[idx + 1].split(';')
+            expected[idx:idx + 2] = []
+        except ValueError:
+            expected_fc = []
+        try:
+            idx = args.index('-filter_complex')
+            real_fc = args[idx + 1].split(';')
+            args[idx:idx + 2] = []
+        except ValueError:
+            real_fc = []
+        self.assertSetEqual(set(expected_fc), set(real_fc))
+        self.assertListEqual(expected, args)
+
     def test_no_filter_graph(self):
         """ Checks that vector works correctly without filter graph."""
-        expected = ensure_binary([
+        self.assert_simd_args(
             'ffmpeg',
             '-i', 'input.mp4',
             '-map', '0:v', '-c:v', 'libx264',
@@ -40,16 +70,13 @@ class VectorTestCase(TestCase):
             'output1.mp4',
             '-map', '0:v', '-c:v', 'libx265',
             '-map', '0:a', '-c:a', 'libfdk_aac',
-            'output2.mp5'
-
-        ])
-        self.assertEqual(expected, self.simd.ffmpeg.get_args())
+            'output2.mp5')
 
     def test_same_filter_for_all_streams(self):
         """ Single filter can be applied to each stream in vector."""
         cursor = self.simd | Volume(30)
         cursor > self.simd
-        expected = ensure_binary([
+        self.assert_simd_args(
             'ffmpeg',
             '-i',
             'input.mp4',
@@ -61,14 +88,13 @@ class VectorTestCase(TestCase):
             'output1.mp4',
             '-map', '0:v', '-c:v', 'libx265',
             '-map', '[aout1]', '-c:a', 'libfdk_aac',
-            'output2.mp5'])
-        self.assertEqual(expected, self.simd.ffmpeg.get_args())
+            'output2.mp5')
 
     def test_same_filter_with_mask(self):
         """ Applying filter works with mask."""
         cursor = self.simd.audio.connect(Volume(30), mask=[False, True])
         cursor > self.simd
-        expected = ensure_binary([
+        self.assert_simd_args(
             'ffmpeg',
             '-i',
             'input.mp4',
@@ -80,13 +106,12 @@ class VectorTestCase(TestCase):
             'output1.mp4',
             '-map', '0:v', '-c:v', 'libx265',
             '-map', '[aout1]', '-c:a', 'libfdk_aac',
-            'output2.mp5'])
-        self.assertEqual(expected, self.simd.ffmpeg.get_args())
+            'output2.mp5')
 
     def test_multiple_disabled_filters(self):
         cursor = self.simd.audio.connect(Volume(30), mask=[False, False])
         cursor > self.simd
-        expected = ensure_binary([
+        self.assert_simd_args(
             'ffmpeg',
             '-i',
             'input.mp4',
@@ -97,8 +122,7 @@ class VectorTestCase(TestCase):
             'output1.mp4',
             '-map', '0:v', '-c:v', 'libx265',
             '-map', '[aout1]', '-c:a', 'libfdk_aac',
-            'output2.mp5'])
-        self.assertEqual(expected, self.simd.ffmpeg.get_args())
+            'output2.mp5')
 
     def test_apply_filter_with_params_vector(self):
         cursor = self.simd.audio.connect(Volume, params=[20, 30])
@@ -122,7 +146,7 @@ class VectorTestCase(TestCase):
     def test_apply_filter_with_equal_params(self):
         cursor = self.simd.audio.connect(Volume, params=[30, 30])
         cursor > self.simd
-        expected = ensure_binary([
+        self.assert_simd_args(
             'ffmpeg',
             '-i',
             'input.mp4',
@@ -134,8 +158,7 @@ class VectorTestCase(TestCase):
             'output1.mp4',
             '-map', '0:v', '-c:v', 'libx265',
             '-map', '[aout1]', '-c:a', 'libfdk_aac',
-            'output2.mp5'])
-        self.assertEqual(expected, self.simd.ffmpeg.get_args())
+            'output2.mp5')
 
     def test_split_filter_if_vector_differs(self):
         """
@@ -144,7 +167,7 @@ class VectorTestCase(TestCase):
         cursor = self.simd.audio.connect(Volume, params=[20, 30])
         cursor = cursor | StubFilter(p=0)
         cursor > self.simd
-        expected = ensure_binary([
+        self.assert_simd_args(
             'ffmpeg',
             '-i',
             'input.mp4',
@@ -159,5 +182,38 @@ class VectorTestCase(TestCase):
             'output1.mp4',
             '-map', '0:v', '-c:v', 'libx265',
             '-map', '[aout1]', '-c:a', 'libfdk_aac',
-            'output2.mp5'])
-        self.assertEqual(expected, self.simd.ffmpeg.get_args())
+            'output2.mp5')
+
+    def test_clone_inputs_for_destination_filter(self):
+        """
+        If source vector has different streams, next filter must be cloned with
+        all connected inputs.
+        """
+        v = self.simd.video | Vector((SomeFilter(), AnotherFilter()))
+        some, other = cast(Tuple[VideoFilter, VideoFilter], v)
+        v1 = Vector(some).connect(Scale, params=[(1280, 720), (640, 360)])
+
+        overlay = other | Overlay(0, 0)
+
+        v2 = v1.connect(overlay)
+
+        v2 > self.simd
+        self.assert_simd_args(
+            'ffmpeg',
+            '-i', 'input.mp4',
+            '-filter_complex',
+            '[0:v]split[v:split0][v:split1];'
+            '[v:split0]some[v:some0];'
+            '[v:split1]another[v:another0];'
+            '[v:some0]split[v:split2][v:split3];'
+            '[v:split2]scale=w=1280:h=720[v:scale0];'
+            '[v:split3]scale=w=640:h=360[v:scale1];'
+            '[v:another0]split[v:split4][v:split5];'
+            '[v:split4][v:scale0]overlay[vout0];'
+            '[v:split5][v:scale1]overlay[vout1]',
+            '-map', '[vout0]', '-c:v', 'libx264',
+            '-map', '0:a', '-c:a', 'aac',
+            'output1.mp4',
+            '-map', '[vout1]', '-c:v', 'libx265',
+            '-map', '0:a', '-c:a', 'libfdk_aac',
+            'output2.mp5')

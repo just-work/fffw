@@ -116,8 +116,8 @@ class Edge(Traversable):
         :param output: output node
         """
         super().__init__()
-        self.__input = input
-        self.__output = output
+        self.__input: InputType = input
+        self.__output: OutputType = output
 
     def __repr__(self) -> str:
         return f'Edge#{self.name}[{self.input}, {self.output}]'
@@ -198,6 +198,13 @@ class Edge(Traversable):
                 return []
             raise RuntimeError("output is none")
         return self.__output.render(partial=partial)
+
+    def reconnect(self, dest: OutputType) -> None:
+        if self.__output is not None:
+            inputs = self.__output.inputs
+            inputs[inputs.index(self)] = None
+        self.__output = dest
+        dest.connect_edge(self)
 
 
 class Node(Traversable, abc.ABC):
