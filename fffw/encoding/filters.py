@@ -151,9 +151,6 @@ class Scale(VideoFilter):
         par = meta.dar / (self.width / self.height)
         return replace(meta, width=self.width, height=self.height, par=par)
 
-    def get_filter_cmd(self, partial: bool = False) -> str:
-        return super().get_filter_cmd(partial)
-
 
 @dataclass
 class Split(AutoFilter):
