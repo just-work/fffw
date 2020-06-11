@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from typing import cast
 from unittest import TestCase
 
+from fffw.encoding import inputs, outputs
+from fffw.encoding.complex import FilterComplex
 from fffw.encoding.filters import *
 from fffw.graph import *
 from fffw.graph import VIDEO
@@ -30,12 +32,13 @@ class FilterGraphTestCase(TestCase):
         )
         self.audio_metadata = audio_meta_data()
 
-        self.source = Input(input_file='input.mp4',
-                            streams=(Stream(VIDEO, meta=self.video_metadata),
-                                     Stream(AUDIO, meta=self.audio_metadata)))
-        self.output = output_file('output.mp4')
-        self.input_list = InputList((self.source,))
-        self.output_list = OutputList((self.output,))
+        self.source = inputs.Input(
+            input_file='input.mp4',
+            streams=(inputs.Stream(VIDEO, meta=self.video_metadata),
+                     inputs.Stream(AUDIO, meta=self.audio_metadata)))
+        self.output = outputs.output_file('output.mp4')
+        self.input_list = inputs.InputList((self.source,))
+        self.output_list = outputs.OutputList((self.output,))
         self.fc = FilterComplex(self.input_list, self.output_list)
 
     def test_filter_graph(self):
@@ -47,10 +50,10 @@ class FilterGraphTestCase(TestCase):
                                             |
                                             ------<Scale>--[O/720p]
         """
-        vs = Stream(VIDEO)
-        logo = input_file('logo.png', vs)
+        vs = inputs.Stream(VIDEO)
+        logo = inputs.input_file('logo.png', vs)
         self.input_list.append(logo)
-        out1 = output_file('out1.mp4')
+        out1 = outputs.output_file('out1.mp4')
         self.output_list.append(out1)
 
         deint = Deint()
@@ -118,9 +121,10 @@ class FilterGraphTestCase(TestCase):
 
         # noinspection PyShadowingNames
         def fc_factory():
-            src = input_file("input.mp4", Stream(VIDEO))
-            dst = output_file('output.mp4')
-            fc = FilterComplex(InputList((src,)), OutputList((dst,)))
+            src = inputs.input_file("input.mp4", inputs.Stream(VIDEO))
+            dst = outputs.output_file('output.mp4')
+            fc = FilterComplex(inputs.InputList((src,)),
+                               outputs.OutputList((dst,)))
             return fc, src, dst
 
         def deint_factory():
@@ -199,8 +203,8 @@ class FilterGraphTestCase(TestCase):
         $ ffmpeg -y -i source.mp4 -i logo.mp4 -t 1 \
          -filter_complex '[0:v][1:v]overlay=x=100:y=100' test.mp4
         """
-        vs = Stream(VIDEO, meta=video_meta_data(width=100, height=100))
-        self.input_list.append(input_file('logo.png', vs))
+        vs = inputs.Stream(VIDEO, meta=video_meta_data(width=100, height=100))
+        self.input_list.append(inputs.input_file('logo.png', vs))
         overlay = self.source.streams[0] | Overlay(
             x=self.video_metadata.width - 2,
             y=self.video_metadata.height - 2)
@@ -219,8 +223,8 @@ class FilterGraphTestCase(TestCase):
 
         $ ffmpeg -y -i first.mp4 -i second.mp4 -filter_complex concat test.mp4
         """
-        vs = Stream(VIDEO, meta=video_meta_data(duration=1000.0))
-        self.input_list.append(input_file('second.mp4', vs))
+        vs = inputs.Stream(VIDEO, meta=video_meta_data(duration=1000.0))
+        self.input_list.append(inputs.input_file('second.mp4', vs))
         concat = vs | Concat(VIDEO)
         self.source.streams[0] | concat
 

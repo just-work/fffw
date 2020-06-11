@@ -1,5 +1,5 @@
-from fffw.graph import base, outputs
-
+from fffw.graph import base
+from fffw.encoding import outputs
 
 __all__ = [
     'AudioCodec',

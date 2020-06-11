@@ -7,7 +7,7 @@ __all__ = [
 import abc
 from collections import Counter
 from enum import Enum
-from typing import Dict, Any, TypeVar, Type, overload
+from typing import Dict, Any, TypeVar, Type, overload, cast
 from typing import Optional, List, Union
 
 from fffw.graph.meta import Meta
@@ -198,6 +198,16 @@ class Edge(Traversable):
                 return []
             raise RuntimeError("output is none")
         return self.__output.render(partial=partial)
+
+    def reconnect(self, dest: OutputType) -> None:
+        """
+        Allows to detach an edge from one output and connect to another one.
+        """
+        if isinstance(self.__output, Node):
+            inputs = self.__output.inputs
+            inputs[inputs.index(self)] = None
+        self.__output = dest
+        dest.connect_edge(self)
 
 
 class Node(Traversable, abc.ABC):

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from unittest import TestCase, expectedFailure
 
 from fffw.graph import *
-from fffw.encoding import filters, codecs, ffmpeg
+from fffw.encoding import filters, codecs, ffmpeg, inputs, outputs
 from fffw.wrapper import ensure_binary, param
 
 
@@ -46,9 +46,9 @@ class FFMPEGTestCase(TestCase):
     def test_ffmpeg(self):
         """ Smoke test and feature demo."""
         ff = FFMPEG(loglevel='info', realtime=True)
-        ff < input_file('/tmp/input.mp4',
-                        fast_seek=123.2,
-                        duration=TS(123.2))
+        ff < inputs.input_file('/tmp/input.mp4',
+                               fast_seek=123.2,
+                               duration=TS(123.2))
 
         cv0 = X264(bitrate=700000)
         ca0 = AAC(bitrate=128000)
@@ -61,8 +61,8 @@ class FFMPEGTestCase(TestCase):
         asplit.connect_dest(ca0)
         asplit.connect_dest(ca1)
 
-        out0 = output_file('/tmp/out.flv', cv0, ca0)
-        out1 = output_file('/tmp/out.mp3', ca1)
+        out0 = outputs.output_file('/tmp/out.flv', cv0, ca0)
+        out1 = outputs.output_file('/tmp/out.mp3', ca1)
 
         ff.add_output(out0)
         ff.add_output(out1)
@@ -95,7 +95,7 @@ class FFMPEGTestCase(TestCase):
 
         ff.video | filters.Scale(640, 360) > cv0
 
-        ff > output_file('/tmp/out.flv', cv0, ca0)
+        ff > outputs.output_file('/tmp/out.flv', cv0, ca0)
 
         expected = [
             'ffmpeg',
@@ -109,12 +109,12 @@ class FFMPEGTestCase(TestCase):
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
     def test_bypass_without_filter_complex(self):
-        """ Stream bypass with filter_complex missing."""
+        """ inputs.Stream bypass with filter_complex missing."""
         ff = FFMPEG('/tmp/input.mp4')
 
         cv0 = X264(bitrate=700000)
         ca0 = AAC(bitrate=128000)
-        ff > output_file('/tmp/out.flv', cv0, ca0)
+        ff > outputs.output_file('/tmp/out.flv', cv0, ca0)
 
         expected = [
             'ffmpeg',
@@ -126,11 +126,12 @@ class FFMPEGTestCase(TestCase):
         self.assertEqual(ff.get_args(), ensure_binary(expected))
 
     def test_input_stream_naming(self):
-        """ Input stream naming test."""
+        """ inputs.Input stream naming test."""
 
         ff = FFMPEG()
-        ff < Input(input_file='/tmp/input.jpg', streams=(Stream(VIDEO),))
-        ff < Input(input_file='/tmp/input.mp4')
+        ff < inputs.Input(input_file='/tmp/input.jpg',
+                          streams=(inputs.Stream(VIDEO),))
+        ff < inputs.Input(input_file='/tmp/input.mp4')
 
         cv0 = X264(bitrate=700000)
         ca0 = AAC(bitrate=128000)
@@ -141,7 +142,7 @@ class FFMPEGTestCase(TestCase):
         ff.audio | Volume(-20) > ca0
         overlay > cv0
 
-        out0 = output_file('/tmp/out.flv', cv0, ca0)
+        out0 = outputs.output_file('/tmp/out.flv', cv0, ca0)
         ff.add_output(out0)
 
         expected = [
@@ -169,7 +170,7 @@ class FFMPEGTestCase(TestCase):
 
         ff.audio | Volume(20) > ca0
 
-        out0 = output_file('/tmp/out.flv', cv0, ca0)
+        out0 = outputs.output_file('/tmp/out.flv', cv0, ca0)
         ff.add_output(out0)
         expected = [
             'ffmpeg',
@@ -186,17 +187,17 @@ class FFMPEGTestCase(TestCase):
 
     def test_reuse_input_files(self):
         """ Reuse input files multiple times."""
-        v = Stream(VIDEO)
-        a = Stream(AUDIO)
-        ff = FFMPEG(Input(input_file='/tmp/input.mp4', streams=(v, a)))
+        v = inputs.Stream(VIDEO)
+        a = inputs.Stream(AUDIO)
+        ff = FFMPEG(inputs.Input(input_file='/tmp/input.mp4', streams=(v, a)))
         cv0 = codecs.VideoCodec('copy')
         ca0 = codecs.AudioCodec('copy')
-        out0 = output_file('/tmp/out0.flv', cv0, ca0)
+        out0 = outputs.output_file('/tmp/out0.flv', cv0, ca0)
         ff > out0
 
         cv1 = codecs.VideoCodec('copy')
         ca1 = codecs.AudioCodec('copy')
-        out1 = output_file('/tmp/out1.flv', cv1, ca1)
+        out1 = outputs.output_file('/tmp/out1.flv', cv1, ca1)
         v > cv1
         a > ca1
         ff > out1
@@ -218,19 +219,19 @@ class FFMPEGTestCase(TestCase):
 
     def test_handle_codec_copy_with_other_filters(self):
         """ vcodec=copy with separate transcoded output."""
-        v = Stream(VIDEO)
-        a = Stream(AUDIO)
-        ff = FFMPEG(Input(input_file='/tmp/input.mp4', streams=(v, a)))
+        v = inputs.Stream(VIDEO)
+        a = inputs.Stream(AUDIO)
+        ff = FFMPEG(inputs.Input(input_file='/tmp/input.mp4', streams=(v, a)))
 
         cv0 = codecs.VideoCodec('copy')
         ca0 = codecs.AudioCodec('copy')
-        out0 = output_file('/tmp/copy.flv', cv0, ca0)
+        out0 = outputs.output_file('/tmp/copy.flv', cv0, ca0)
 
         ff > out0
 
         cv1 = codecs.VideoCodec('libx264')
         ca1 = codecs.AudioCodec('aac')
-        out1 = output_file('/tmp/out.flv', cv1, ca1)
+        out1 = outputs.output_file('/tmp/out.flv', cv1, ca1)
 
         v | filters.Scale(640, 360) > cv1
         a > ca1
@@ -259,8 +260,8 @@ class FFMPEGTestCase(TestCase):
     def test_transcoding_without_graph(self):
         """ Transcoding works without filter graph."""
         ff = FFMPEG()
-        ff < Input(input_file='input.mp4')
-        ff.add_output(output_file('/dev/null', format='null'))
+        ff < inputs.Input(input_file='input.mp4')
+        ff.add_output(outputs.output_file('/dev/null', format='null'))
         expected = [
             'ffmpeg',
             '-i', 'input.mp4',
@@ -298,8 +299,8 @@ class FFMPEGTestCase(TestCase):
     def test_concat(self):
         """ Concat source files."""
         ff = FFMPEG()
-        ff < Input(input_file='preroll.mp4')
-        ff < Input(input_file='input.mp4')
+        ff < inputs.Input(input_file='preroll.mp4')
+        ff < inputs.Input(input_file='input.mp4')
 
         cv0 = codecs.VideoCodec('libx264')
         ca0 = codecs.AudioCodec('aac')
@@ -316,7 +317,7 @@ class FFMPEGTestCase(TestCase):
         ff.audio | aconcat
 
         aconcat > ca0
-        ff.add_output(output_file('output.mp4', cv0, ca0))
+        ff.add_output(outputs.output_file('output.mp4', cv0, ca0))
 
         expected = [
             'ffmpeg',

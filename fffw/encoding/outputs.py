@@ -1,7 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from itertools import chain
 from typing import List, cast, Optional, Iterable, Any
 
+from fffw.encoding import filters
 from fffw.graph import base
 from fffw.wrapper import BaseWrapper, ensure_binary, param
 
@@ -59,6 +60,18 @@ class Codec(base.Dest, BaseWrapper):
         args = ['-map', self.map]
         return ensure_binary(args) + super().get_args()
 
+    def clone(self, count: int = 1) -> List["Codec"]:
+        """
+        Creates multiple copies of self to reuse it as output node for multiple
+        sources.
+
+        Any connected input node is being split and connected to a corresponding
+        copy of current filter.
+        """
+        if count == 1:
+            return [self]
+        raise RuntimeError("Trying to clone codec, is this intended?")
+
 
 @dataclass
 class Output(BaseWrapper):
@@ -102,17 +115,22 @@ class Output(BaseWrapper):
         """
         return self.get_free_codec(base.AUDIO)
 
-    def get_free_codec(self, kind: base.StreamType) -> Codec:
+    def get_free_codec(self, kind: base.StreamType, create: bool = True
+                       ) -> Codec:
         """
         Finds first codec not connected to filter graph or to an input, or
         creates a new unnamed codec stub if no free codecs left.
 
         :param kind: desired codec stream type
+        :param create: create new codec stub
         :return: first free codec or a new codec stub.
         """
         try:
-            codec = next(filter(lambda c: not c.connected, self.codecs))
+            codec = next(filter(
+                lambda c: not c.connected and c.kind == kind, self.codecs))
         except StopIteration:
+            if not create:
+                raise KeyError(kind)
             codec = Codec()
             codec.kind = kind
             self.codecs.append(codec)
