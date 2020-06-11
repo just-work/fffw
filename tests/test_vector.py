@@ -272,3 +272,34 @@ class VectorTestCase(TestCase):
             '-map', '0:a', '-c:a', 'libfdk_aac',
             'output2.mp5'
         )
+
+    def test_preroll_with_mask(self):
+        """
+        Concat filter may be applied conditionally.
+        """
+        vstream = Stream(VIDEO, video_meta_data())
+        astream = Stream(AUDIO, audio_meta_data())
+        preroll = input_file('preroll.mp4', vstream, astream)
+        self.simd < preroll
+
+        vconcat = vstream | Concat(VIDEO, input_count=2)
+        aconcat = astream | Concat(AUDIO, input_count=2)
+
+        self.simd.video.connect(vconcat, mask=[True, False]) > self.simd
+        self.simd.audio.connect(aconcat, mask=[True, False]) > self.simd
+
+        self.assert_simd_args(
+            'ffmpeg',
+            '-i', 'input.mp4',
+            '-i', 'preroll.mp4',
+            '-filter_complex',
+            '[0:v]split[v:split0][vout0];'
+            '[0:a]asplit[a:asplit0][aout0];'
+            '[1:v][v:split0]concat[vout1];'
+            '[1:a][a:asplit0]concat=v=0:a=1:n=2[aout1]',
+            '-map', '[vout1]', '-c:v', 'libx264',
+            '-map', '[aout1]', '-c:a', 'aac',
+            'output1.mp4',
+            '-map', '[vout0]', '-c:v', 'libx265',
+            '-map', '[aout0]', '-c:a', 'libfdk_aac',
+            'output2.mp5')
