@@ -1,4 +1,4 @@
-from dataclasses import dataclass, replace, asdict, field
+from dataclasses import dataclass, replace, asdict, field, MISSING
 from typing import Union, List, cast
 
 from fffw.graph import base
@@ -201,9 +201,11 @@ class Trim(AutoFilter):
 
     start: Union[int, float, str, TS] = param(
         name='start',
+        default=MISSING,
         render=lambda ts: ts.total_seconds())
     end: Union[int, float, str, TS] = param(
         name='end',
+        default=MISSING,
         render=lambda ts: ts.total_seconds())
 
     def __post_init__(self) -> None:

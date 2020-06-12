@@ -130,7 +130,6 @@ class VideoMeta(Meta):
     """ Display aspect ratio."""
     frame_rate: float
     """ Frames per second."""
-    frames: int
 
     def __post_init__(self) -> None:
         self.validate()
@@ -140,11 +139,6 @@ class VideoMeta(Meta):
             assert abs(self.dar - self.width / self.height * self.par) <= 0.001
         else:
             assert str(self.dar) == 'nan'
-        duration = self.duration.total_seconds()
-        if duration != 0:
-            assert abs(self.frame_rate - self.frames / duration) < 0.1
-        else:
-            assert self.frame_rate == 0
 
 
 @dataclass
@@ -232,8 +226,7 @@ def video_meta_data(**kwargs: Any) -> VideoMeta:
         height=height,
         par=par,
         dar=dar,
-        frame_rate=frame_rate,
-        frames=frames)
+        frame_rate=frame_rate)
 
 
 def from_media_info(mi: MediaInfo) -> List[Meta]:

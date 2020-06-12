@@ -1,8 +1,7 @@
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from itertools import chain
 from typing import List, cast, Optional, Iterable, Any
 
-from fffw.encoding import filters
 from fffw.graph import base, Scene
 from fffw.wrapper import BaseWrapper, ensure_binary, param
 
