@@ -1,16 +1,17 @@
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import List, Union, Any
+from typing import List, Union, Any, Optional
 
 from pymediainfo import MediaInfo  # type: ignore
 
 __all__ = [
-    'Meta',
-    'VideoMeta',
     'AudioMeta',
+    'VideoMeta',
+    'Meta',
+    'Scene',
+    'TS',
     'video_meta_data',
     'audio_meta_data',
-    'TS'
 ]
 
 
@@ -47,9 +48,9 @@ class TS(timedelta):
         """
         Removes non-valuable zeros from fractional part.
 
-        :returns: ffmpeg interval definition (123:59:59.999).
+        :returns: ffmpeg seconds definition (123456.999).
         """
-        v = super().__str__()
+        v = str(self.total_seconds())
         if '.' in v:
             v = v.rstrip('0')
         return v
@@ -58,6 +59,33 @@ class TS(timedelta):
         if not isinstance(other, timedelta):
             return NotImplemented
         return TS(self.total_seconds() + other.total_seconds())
+
+    def __sub__(self, other: timedelta) -> "TS":
+        if not isinstance(other, timedelta):
+            return NotImplemented
+        return TS(self.total_seconds() - other.total_seconds())
+
+    def __lt__(self, other: Union[int, float, str, timedelta, "TS"]) -> bool:
+        if not isinstance(other, timedelta):
+            other = TS(other)
+        return self.total_seconds() < other.total_seconds()
+
+
+@dataclass
+class Scene:
+    """
+    Continuous part of stream used in transcoding graph.
+    """
+    stream: Optional[str]
+    """ Stream identifier."""
+    duration: TS
+    """ Stream duration."""
+    start: TS
+    """ First frame/sample timestamp for stream."""
+
+    @property
+    def end(self) -> TS:
+        return self.start + self.duration
 
 
 @dataclass
@@ -68,11 +96,27 @@ class Meta:
     Describes common stream characteristics like bitrate and duration.
     """
     duration: TS
-    """ Stream duration."""
+    """ Resulting stream duration."""
     start: TS
-    """ First frame/sample timestamp for stream."""
+    """ First frame/sample timestamp for resulting stream."""
     bitrate: int
-    """ Stream bitrate in bits per second."""
+    """ Input stream bitrate in bits per second."""
+    scenes: List[Scene]
+    """ 
+    List of continuous stream fragments (maybe from different files), that need
+    to be read to get a result with current metadata.
+    """
+    streams: List[str]
+    """
+    List of streams (maybe from different files), that need to be read to get
+    a result with current metadata."""
+
+    @property
+    def end(self) -> TS:
+        """
+        :return: Timestamp of last frame resulting stream.
+        """
+        return self.start + self.duration
 
 
 @dataclass
@@ -90,7 +134,6 @@ class VideoMeta(Meta):
     """ Display aspect ratio."""
     frame_rate: float
     """ Frames per second."""
-    frames: int
 
     def __post_init__(self) -> None:
         self.validate()
@@ -100,11 +143,6 @@ class VideoMeta(Meta):
             assert abs(self.dar - self.width / self.height * self.par) <= 0.001
         else:
             assert str(self.dar) == 'nan'
-        duration = self.duration.total_seconds()
-        if duration != 0:
-            assert abs(self.frame_rate - self.frames / duration) < 0.001
-        else:
-            assert self.frame_rate == 0
 
 
 @dataclass
@@ -133,9 +171,20 @@ class AudioMeta(Meta):
 
 
 def audio_meta_data(**kwargs: Any) -> AudioMeta:
+    stream = kwargs.get('stream')
+    duration = TS(kwargs.get('duration', 0))
+    start = TS(kwargs.get('start', 0))
+    scene = Scene(
+        stream=stream,
+        duration=duration,
+        start=start,
+    )
+
     return AudioMeta(
-        duration=TS(kwargs.get('duration', 0)),
-        start=TS(kwargs.get('start', 0)),
+        scenes=[scene],
+        streams=[stream] if stream else [],
+        duration=duration,
+        start=start,
         bitrate=int(kwargs.get('bit_rate', 0)),
         channels=int(kwargs.get('channel_s', 0)),
         sampling_rate=int(kwargs.get('sampling_rate', 0)),
@@ -163,16 +212,25 @@ def video_meta_data(**kwargs: Any) -> VideoMeta:
             frame_rate = 0
         else:
             frame_rate = frames / duration.total_seconds()
-    return VideoMeta(
+
+    stream = kwargs.get('stream')
+    start = TS(kwargs.get('start', 0))
+    scene = Scene(
+        stream=stream,
+        start=start,
         duration=duration,
-        start=TS(kwargs.get('start', 0)),
+    )
+    return VideoMeta(
+        scenes=[scene],
+        streams=[stream] if stream else [],
+        duration=duration,
+        start=start,
         bitrate=int(kwargs.get('bit_rate', 0)),
         width=width,
         height=height,
         par=par,
         dar=dar,
-        frame_rate=frame_rate,
-        frames=frames)
+        frame_rate=frame_rate)
 
 
 def from_media_info(mi: MediaInfo) -> List[Meta]:

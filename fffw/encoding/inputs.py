@@ -47,6 +47,20 @@ class Stream(base.Source):
         self.connect_dest(split)
         return [split] * count
 
+    def connect_input(self, source: str) -> None:
+        """
+        Marks current stream metadata that it belongs to some input file.
+
+        :param source: source filename
+        """
+        if self.meta is None:
+            return
+        if self.meta.streams:
+            return
+        self.meta.streams = [source]
+        for scene in self.meta.scenes:
+            scene.stream = source
+
 
 def default_streams() -> Tuple[Stream, ...]:
     """
@@ -75,9 +89,9 @@ class Input(BaseWrapper):
     """ List of audio and video streams for input file."""
 
     fast_seek: Union[TS, float, int] = param(name='ss')
+    duration: Union[TS, float, int] = param(name='t')
     input_file: str = param(name='i')
     slow_seek: Union[TS, float, int] = param(name='ss')
-    duration: Union[TS, float, int] = param(name='t')
 
     def __post_init__(self) -> None:
         """
@@ -110,6 +124,8 @@ class Input(BaseWrapper):
 def input_file(filename: str, *streams: Stream, **kwargs: Any) -> Input:
     kwargs['input_file'] = filename
     if streams:
+        for stream in streams:
+            stream.connect_input(filename)
         kwargs['streams'] = streams
     return Input(**kwargs)
 

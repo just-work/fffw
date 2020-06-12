@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from typing import List, Optional, Literal, Union
 
-from fffw.graph import base
 from fffw.encoding import inputs
 from fffw.encoding.complex import FilterComplex
 from fffw.encoding.inputs import InputList, Input
 from fffw.encoding.outputs import OutputList, Output, Codec
+from fffw.graph import base
 from fffw.wrapper import BaseWrapper, ensure_binary, param
 
 __all__ = ['FFMPEG']
@@ -22,7 +22,7 @@ class FFMPEG(BaseWrapper):
 
     >>> from fffw.encoding.codecs import VideoCodec, AudioCodec
     >>> from fffw.encoding.filters import Scale
-    >>> from fffw.graph.outputs import output_file
+    >>> from fffw.encoding.outputs import output_file
     >>> ff = FFMPEG('/tmp/input.mp4', overwrite=True)
     >>> c = VideoCodec('libx264', bitrate=4_000_000)
     >>> ff.video | Scale(1280, 720) > c
@@ -206,3 +206,27 @@ class FFMPEG(BaseWrapper):
             if marker in line:
                 return super().handle_stderr(line)
         return ''
+
+    def check_buffering(self) -> None:
+        """
+        Checks that ffmpeg command will not cause frame buffering and
+        out of memory errors.
+
+        Each input file must be read simultaneously be all codecs in outputs,
+        or some streams will be buffered until requested by output codecs.
+        """
+        chains = []
+        for output in self.__outputs:
+            for codec in output.codecs:
+                streams = codec.check_buffering()
+                if streams is None:
+                    # Streams can't be computed because of missing metadata.
+                    raise ValueError(streams)
+                chains.append(streams)
+        for chunk in zip(*chains):
+            # Check that every codec reads same input stream
+            if len(set(chunk)) > 1:
+                # some codec read different file at this step, so one of input
+                # stream will be buffered until this file is read by another
+                # codec.
+                raise BufferError(chunk)

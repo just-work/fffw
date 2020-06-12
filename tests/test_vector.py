@@ -1,12 +1,11 @@
 from dataclasses import dataclass
 from typing import cast, Tuple
-from unittest import TestCase
 
 from fffw.encoding import *
 from fffw.encoding.vector import SIMD, Vector
 from fffw.graph import *
 from fffw.wrapper import ensure_binary, param
-from fffw.wrapper.helpers import ensure_text
+from tests.base import BaseTestCase
 from tests.test_ffmpeg import Volume
 
 
@@ -26,7 +25,7 @@ class AnotherFilter(VideoFilter):
     filter = 'another'
 
 
-class VectorTestCase(TestCase):
+class VectorTestCase(BaseTestCase):
     def setUp(self) -> None:
         super().setUp()
         self.video_meta = video_meta_data()
@@ -43,22 +42,11 @@ class VectorTestCase(TestCase):
         self.simd = SIMD(self.source, self.output1, self.output2)
 
     def assert_simd_args(self, *arguments: str):
-        expected = list(arguments)
-        args = ensure_text(self.simd.ffmpeg.get_args())
-        try:
-            idx = expected.index('-filter_complex')
-            expected_fc = expected[idx + 1].split(';')
-            expected[idx: idx + 2] = []
-        except ValueError:
-            expected_fc = []
-        try:
-            idx = args.index('-filter_complex')
-            real_fc = args[idx + 1].split(';')
-            args[idx:idx + 2] = []
-        except ValueError:
-            real_fc = []
-        self.assertSetEqual(set(expected_fc), set(real_fc))
-        self.assertListEqual(expected, args)
+        self.assert_ffmpeg_args(*arguments)
+
+    @property
+    def ffmpeg(self):
+        return self.simd.ffmpeg
 
     def test_no_filter_graph(self):
         """ Checks that vector works correctly without filter graph."""

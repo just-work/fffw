@@ -241,7 +241,7 @@ class Vector(tuple):
             iterable = source
         return tuple.__new__(cls, iterable)  # noqa
 
-    def __or__(self, other: filters.Filter) -> "Vector":
+    def __or__(self, other: Union["Vector", filters.Filter]) -> "Vector":
         """ A shortcut to connect vector to another filter."""
         return self.connect(other)
 

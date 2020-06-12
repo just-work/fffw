@@ -1,8 +1,8 @@
-from dataclasses import dataclass, replace, asdict
-from typing import Union, List
+from dataclasses import dataclass, replace, asdict, MISSING, field
+from typing import Union, List, cast
 
 from fffw.graph import base
-from fffw.graph.meta import Meta, VideoMeta, TS
+from fffw.graph.meta import Meta, VideoMeta, TS, Scene
 from fffw.wrapper.params import Params, param
 
 __all__ = [
@@ -127,7 +127,13 @@ class AutoFilter(Filter):
     Base class for stream kind autodetect.
     """
 
-    kind: base.StreamType
+    kind: base.StreamType = field(metadata={'skip': True})
+    """ 
+    Stream kind used to generate filter name. Required. Not used as filter 
+    parameter.
+    """
+    # `field` is used here to tell MyPy that there is no default for `kind`
+    # because `default=MISSING` is valuable for MyPY.
 
     def __post_init__(self) -> None:
         """ Adds audio prefix to filter name for audio filters."""
@@ -202,11 +208,44 @@ class Trim(AutoFilter):
     start: Union[int, float, str, TS]
     end: Union[int, float, str, TS]
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.start, (TS, type(None))):
+            self.start = TS(self.start)
+        if not isinstance(self.end, (TS, type(None))):
+            self.end = TS(self.end)
+        super().__post_init__()
+
     def transform(self, *metadata: Meta) -> Meta:
+        """
+        Computes metadata for trimmed stream.
+
+        :param metadata: single incoming stream metadata.
+        :returns: metadata with initial start (this is fixed with SetPTS) and
+            duration set to trim end. Scenes list is intersected with trim
+            interval, scene borders are aligned to trim borders.
+        """
         meta = metadata[0]
-        start = self.start if isinstance(self.start, TS) else TS(self.start)
-        end = self.end if isinstance(self.end, TS) else TS(self.end)
-        return replace(meta, start=start, duration=end)
+        scenes = []
+        streams: List[str] = []
+        for scene in meta.scenes:
+            if scene.stream and (not streams or streams[0] != scene.stream):
+                # Adding an input stream without contiguous duplicates.
+                streams.append(scene.stream)
+
+            # intersect scene with trim interval
+            start = cast(TS, max(self.start, scene.start))
+            end = cast(TS, min(self.end, scene.end))
+
+            if start < end:
+                # If intersection is not empty, add intersection to resulting
+                # scenes list.
+                # This will allow to detect buffering when multiple scenes are
+                # reordered in same file: input[3:4] + input[1:2]
+                scenes.append(Scene(stream=scene.stream, start=start,
+                                    duration=end - start))
+
+        return replace(meta, start=self.start, duration=self.end,
+                       scenes=scenes, streams=streams)
 
 
 @dataclass
@@ -270,10 +309,26 @@ class Concat(Filter):
         return 'v=0:a=1:n=%s' % self.input_count
 
     def transform(self, *metadata: Meta) -> Meta:
+        """
+        Compute metadata for concatenated streams.
+
+        :param metadata: concatenated streams metadata
+        :returns: Metadata for resulting stream with duration set to a sum of
+            stream durations. Scenes and streams are also concatenated.
+        """
         duration = TS(0)
+        scenes = []
+        streams: List[str] = []
         for meta in metadata:
             duration += meta.duration
-        return replace(metadata[0], duration=duration)
+            scenes.extend(meta.scenes)
+            for stream in meta.streams:
+                if not streams or streams[-1] != stream:
+                    # Add all streams for each concatenated metadata and remove
+                    # contiguous duplicates.
+                    streams.append(stream)
+        return replace(metadata[0], duration=duration,
+                       scenes=scenes, streams=streams)
 
 
 @dataclass

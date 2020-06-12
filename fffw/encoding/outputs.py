@@ -1,8 +1,7 @@
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from itertools import chain
 from typing import List, cast, Optional, Iterable, Any
 
-from fffw.encoding import filters
 from fffw.graph import base
 from fffw.wrapper import BaseWrapper, ensure_binary, param
 
@@ -72,6 +71,27 @@ class Codec(base.Dest, BaseWrapper):
             return [self]
         raise RuntimeError("Trying to clone codec, is this intended?")
 
+    def check_buffering(self) -> Optional[List[str]]:
+        """
+        Check that scenes read from input stream are ordered with ascending
+        timestamps.
+
+        :returns: A list of streams needed for this codec or None if metadata
+            for codec can't be computed.
+        """
+        meta = self.get_meta_data(None)
+        if not meta:
+            return None
+        prev = meta.scenes[0]
+        for scene in meta.scenes[1:]:
+            if prev.stream == scene.stream and prev.end > scene.start:
+                # Previous scene in same stream is located after current, so
+                # current decoded scene will be buffered until previous scene is
+                # decoded.
+                raise BufferError(prev, scene)
+            prev = scene
+        return meta.streams
+
 
 @dataclass
 class Output(BaseWrapper):
@@ -84,6 +104,8 @@ class Output(BaseWrapper):
     :arg output_file: output file name.
     """
     codecs: List[Codec] = param(skip=True)
+    no_video: Optional[bool] = param(default=None, name='vn')
+    no_audio: Optional[bool] = param(default=None, name='an')
     format: str = param(name="f")
     output_file: str = param(name="")
 
@@ -140,10 +162,22 @@ class Output(BaseWrapper):
         """
         :returns: codec args and output file parameters for ffmpeg
         """
-        args = (
-                list(chain(*(codec.get_args() for codec in self.codecs))) +
-                super().get_args()
-        )
+        args = []
+        # Check if we need to disable audio or video for output file because no
+        # corresponding codecs are found.
+        # Skipping `-an` / `-vn` parameters is still supported by  manually
+        # setting `no_audio` / `no_video` parameters to `False`.
+        for codec in self.codecs:
+            if codec.kind == base.VIDEO:
+                self.no_video = False
+            if codec.kind == base.AUDIO:
+                self.no_audio = False
+            args.extend(codec.get_args())
+        if self.no_video is None:
+            self.no_video = True
+        if self.no_audio is None:
+            self.no_audio = True
+        args.extend(super().get_args())
         return args
 
 
