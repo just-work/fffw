@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Optional, Literal, Union
 
-from fffw.graph import base
+from fffw.graph import base, Scene
 from fffw.encoding import inputs
 from fffw.encoding.complex import FilterComplex
 from fffw.encoding.inputs import InputList, Input
@@ -207,9 +207,9 @@ class FFMPEG(BaseWrapper):
                 return super().handle_stderr(line)
         return ''
 
-    def check_buffering(self):
+    def check_buffering(self) -> None:
         for output in self.__outputs:
-            scenes = []
+            scenes: List[Scene] = []
             for codec in output.codecs:
                 meta = codec.get_meta_data()
                 if meta is not None:

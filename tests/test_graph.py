@@ -28,7 +28,7 @@ class FilterGraphTestCase(TestCase):
             height=1080,
             dar=1.777777778,
             par=1.0,
-            duration=300,
+            duration=300.0,
         )
         self.audio_metadata = audio_meta_data()
 

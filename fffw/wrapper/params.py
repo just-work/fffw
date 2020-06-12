@@ -1,9 +1,10 @@
 from dataclasses import field, dataclass, Field, fields
-from typing import Any, Optional, Tuple, cast, List
+from typing import Any, Optional, Tuple, cast, List, Callable
 
 
 def param(default: Any = None, name: Optional[str] = None,
-          stream_suffix: bool = False, init: bool = True, skip: bool = False
+          stream_suffix: bool = False, init: bool = True, skip: bool = False,
+          render: Callable[[Any], Any] = None
           ) -> Any:
     """
     Command line and filter parameters constructor.
@@ -15,6 +16,7 @@ def param(default: Any = None, name: Optional[str] = None,
         (like '-b:v' or '-c:a')
     :param init: add parameter to dataclass constructor.
     :param skip: skip parameter while generating command line args list.
+    :param render: a callable used to format output value.
     :return: dataclass field definition with extra metadata.
 
     >>> from fffw.encoding.filters import VideoFilter
@@ -29,6 +31,7 @@ def param(default: Any = None, name: Optional[str] = None,
         'name': name,
         'stream_suffix': stream_suffix,
         'skip': skip,
+        'render': render
     }
     if callable(default):
         return field(default_factory=default, init=init, metadata=metadata)
@@ -91,6 +94,7 @@ class Params:
             name = meta.get('name')
             stream_suffix = meta.get('stream_suffix')
             skip = meta.get('skip')
+            render = meta.get('render')
             if skip:
                 # if field metadata is marked as `skip`
                 continue
@@ -100,7 +104,8 @@ class Params:
             if stream_suffix:
                 # append stream suffix (':v' or ':a') to parameter name
                 name = f'{name}:{getattr(self, "kind").value}'
-            # support position command line arguments
+            if callable(render):
+                value = render(value)
 
             if callable(value):
                 # get lazy parameter value

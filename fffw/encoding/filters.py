@@ -1,5 +1,5 @@
-from dataclasses import dataclass, replace, asdict
-from typing import Union, List
+from dataclasses import dataclass, replace, asdict, field
+from typing import Union, List, cast
 
 from fffw.graph import base
 from fffw.graph.meta import Meta, VideoMeta, TS, Scene
@@ -127,7 +127,7 @@ class AutoFilter(Filter):
     Base class for stream kind autodetect.
     """
 
-    kind: base.StreamType
+    kind: base.StreamType = field(metadata={'skip': True})
 
     def __post_init__(self) -> None:
         """ Adds audio prefix to filter name for audio filters."""
@@ -199,13 +199,17 @@ class Trim(AutoFilter):
     """
     filter = 'trim'
 
-    start: Union[int, float, str, TS]
-    end: Union[int, float, str, TS]
+    start: Union[int, float, str, TS] = param(
+        name='start',
+        render=lambda ts: ts.total_seconds())
+    end: Union[int, float, str, TS] = param(
+        name='end',
+        render=lambda ts: ts.total_seconds())
 
     def __post_init__(self) -> None:
-        if not isinstance(self.start, TS):
+        if not isinstance(self.start, (TS, type(None))):
             self.start = TS(self.start)
-        if not isinstance(self.end, TS):
+        if not isinstance(self.end, (TS, type(None))):
             self.end = TS(self.end)
         super().__post_init__()
 
@@ -215,8 +219,8 @@ class Trim(AutoFilter):
         min_start = None
         max_end = None
         for scene in meta.scenes:
-            start = max(self.start, scene.start)
-            end = min(self.end, scene.end)
+            start = cast(TS, max(self.start, scene.start))
+            end = cast(TS, min(self.end, scene.end))
             if start < end:
                 scenes.append(Scene(stream=scene.stream, start=start,
                                     duration=end - start))

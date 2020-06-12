@@ -5,12 +5,13 @@ from typing import List, Union, Any, Optional
 from pymediainfo import MediaInfo  # type: ignore
 
 __all__ = [
-    'Meta',
-    'VideoMeta',
     'AudioMeta',
+    'VideoMeta',
+    'Meta',
+    'Scene',
+    'TS',
     'video_meta_data',
     'audio_meta_data',
-    'TS'
 ]
 
 
@@ -64,6 +65,10 @@ class TS(timedelta):
             return NotImplemented
         return TS(self.total_seconds() - other.total_seconds())
 
+    def __lt__(self, other: Union[int, float, str, timedelta, "TS"]) -> bool:
+        if not isinstance(other, timedelta):
+            other = TS(other)
+        return self.total_seconds() < other.total_seconds()
 
 
 @dataclass
@@ -132,7 +137,7 @@ class VideoMeta(Meta):
             assert str(self.dar) == 'nan'
         duration = self.duration.total_seconds()
         if duration != 0:
-            assert abs(self.frame_rate - self.frames / duration) < 0.001
+            assert abs(self.frame_rate - self.frames / duration) < 0.1
         else:
             assert self.frame_rate == 0
 
