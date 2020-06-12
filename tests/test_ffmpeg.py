@@ -72,8 +72,8 @@ class FFMPEGTestCase(TestCase):
             '-loglevel', 'info',
             '-re',
             '-ss', '123.2',
-            '-i', '/tmp/input.mp4',
             '-t', '0:02:03.2',
+            '-i', '/tmp/input.mp4',
             '-filter_complex',
             '[0:v]scale=w=640:h=360[vout0];[0:a]asplit[aout0][aout1]',
 
