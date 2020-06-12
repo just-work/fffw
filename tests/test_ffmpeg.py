@@ -79,7 +79,7 @@ class FFMPEGTestCase(BaseTestCase):
         ff.loglevel = 'info'
         ff.realtime = True
         self.source.fast_seek = 123.2
-        self.source.duration = TS(123.2)
+        self.source.duration = TS(321.2)
         ff < self.source
 
         cv0 = self.video_codec
@@ -104,7 +104,7 @@ class FFMPEGTestCase(BaseTestCase):
             '-loglevel', 'info',
             '-re',
             '-ss', '123.2',
-            '-t', '0:02:03.2',
+            '-t', '321.2',
             '-i', 'source.mp4',
             '-filter_complex',
             '[0:v]scale=w=640:h=360[vout0];[0:a]asplit[aout0][aout1]',
@@ -419,7 +419,7 @@ class FFMPEGTestCase(BaseTestCase):
                 raises, split_pre, split_src = case
                 ff = FFMPEG()
                 s1 = inputs.Stream(VIDEO, self.source.streams[0].meta)
-                s2 = inputs.Stream(VIDEO, self.source.streams[1].meta)
+                s2 = inputs.Stream(VIDEO, self.preroll.streams[0].meta)
                 ff < inputs.input_file('preroll.mp4', s1)
                 ff < inputs.input_file('source.mp4', s2)
                 sf1 = s1 | filters.Split(VIDEO, output_count=int(split_pre) + 1)

@@ -48,9 +48,9 @@ class TS(timedelta):
         """
         Removes non-valuable zeros from fractional part.
 
-        :returns: ffmpeg interval definition (123:59:59.999).
+        :returns: ffmpeg seconds definition (123456.999).
         """
-        v = super().__str__()
+        v = str(self.total_seconds())
         if '.' in v:
             v = v.rstrip('0')
         return v
@@ -74,7 +74,7 @@ class TS(timedelta):
 @dataclass
 class Scene:
     """
-    Single part of stream used in transcoding graph.
+    Continuous part of stream used in transcoding graph.
     """
     stream: Optional[str]
     """ Stream identifier."""

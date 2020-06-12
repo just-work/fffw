@@ -47,19 +47,19 @@ class Stream(base.Source):
         self.connect_dest(split)
         return [split] * count
 
-    def connect_input(self, stream_id: str) -> None:
+    def connect_input(self, source: str) -> None:
         """
-        Marks current stream metadata that it belongs to a stream with given id.
+        Marks current stream metadata that it belongs to some input file.
 
-        :param stream_id: stream identifier as <filename#stream_index>
+        :param source: source filename
         """
         if self.meta is None:
             return
         if self.meta.streams:
             return
-        self.meta.streams = [stream_id]
+        self.meta.streams = [source]
         for scene in self.meta.scenes:
-            scene.stream = stream_id
+            scene.stream = source
 
 
 def default_streams() -> Tuple[Stream, ...]:
@@ -124,8 +124,8 @@ class Input(BaseWrapper):
 def input_file(filename: str, *streams: Stream, **kwargs: Any) -> Input:
     kwargs['input_file'] = filename
     if streams:
-        for i, stream in enumerate(streams):
-            stream.connect_input(f'{filename}#{i}')
+        for stream in streams:
+            stream.connect_input(filename)
         kwargs['streams'] = streams
     return Input(**kwargs)
 

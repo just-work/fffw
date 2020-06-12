@@ -1,4 +1,4 @@
-from dataclasses import dataclass, replace, asdict, field, MISSING
+from dataclasses import dataclass, replace, asdict, MISSING
 from typing import Union, List
 
 from fffw.graph import base
@@ -127,7 +127,11 @@ class AutoFilter(Filter):
     Base class for stream kind autodetect.
     """
 
-    kind: base.StreamType = field(metadata={'skip': True})
+    kind: base.StreamType = param(default=MISSING, skip=True)
+    """ 
+    Stream kind used to generate filter name. Required. Not used as filter 
+    parameter.
+    """
 
     def __post_init__(self) -> None:
         """ Adds audio prefix to filter name for audio filters."""
@@ -199,14 +203,8 @@ class Trim(AutoFilter):
     """
     filter = 'trim'
 
-    start: Union[int, float, str, TS] = param(
-        name='start',
-        default=MISSING,
-        render=lambda ts: ts.total_seconds())
-    end: Union[int, float, str, TS] = param(
-        name='end',
-        default=MISSING,
-        render=lambda ts: ts.total_seconds())
+    start: Union[int, float, str, TS]
+    end: Union[int, float, str, TS]
 
     def __post_init__(self) -> None:
         if not isinstance(self.start, (TS, type(None))):

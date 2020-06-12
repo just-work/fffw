@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from typing import List, Optional, Literal, Union
 
-from fffw.graph import base, Scene
 from fffw.encoding import inputs
 from fffw.encoding.complex import FilterComplex
 from fffw.encoding.inputs import InputList, Input
 from fffw.encoding.outputs import OutputList, Output, Codec
+from fffw.graph import base
 from fffw.wrapper import BaseWrapper, ensure_binary, param
 
 __all__ = ['FFMPEG']

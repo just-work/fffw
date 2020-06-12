@@ -163,6 +163,10 @@ class Output(BaseWrapper):
         :returns: codec args and output file parameters for ffmpeg
         """
         args = []
+        # Check if we need to disable audio or video for output file because no
+        # corresponding codecs are found.
+        # Skipping `-an` / `-vn` parameters is still supported by  manually
+        # setting `no_audio` / `no_video` parameters to `False`.
         for codec in self.codecs:
             if codec.kind == base.VIDEO:
                 self.no_video = False
