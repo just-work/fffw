@@ -208,6 +208,13 @@ class FFMPEG(BaseWrapper):
         return ''
 
     def check_buffering(self) -> None:
+        """
+        Checks that ffmpeg command will not cause frame buffering and
+        out of memory errors.
+
+        Each input file must be read simultaneously be all codecs in outputs,
+        or some streams will be buffered until requested by output codecs.
+        """
         chains = []
         for output in self.__outputs:
             for codec in output.codecs:
