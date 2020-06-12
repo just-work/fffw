@@ -22,7 +22,7 @@ class FFMPEG(BaseWrapper):
 
     >>> from fffw.encoding.codecs import VideoCodec, AudioCodec
     >>> from fffw.encoding.filters import Scale
-    >>> from fffw.graph.outputs import output_file
+    >>> from fffw.encoding.outputs import output_file
     >>> ff = FFMPEG('/tmp/input.mp4', overwrite=True)
     >>> c = VideoCodec('libx264', bitrate=4_000_000)
     >>> ff.video | Scale(1280, 720) > c
