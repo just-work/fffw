@@ -112,7 +112,7 @@ def input_file(filename: str, *streams: Stream, **kwargs: Any) -> Input:
     if streams:
         for i, stream in enumerate(streams):
             if stream.meta and not stream.meta.stream:
-                stream.meta.stream = f'{filename}#{i}'
+                stream.meta.set_stream(f'{filename}#{i}')
         kwargs['streams'] = streams
     return Input(**kwargs)
 

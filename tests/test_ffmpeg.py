@@ -380,7 +380,7 @@ class FFMPEGTestCase(BaseTestCase):
                 raises, first, second = case
                 ff = FFMPEG()
                 s1 = inputs.Stream(VIDEO, self.source.streams[0].meta)
-                s2 = inputs.Stream(AUDIO, self.source.streams[1].meta)
+                s2 = inputs.Stream(VIDEO, self.source.streams[1].meta)
 
                 ff < inputs.input_file('input.mp4', s1, s2)
                 split = ff.video | filters.Split(VIDEO)
@@ -402,24 +402,84 @@ class FFMPEGTestCase(BaseTestCase):
                 else:
                     self.assertFalse(raises)
 
-    def test_detect_trim_buffering_positive(self):
+    def test_detect_concat_buffering(self):
         """
-        When trim and concat filters are used for editing timeline, buffering
-        may occur if order of scenes in output file does not match order of same
-        scenes in input file.
+        When single source is used for multiple outputs, and one of outputs
+        has a preroll, buffering occurs, because to output first frame for a
+        non-preroll output, we need to buffer all preroll frames.
+        """
+
+        cases = [
+            (False, True, True),  # preroll + source / preroll + source
+            (False, True, False),  # preroll + source / preroll
+            (True, False, True),  # preroll + source / source
+        ]
+        for case in cases:
+            with self.subTest(case):
+                raises, split_pre, split_src = case
+                ff = FFMPEG()
+                s1 = inputs.Stream(VIDEO, self.source.streams[0].meta)
+                s2 = inputs.Stream(VIDEO, self.source.streams[1].meta)
+                ff < inputs.input_file('preroll.mp4', s1)
+                ff < inputs.input_file('source.mp4', s2)
+                sf1 = s1 | filters.Split(VIDEO, output_count=int(split_pre) + 1)
+                sf2 = s2 | filters.Split(VIDEO, output_count=int(split_src) + 1)
+
+                c1 = sf1 | filters.Concat(VIDEO, input_count=2)
+                sf2 | c1
+
+                c2 = filters.Concat(VIDEO,
+                                    input_count=int(split_pre) + int(split_src))
+                if split_pre:
+                    sf1 | c2
+                if split_src:
+                    sf2 | c2
+
+                o1 = outputs.output_file("o1.mp4", codecs.VideoCodec("libx264"))
+                o2 = outputs.output_file("o2.mp4", codecs.VideoCodec("libx264"))
+
+                c1 > o1
+                c2 > o2
+
+                ff > o1
+                ff > o2
+                try:
+                    ff.check_buffering()
+                except BufferError as e:
+                    self.assertTrue(raises, e)
+                else:
+                    self.assertFalse(raises)
+
+    def test_fix_preroll_buffering_with_trim(self):
+        """
+        We can fix buffering occured from preroll by using trim filter.
         """
         ff = self.ffmpeg
+        ff < self.preroll
         ff < self.source
-        split = ff.video | filters.Split(VIDEO)
-        t1 = split | filters.Trim(VIDEO, start=1.0, end=2.0)
-        p1 = t1 | filters.SetPTS(VIDEO)
-        t2 = split | filters.Trim(VIDEO, start=3.0, end=4.0)
-        p2 = t2 | filters.SetPTS(VIDEO)
 
-        concat = p2 | filters.Concat(VIDEO)
-        p1 | concat > self.output
+        output = outputs.output_file('original.mp4',
+                                     codecs.VideoCodec("libx264"))
+        original = outputs.output_file('original.mp4',
+                                       codecs.VideoCodec("libx264"))
 
-        ff > self.output
+        preroll_stream = self.preroll.streams[0]
+        source_stream = self.source.streams[0]
 
-        with self.assertRaises(BufferError):
-            self.ffmpeg.check_buffering()
+        concat = preroll_stream | filters.Concat(VIDEO)
+        source_stream | concat
+
+        split = concat | filters.Split(VIDEO)
+
+        split > output
+
+        pd = preroll_stream.meta.duration
+        sd = source_stream.meta.duration
+        trim = split | filters.Trim(VIDEO, start=pd, end=pd + sd)
+
+        trim | filters.SetPTS(VIDEO) > original
+
+        ff > original
+        ff > output
+
+        ff.check_buffering()

@@ -109,6 +109,11 @@ class Meta:
     def end(self) -> TS:
         return self.start + self.duration
 
+    def set_stream(self, stream_id: str) -> None:
+        self.stream = stream_id
+        for scene in self.scenes:
+            scene.stream = stream_id
+
 
 @dataclass
 class VideoMeta(Meta):

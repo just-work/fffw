@@ -3,7 +3,7 @@ from itertools import chain
 from typing import List, cast, Optional, Iterable, Any
 
 from fffw.encoding import filters
-from fffw.graph import base
+from fffw.graph import base, Scene
 from fffw.wrapper import BaseWrapper, ensure_binary, param
 
 __all__ = [
@@ -71,6 +71,19 @@ class Codec(base.Dest, BaseWrapper):
         if count == 1:
             return [self]
         raise RuntimeError("Trying to clone codec, is this intended?")
+
+    def check_buffering(self) -> Optional[List[Scene]]:
+        meta = self.get_meta_data(None)
+        if not meta:
+            return None
+        if len(meta.scenes) < 2:
+            return meta.scenes
+        prev = meta.scenes[0]
+        for scene in meta.scenes[1:]:
+            if prev.stream == scene.stream and prev.end > scene.start:
+                raise BufferError(prev, scene)
+            prev = scene
+        return meta.scenes
 
 
 @dataclass

@@ -208,16 +208,14 @@ class FFMPEG(BaseWrapper):
         return ''
 
     def check_buffering(self) -> None:
+        chains = []
         for output in self.__outputs:
-            scenes: List[Scene] = []
             for codec in output.codecs:
-                meta = codec.get_meta_data()
-                if meta is not None:
-                    scenes.extend(meta.scenes)
-            if not scenes:
-                continue
-            prev = scenes[0]
-            for scene in scenes[1:]:
-                if prev.end > scene.start:
-                    raise BufferError(prev, scene)
-                prev = scene
+                chain = codec.check_buffering()
+                if chain is None:
+                    raise ValueError(chain)
+                chains.append(chain)
+        for chunk in zip(*chains):
+            streams = {s.stream for s in chunk}
+            if len(streams) > 1:
+                raise BufferError(chunk)
