@@ -363,3 +363,63 @@ class FFMPEGTestCase(BaseTestCase):
             '-map', '[aout0]', '-c:a', 'aac', '-b:a', '192000',
             'output.mp4'
         )
+
+    def test_detect_trim_buffering(self):
+        """
+        When trim and concat filters are used for editing timeline, buffering
+        may occur if order of scenes in output file does not match order of same
+        scenes in input file.
+        """
+        cases = [
+            (False, [1.0, 2.0], [2.0, 3.0]),
+            (True, [2.0, 3.0], [1.0, 2.0]),
+            (True, [2.0, 3.0], [2.0, 4.0]),
+        ]
+        for case in cases:
+            with self.subTest(case):
+                raises, first, second = case
+                ff = FFMPEG()
+                s1 = inputs.Stream(VIDEO, self.source.streams[0].meta)
+                s2 = inputs.Stream(AUDIO, self.source.streams[1].meta)
+
+                ff < inputs.input_file('input.mp4', s1, s2)
+                split = ff.video | filters.Split(VIDEO)
+                t1 = split | filters.Trim(VIDEO, *first)
+                p1 = t1 | filters.SetPTS(VIDEO)
+                t2 = split | filters.Trim(VIDEO, *second)
+                p2 = t2 | filters.SetPTS(VIDEO)
+
+                concat = p1 | filters.Concat(VIDEO)
+                output = outputs.output_file('output.mp4',
+                                             codecs.VideoCodec('libx264'))
+                p2 | concat > output
+
+                ff > output
+                try:
+                    ff.check_buffering()
+                except BufferError as e:
+                    self.assertTrue(raises, e)
+                else:
+                    self.assertFalse(raises)
+
+    def test_detect_trim_buffering_positive(self):
+        """
+        When trim and concat filters are used for editing timeline, buffering
+        may occur if order of scenes in output file does not match order of same
+        scenes in input file.
+        """
+        ff = self.ffmpeg
+        ff < self.source
+        split = ff.video | filters.Split(VIDEO)
+        t1 = split | filters.Trim(VIDEO, start=1.0, end=2.0)
+        p1 = t1 | filters.SetPTS(VIDEO)
+        t2 = split | filters.Trim(VIDEO, start=3.0, end=4.0)
+        p2 = t2 | filters.SetPTS(VIDEO)
+
+        concat = p2 | filters.Concat(VIDEO)
+        p1 | concat > self.output
+
+        ff > self.output
+
+        with self.assertRaises(BufferError):
+            self.ffmpeg.check_buffering()

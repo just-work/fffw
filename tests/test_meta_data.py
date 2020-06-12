@@ -210,7 +210,11 @@ class MetaDataTestCase(TestCase):
         self.assertEqual(len(streams), 2)
         video = streams[0]
         self.assertIsInstance(video, meta.VideoMeta)
+        scene = meta.Scene(stream=None,
+                           start=meta.TS(0),
+                           duration=meta.TS(6.740))
         expected = meta.VideoMeta(
+            scenes=[scene],
             stream=None,
             duration=meta.TS(6.740),
             start=meta.TS(0),
@@ -225,7 +229,11 @@ class MetaDataTestCase(TestCase):
         self.assertEqual(expected, video)
         audio = streams[1]
         self.assertIsInstance(audio, meta.AudioMeta)
+        scene = meta.Scene(stream=None,
+                           start=meta.TS(0),
+                           duration=meta.TS(6.742))
         expected = meta.AudioMeta(
+            scenes=[scene],
             stream=None,
             duration=meta.TS(6.742),
             start=meta.TS(0),

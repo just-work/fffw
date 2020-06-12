@@ -206,3 +206,18 @@ class FFMPEG(BaseWrapper):
             if marker in line:
                 return super().handle_stderr(line)
         return ''
+
+    def check_buffering(self):
+        for output in self.__outputs:
+            scenes = []
+            for codec in output.codecs:
+                meta = codec.get_meta_data()
+                if meta is not None:
+                    scenes.extend(meta.scenes)
+            if not scenes:
+                continue
+            prev = scenes[0]
+            for scene in scenes[1:]:
+                if prev.end > scene.start:
+                    raise BufferError(prev, scene)
+                prev = scene

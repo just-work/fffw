@@ -2,7 +2,7 @@ from dataclasses import dataclass, replace, asdict
 from typing import Union, List
 
 from fffw.graph import base
-from fffw.graph.meta import Meta, VideoMeta, TS
+from fffw.graph.meta import Meta, VideoMeta, TS, Scene
 from fffw.wrapper.params import Params, param
 
 __all__ = [
@@ -202,11 +202,30 @@ class Trim(AutoFilter):
     start: Union[int, float, str, TS]
     end: Union[int, float, str, TS]
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.start, TS):
+            self.start = TS(self.start)
+        if not isinstance(self.end, TS):
+            self.end = TS(self.end)
+        super().__post_init__()
+
     def transform(self, *metadata: Meta) -> Meta:
         meta = metadata[0]
-        start = self.start if isinstance(self.start, TS) else TS(self.start)
-        end = self.end if isinstance(self.end, TS) else TS(self.end)
-        return replace(meta, start=start, duration=end)
+        scenes = []
+        min_start = None
+        max_end = None
+        for scene in meta.scenes:
+            start = max(self.start, scene.start)
+            end = min(self.end, scene.end)
+            if start < end:
+                scenes.append(Scene(stream=scene.stream, start=start,
+                                    duration=end - start))
+            if min_start is None or min_start < start:
+                min_start = start
+            if max_end is None or max_end > end:
+                max_end = end
+
+        return replace(meta, start=min_start, duration=max_end, scenes=scenes)
 
 
 @dataclass
@@ -271,9 +290,11 @@ class Concat(Filter):
 
     def transform(self, *metadata: Meta) -> Meta:
         duration = TS(0)
+        scenes = []
         for meta in metadata:
             duration += meta.duration
-        return replace(metadata[0], duration=duration)
+            scenes.extend(meta.scenes)
+        return replace(metadata[0], duration=duration, scenes=scenes)
 
 
 @dataclass

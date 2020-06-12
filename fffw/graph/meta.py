@@ -59,6 +59,29 @@ class TS(timedelta):
             return NotImplemented
         return TS(self.total_seconds() + other.total_seconds())
 
+    def __sub__(self, other: timedelta) -> "TS":
+        if not isinstance(other, timedelta):
+            return NotImplemented
+        return TS(self.total_seconds() - other.total_seconds())
+
+
+
+@dataclass
+class Scene:
+    """
+    Single part of stream used in transcoding graph.
+    """
+    stream: Optional[str]
+    """ Stream identifier."""
+    duration: TS
+    """ Stream duration."""
+    start: TS
+    """ First frame/sample timestamp for stream."""
+
+    @property
+    def end(self) -> TS:
+        return self.start + self.duration
+
 
 @dataclass
 class Meta:
@@ -75,6 +98,11 @@ class Meta:
     """ Stream bitrate in bits per second."""
     stream: Optional[str]
     """ Stream identifier."""
+    scenes: List[Scene]
+
+    @property
+    def end(self) -> TS:
+        return self.start + self.duration
 
 
 @dataclass
@@ -135,10 +163,20 @@ class AudioMeta(Meta):
 
 
 def audio_meta_data(**kwargs: Any) -> AudioMeta:
+    stream = kwargs.get('stream')
+    duration = TS(kwargs.get('duration', 0))
+    start = TS(kwargs.get('start', 0))
+    scene = Scene(
+        stream=stream,
+        duration=duration,
+        start=start,
+    )
+
     return AudioMeta(
-        stream=kwargs.get('stream'),
-        duration=TS(kwargs.get('duration', 0)),
-        start=TS(kwargs.get('start', 0)),
+        scenes=[scene],
+        stream=stream,
+        duration=duration,
+        start=start,
         bitrate=int(kwargs.get('bit_rate', 0)),
         channels=int(kwargs.get('channel_s', 0)),
         sampling_rate=int(kwargs.get('sampling_rate', 0)),
@@ -166,10 +204,19 @@ def video_meta_data(**kwargs: Any) -> VideoMeta:
             frame_rate = 0
         else:
             frame_rate = frames / duration.total_seconds()
-    return VideoMeta(
-        stream=kwargs.get('stream'),
+
+    stream = kwargs.get('stream')
+    start = TS(kwargs.get('start', 0))
+    scene = Scene(
+        stream=stream,
+        start=start,
         duration=duration,
-        start=TS(kwargs.get('start', 0)),
+    )
+    return VideoMeta(
+        scenes=[scene],
+        stream=stream,
+        duration=duration,
+        start=start,
         bitrate=int(kwargs.get('bit_rate', 0)),
         width=width,
         height=height,
