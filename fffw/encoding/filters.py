@@ -1,5 +1,5 @@
 from dataclasses import dataclass, replace, asdict, MISSING
-from typing import Union, List
+from typing import Union, List, cast
 
 from fffw.graph import base
 from fffw.graph.meta import Meta, VideoMeta, TS, Scene
@@ -203,8 +203,8 @@ class Trim(AutoFilter):
     """
     filter = 'trim'
 
-    start: Union[int, float, str, TS]
-    end: Union[int, float, str, TS]
+    start: Union[int, float, str, TS] = param(default=MISSING)  # mypy :(
+    end: Union[int, float, str, TS] = param(default=MISSING)  # mypy :(
 
     def __post_init__(self) -> None:
         if not isinstance(self.start, (TS, type(None))):
@@ -224,15 +224,15 @@ class Trim(AutoFilter):
         """
         meta = metadata[0]
         scenes = []
-        streams = []
+        streams: List[str] = []
         for scene in meta.scenes:
-            if not streams or streams[0] != scene.stream:
+            if scene.stream and (not streams or streams[0] != scene.stream):
                 # Adding an input stream without contiguous duplicates.
                 streams.append(scene.stream)
 
             # intersect scene with trim interval
-            start = max(self.start, scene.start)
-            end = min(self.end, scene.end)
+            start = cast(TS, max(self.start, scene.start))
+            end = cast(TS, min(self.end, scene.end))
 
             if start < end:
                 # If intersection is not empty, add intersection to resulting
@@ -316,7 +316,7 @@ class Concat(Filter):
         """
         duration = TS(0)
         scenes = []
-        streams = []
+        streams: List[str] = []
         for meta in metadata:
             duration += meta.duration
             scenes.extend(meta.scenes)
