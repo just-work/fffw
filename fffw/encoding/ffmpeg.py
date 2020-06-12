@@ -211,11 +211,15 @@ class FFMPEG(BaseWrapper):
         chains = []
         for output in self.__outputs:
             for codec in output.codecs:
-                chain = codec.check_buffering()
-                if chain is None:
-                    raise ValueError(chain)
-                chains.append(chain)
+                streams = codec.check_buffering()
+                if streams is None:
+                    # Streams can't be computed because of missing metadata.
+                    raise ValueError(streams)
+                chains.append(streams)
         for chunk in zip(*chains):
-            streams = {s.stream for s in chunk}
-            if len(streams) > 1:
+            # Check that every codec reads same input stream
+            if len(set(chunk)) > 1:
+                # some codec read different file at this step, so one of input
+                # stream will be buffered until this file is read by another
+                # codec.
                 raise BufferError(chunk)

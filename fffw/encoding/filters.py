@@ -1,5 +1,5 @@
 from dataclasses import dataclass, replace, asdict, field, MISSING
-from typing import Union, List, cast
+from typing import Union, List
 
 from fffw.graph import base
 from fffw.graph.meta import Meta, VideoMeta, TS, Scene
@@ -218,29 +218,26 @@ class Trim(AutoFilter):
     def transform(self, *metadata: Meta) -> Meta:
         meta = metadata[0]
         scenes = []
-        min_start = None
-        max_end = None
+        streams = []
         for scene in meta.scenes:
-            start = cast(TS, max(self.start, scene.start))
-            end = cast(TS, min(self.end, scene.end))
+            if not streams or streams[0] != scene.stream:
+                # Adding an input stream without contiguous duplicates.
+                streams.append(scene.stream)
+
+            # intersect scene with trim interval
+            start = max(self.start, scene.start)
+            end = min(self.end, scene.end)
+
             if start < end:
+                # If intersection is not empty, add intersection to resulting
+                # scenes list.
                 # This will allow to detect buffering when multiple scenes are
                 # reordered in same file: input[3:4] + input[1:2]
                 scenes.append(Scene(stream=scene.stream, start=start,
                                     duration=end - start))
-            else:
-                # This will help to detect cross-streams buffering. Subsequent
-                # scenes don't hide errors in inter-stream reordering but allows
-                # to catch the situation when two files are concatenated and
-                # then first file is cut completely by trim filter: this doesn't
-                # lead to buffering as proved by experiments.
-                scenes.append(scene)
-            if min_start is None or min_start < start:
-                min_start = start
-            if max_end is None or max_end > end:
-                max_end = end
 
-        return replace(meta, start=min_start, duration=max_end, scenes=scenes)
+        return replace(meta, start=self.start, duration=self.end,
+                       scenes=scenes, streams=streams)
 
 
 @dataclass
@@ -306,10 +303,17 @@ class Concat(Filter):
     def transform(self, *metadata: Meta) -> Meta:
         duration = TS(0)
         scenes = []
+        streams = []
         for meta in metadata:
             duration += meta.duration
             scenes.extend(meta.scenes)
-        return replace(metadata[0], duration=duration, scenes=scenes)
+            for stream in meta.streams:
+                if not streams or streams[-1] != stream:
+                    # Add all streams for each concatenated metadata and remove
+                    # contiguous duplicates.
+                    streams.append(stream)
+        return replace(metadata[0], duration=duration,
+                       scenes=scenes, streams=streams)
 
 
 @dataclass

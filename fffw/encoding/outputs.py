@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from itertools import chain
 from typing import List, cast, Optional, Iterable, Any
 
-from fffw.graph import base, Scene
+from fffw.graph import base
 from fffw.wrapper import BaseWrapper, ensure_binary, param
 
 __all__ = [
@@ -71,18 +71,26 @@ class Codec(base.Dest, BaseWrapper):
             return [self]
         raise RuntimeError("Trying to clone codec, is this intended?")
 
-    def check_buffering(self) -> Optional[List[Scene]]:
+    def check_buffering(self) -> Optional[List[str]]:
+        """
+        Check that scenes read from input stream are ordered with ascending
+        timestamps.
+
+        :returns: A list of streams needed for this codec or None if metadata
+            for codec can't be computed.
+        """
         meta = self.get_meta_data(None)
         if not meta:
             return None
-        if len(meta.scenes) < 2:
-            return meta.scenes
         prev = meta.scenes[0]
         for scene in meta.scenes[1:]:
             if prev.stream == scene.stream and prev.end > scene.start:
+                # Previous scene in same stream is located after current, so
+                # current decoded scene will be buffered until previous scene is
+                # decoded.
                 raise BufferError(prev, scene)
             prev = scene
-        return meta.scenes
+        return meta.streams
 
 
 @dataclass
