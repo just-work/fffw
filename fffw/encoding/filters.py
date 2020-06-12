@@ -1,4 +1,4 @@
-from dataclasses import dataclass, replace, asdict, MISSING
+from dataclasses import dataclass, replace, asdict, MISSING, field
 from typing import Union, List, cast
 
 from fffw.graph import base
@@ -127,11 +127,13 @@ class AutoFilter(Filter):
     Base class for stream kind autodetect.
     """
 
-    kind: base.StreamType = param(default=MISSING, skip=True)
+    kind: base.StreamType = field(metadata={'skip': True})
     """ 
     Stream kind used to generate filter name. Required. Not used as filter 
     parameter.
     """
+    # `field` is used here to tell MyPy that there is no default for `kind`
+    # because `default=MISSING` is valuable for MyPY.
 
     def __post_init__(self) -> None:
         """ Adds audio prefix to filter name for audio filters."""
@@ -203,8 +205,8 @@ class Trim(AutoFilter):
     """
     filter = 'trim'
 
-    start: Union[int, float, str, TS] = param(default=MISSING)  # mypy :(
-    end: Union[int, float, str, TS] = param(default=MISSING)  # mypy :(
+    start: Union[int, float, str, TS]
+    end: Union[int, float, str, TS]
 
     def __post_init__(self) -> None:
         if not isinstance(self.start, (TS, type(None))):
