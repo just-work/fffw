@@ -418,28 +418,41 @@ class FFMPEGTestCase(BaseTestCase):
             with self.subTest(case):
                 raises, split_pre, split_src = case
                 ff = FFMPEG()
-                s1 = inputs.Stream(VIDEO, self.source.streams[0].meta)
-                s2 = inputs.Stream(VIDEO, self.preroll.streams[0].meta)
-                ff < inputs.input_file('preroll.mp4', s1)
-                ff < inputs.input_file('source.mp4', s2)
-                sf1 = s1 | filters.Split(VIDEO, output_count=int(split_pre) + 1)
-                sf2 = s2 | filters.Split(VIDEO, output_count=int(split_src) + 1)
+                v1 = inputs.Stream(VIDEO, self.preroll.streams[0].meta)
+                a1 = inputs.Stream(AUDIO, self.preroll.streams[1].meta)
+                v2 = inputs.Stream(VIDEO, self.source.streams[0].meta)
+                a2 = inputs.Stream(VIDEO, self.source.streams[1].meta)
+                ff < inputs.input_file('preroll.mp4', v1, a1)
+                ff < inputs.input_file('source.mp4', v2, a2)
+                vf1 = v1 | filters.Split(VIDEO, output_count=int(split_pre) + 1)
+                vf2 = v2 | filters.Split(VIDEO, output_count=int(split_src) + 1)
+                af1 = v1 | filters.Split(AUDIO, output_count=int(split_pre) + 1)
+                af2 = v2 | filters.Split(AUDIO, output_count=int(split_src) + 1)
 
-                c1 = sf1 | filters.Concat(VIDEO, input_count=2)
-                sf2 | c1
+                vc1 = vf1 | filters.Concat(VIDEO, input_count=2)
+                vf2 | vc1
+                ac1 = af1 | filters.Concat(AUDIO, input_count=2)
+                af2 | ac1
 
-                c2 = filters.Concat(VIDEO,
-                                    input_count=int(split_pre) + int(split_src))
+                vc2 = filters.Concat(VIDEO, int(split_pre) + int(split_src))
                 if split_pre:
-                    sf1 | c2
+                    vf1 | vc2
                 if split_src:
-                    sf2 | c2
+                    vf2 | vc2
 
-                o1 = outputs.output_file("o1.mp4", codecs.VideoCodec("libx264"))
-                o2 = outputs.output_file("o2.mp4", codecs.VideoCodec("libx264"))
+                ac2 = filters.Concat(AUDIO, int(split_pre) + int(split_src))
+                if split_pre:
+                    af1 | ac2
+                if split_src:
+                    af2 | ac2
 
-                c1 > o1
-                c2 > o2
+                o1 = outputs.output_file("o1.mp4", X264(), AAC())
+                o2 = outputs.output_file("o2.mp4", X264(), AAC())
+
+                vc1 > o1
+                ac1 > o1
+                vc2 > o2
+                ac2 > o2
 
                 ff > o1
                 ff > o2
