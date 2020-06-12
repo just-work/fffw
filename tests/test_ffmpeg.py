@@ -42,6 +42,30 @@ class Volume(filters.AudioFilter):
 
 
 class FFMPEGTestCase(TestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        vm = video_meta_data(duration=3600.0)
+        am = audio_meta_data(duration=3600.0)
+        self.source = inputs.input_file(
+            'source.mp4',
+            inputs.Stream(VIDEO, vm),
+            inputs.Stream(AUDIO, am))
+
+        self.logo = inputs.input_file(
+            'logo.png',
+            inputs.Stream(VIDEO, video_meta_data()))
+
+        vm = video_meta_data(duration=10.0)
+        am = audio_meta_data(duration=10.0)
+        self.preroll = inputs.input_file(
+            'preroll.mp4',
+            inputs.Stream(VIDEO, vm),
+            inputs.Stream(AUDIO, am))
+
+        self.output = outputs.output_file(
+            'output.mp4',
+            codecs.VideoCodec('libx264'),
+            codecs.AudioCodec('aac'))
 
     def test_ffmpeg(self):
         """ Smoke test and feature demo."""

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import List, Union, Any
+from typing import List, Union, Any, Optional
 
 from pymediainfo import MediaInfo  # type: ignore
 
@@ -73,6 +73,8 @@ class Meta:
     """ First frame/sample timestamp for stream."""
     bitrate: int
     """ Stream bitrate in bits per second."""
+    stream: Optional[str]
+    """ Stream identifier."""
 
 
 @dataclass
@@ -134,6 +136,7 @@ class AudioMeta(Meta):
 
 def audio_meta_data(**kwargs: Any) -> AudioMeta:
     return AudioMeta(
+        stream=kwargs.get('stream'),
         duration=TS(kwargs.get('duration', 0)),
         start=TS(kwargs.get('start', 0)),
         bitrate=int(kwargs.get('bit_rate', 0)),
@@ -164,6 +167,7 @@ def video_meta_data(**kwargs: Any) -> VideoMeta:
         else:
             frame_rate = frames / duration.total_seconds()
     return VideoMeta(
+        stream=kwargs.get('stream'),
         duration=duration,
         start=TS(kwargs.get('start', 0)),
         bitrate=int(kwargs.get('bit_rate', 0)),

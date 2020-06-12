@@ -211,6 +211,7 @@ class MetaDataTestCase(TestCase):
         video = streams[0]
         self.assertIsInstance(video, meta.VideoMeta)
         expected = meta.VideoMeta(
+            stream=None,
             duration=meta.TS(6.740),
             start=meta.TS(0),
             bitrate=4321426,
@@ -225,6 +226,7 @@ class MetaDataTestCase(TestCase):
         audio = streams[1]
         self.assertIsInstance(audio, meta.AudioMeta)
         expected = meta.AudioMeta(
+            stream=None,
             duration=meta.TS(6.742),
             start=meta.TS(0),
             bitrate=192000,
