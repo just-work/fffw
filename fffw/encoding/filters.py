@@ -216,6 +216,14 @@ class Trim(AutoFilter):
         super().__post_init__()
 
     def transform(self, *metadata: Meta) -> Meta:
+        """
+        Computes metadata for trimmed stream.
+
+        :param metadata: single incoming stream metadata.
+        :returns: metadata with initial start (this is fixed with SetPTS) and
+            duration set to trim end. Scenes list is intersected with trim
+            interval, scene borders are aligned to trim borders.
+        """
         meta = metadata[0]
         scenes = []
         streams = []
@@ -301,6 +309,13 @@ class Concat(Filter):
         return 'v=0:a=1:n=%s' % self.input_count
 
     def transform(self, *metadata: Meta) -> Meta:
+        """
+        Compute metadata for concatenated streams.
+
+        :param metadata: concatenated streams metadata
+        :returns: Metadata for resulting stream with duration set to a sum of
+            stream durations. Scenes and streams are also concatenated.
+        """
         duration = TS(0)
         scenes = []
         streams = []
