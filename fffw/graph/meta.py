@@ -101,18 +101,19 @@ class Meta:
     """ First frame/sample timestamp for stream."""
     bitrate: int
     """ Stream bitrate in bits per second."""
-    stream: Optional[str]
-    """ Stream identifier."""
     scenes: List[Scene]
+    """ 
+    List of continuous stream fragments (maybe from different files), that need
+    to be read to get a result with current metadata.
+    """
+    streams: List[str]
+    """
+    List of streams (maybe from different files), that need to be read to get
+    a result with current metadata."""
 
     @property
     def end(self) -> TS:
         return self.start + self.duration
-
-    def set_stream(self, stream_id: str) -> None:
-        self.stream = stream_id
-        for scene in self.scenes:
-            scene.stream = stream_id
 
 
 @dataclass
@@ -178,7 +179,7 @@ def audio_meta_data(**kwargs: Any) -> AudioMeta:
 
     return AudioMeta(
         scenes=[scene],
-        stream=stream,
+        streams=[stream] if stream else [],
         duration=duration,
         start=start,
         bitrate=int(kwargs.get('bit_rate', 0)),
@@ -218,7 +219,7 @@ def video_meta_data(**kwargs: Any) -> VideoMeta:
     )
     return VideoMeta(
         scenes=[scene],
-        stream=stream,
+        streams=[stream] if stream else [],
         duration=duration,
         start=start,
         bitrate=int(kwargs.get('bit_rate', 0)),

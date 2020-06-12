@@ -215,7 +215,7 @@ class MetaDataTestCase(TestCase):
                            duration=meta.TS(6.740))
         expected = meta.VideoMeta(
             scenes=[scene],
-            stream=None,
+            streams=[],
             duration=meta.TS(6.740),
             start=meta.TS(0),
             bitrate=4321426,
@@ -233,7 +233,7 @@ class MetaDataTestCase(TestCase):
                            duration=meta.TS(6.742))
         expected = meta.AudioMeta(
             scenes=[scene],
-            stream=None,
+            streams=[],
             duration=meta.TS(6.742),
             start=meta.TS(0),
             bitrate=192000,
