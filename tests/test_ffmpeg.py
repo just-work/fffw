@@ -1,9 +1,10 @@
 from dataclasses import dataclass
-from unittest import TestCase, expectedFailure
+from unittest import expectedFailure
 
-from fffw.graph import *
 from fffw.encoding import filters, codecs, ffmpeg, inputs, outputs
+from fffw.graph import *
 from fffw.wrapper import ensure_binary, param
+from tests.base import BaseTestCase
 
 
 @dataclass
@@ -41,7 +42,7 @@ class Volume(filters.AudioFilter):
         return "%.2f" % self.volume
 
 
-class FFMPEGTestCase(TestCase):
+class FFMPEGTestCase(BaseTestCase):
     def setUp(self) -> None:
         super().setUp()
         vm = video_meta_data(duration=3600.0)
@@ -62,20 +63,27 @@ class FFMPEGTestCase(TestCase):
             inputs.Stream(VIDEO, vm),
             inputs.Stream(AUDIO, am))
 
+        self.video_codec = X264(bitrate=3600000)
+        self.audio_codec = AAC(bitrate=192000)
+
         self.output = outputs.output_file(
             'output.mp4',
-            codecs.VideoCodec('libx264'),
-            codecs.AudioCodec('aac'))
+            self.video_codec,
+            self.audio_codec)
+
+        self.ffmpeg = FFMPEG()
 
     def test_ffmpeg(self):
         """ Smoke test and feature demo."""
-        ff = FFMPEG(loglevel='info', realtime=True)
-        ff < inputs.input_file('/tmp/input.mp4',
-                               fast_seek=123.2,
-                               duration=TS(123.2))
+        ff = self.ffmpeg
+        ff.loglevel = 'info'
+        ff.realtime = True
+        self.source.fast_seek = 123.2
+        self.source.duration = TS(123.2)
+        ff < self.source
 
-        cv0 = X264(bitrate=700000)
-        ca0 = AAC(bitrate=128000)
+        cv0 = self.video_codec
+        ca0 = self.audio_codec
         ca1 = codecs.AudioCodec('libmp3lame', bitrate=394000)
 
         asplit = ff.audio | filters.Split(AUDIO)
@@ -85,80 +93,93 @@ class FFMPEGTestCase(TestCase):
         asplit.connect_dest(ca0)
         asplit.connect_dest(ca1)
 
-        out0 = outputs.output_file('/tmp/out.flv', cv0, ca0)
+        out0 = self.output
         out1 = outputs.output_file('/tmp/out.mp3', ca1)
 
-        ff.add_output(out0)
-        ff.add_output(out1)
+        ff > out0
+        ff > out1
 
-        expected = [
+        self.assert_ffmpeg_args(
             'ffmpeg',
             '-loglevel', 'info',
             '-re',
             '-ss', '123.2',
             '-t', '0:02:03.2',
-            '-i', '/tmp/input.mp4',
+            '-i', 'source.mp4',
             '-filter_complex',
             '[0:v]scale=w=640:h=360[vout0];[0:a]asplit[aout0][aout1]',
 
-            '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '700000',
-            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '128000',
+            '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '3600000',
+            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '192000',
 
-            '/tmp/out.flv',
+            'output.mp4',
 
             '-map', '[aout1]', '-c:a', 'libmp3lame', '-b:a', '394000',
+            '-vn',
             '/tmp/out.mp3'
-        ]
-        self.assertEqual(ff.get_args(), ensure_binary(expected))
+        )
 
     def test_bypass_with_filter_complex(self):
         """ Audio stream bypass mode."""
-        ff = FFMPEG('/tmp/input.mp4')
-        cv0 = X264(bitrate=700000)
-        ca0 = AAC(bitrate=128000)
+        ff = self.ffmpeg
+        ff < self.source
 
-        ff.video | filters.Scale(640, 360) > cv0
+        ff.video | filters.Scale(640, 360) > self.video_codec
 
-        ff > outputs.output_file('/tmp/out.flv', cv0, ca0)
+        ff > self.output
 
-        expected = [
+        self.assert_ffmpeg_args(
             'ffmpeg',
-            '-i', '/tmp/input.mp4',
+            '-i', 'source.mp4',
             '-filter_complex',
             '[0:v]scale=w=640:h=360[vout0]',
-            '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '700000',
-            '-map', '0:a', '-c:a', 'aac', '-b:a', '128000',
-            '/tmp/out.flv'
-        ]
-        self.assertEqual(ff.get_args(), ensure_binary(expected))
+            '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '3600000',
+            '-map', '0:a', '-c:a', 'aac', '-b:a', '192000',
+            'output.mp4'
+        )
+
+    def test_no_audio_if_no_codecs_found(self):
+        """ If no audio codecs specified, set -an flag for an output."""
+        ff = self.ffmpeg
+        ff < self.source
+
+        output = outputs.output_file('out.mp4', codecs.VideoCodec('libx264'))
+        ff.video | filters.Scale(640, 360) > output
+        ff > output
+
+        self.assert_ffmpeg_args(
+            'ffmpeg',
+            '-i', 'source.mp4',
+            '-filter_complex',
+            '[0:v]scale=w=640:h=360[vout0]',
+            '-map', '[vout0]', '-c:v', 'libx264',
+            '-an',
+            'out.mp4'
+        )
 
     def test_bypass_without_filter_complex(self):
         """ inputs.Stream bypass with filter_complex missing."""
-        ff = FFMPEG('/tmp/input.mp4')
+        ff = self.ffmpeg
+        ff < self.source
+        ff > self.output
 
-        cv0 = X264(bitrate=700000)
-        ca0 = AAC(bitrate=128000)
-        ff > outputs.output_file('/tmp/out.flv', cv0, ca0)
-
-        expected = [
+        self.assert_ffmpeg_args(
             'ffmpeg',
-            '-i', '/tmp/input.mp4',
-            '-map', '0:v', '-c:v', 'libx264', '-b:v', '700000',
-            '-map', '0:a', '-c:a', 'aac', '-b:a', '128000',
-            '/tmp/out.flv'
-        ]
-        self.assertEqual(ff.get_args(), ensure_binary(expected))
+            '-i', 'source.mp4',
+            '-map', '0:v', '-c:v', 'libx264', '-b:v', '3600000',
+            '-map', '0:a', '-c:a', 'aac', '-b:a', '192000',
+            'output.mp4'
+        )
 
     def test_input_stream_naming(self):
         """ inputs.Input stream naming test."""
 
-        ff = FFMPEG()
-        ff < inputs.Input(input_file='/tmp/input.jpg',
-                          streams=(inputs.Stream(VIDEO),))
-        ff < inputs.Input(input_file='/tmp/input.mp4')
+        ff = self.ffmpeg
+        ff < self.logo
+        ff < self.source
 
-        cv0 = X264(bitrate=700000)
-        ca0 = AAC(bitrate=128000)
+        cv0 = self.video_codec
+        ca0 = self.audio_codec
 
         overlay = filters.Overlay(0, 0)
         ff.video | filters.Scale(640, 360) | overlay
@@ -166,39 +187,36 @@ class FFMPEGTestCase(TestCase):
         ff.audio | Volume(-20) > ca0
         overlay > cv0
 
-        out0 = outputs.output_file('/tmp/out.flv', cv0, ca0)
-        ff.add_output(out0)
+        ff > self.output
 
-        expected = [
+        self.assert_ffmpeg_args(
             'ffmpeg',
-            '-i', '/tmp/input.jpg',
-            '-i', '/tmp/input.mp4',
+            '-i', 'logo.png',
+            '-i', 'source.mp4',
             '-filter_complex',
-            (
-                '[0:v]scale=w=640:h=360[v:scale0];'
-                '[v:scale0][v:scale1]overlay[vout0];'
-                '[1:v]scale=w=1280:h=720[v:scale1];'
-                '[1:a]volume=-20.00[aout0]'),
-            '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '700000',
-            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '128000',
-            '/tmp/out.flv'
-        ]
-        self.assertEqual(ff.get_args(), ensure_binary(expected))
+            '[0:v]scale=w=640:h=360[v:scale0];'
+            '[v:scale0][v:scale1]overlay[vout0];'
+            '[1:v]scale=w=1280:h=720[v:scale1];'
+            '[1:a]volume=-20.00[aout0]',
+            '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '3600000',
+            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '192000',
+            'output.mp4'
+        )
 
     def test_handle_codec_copy(self):
         """ vcodec=copy connects source directly to muxer."""
-        ff = FFMPEG('/tmp/input.mp4')
+        ff = self.ffmpeg
+        ff < self.source
 
         cv0 = codecs.VideoCodec('copy')
         ca0 = codecs.AudioCodec('aac', bitrate=128000)
 
         ff.audio | Volume(20) > ca0
 
-        out0 = outputs.output_file('/tmp/out.flv', cv0, ca0)
-        ff.add_output(out0)
-        expected = [
+        ff > outputs.output_file('/tmp/out.flv', cv0, ca0)
+        self.assert_ffmpeg_args(
             'ffmpeg',
-            '-i', '/tmp/input.mp4',
+            '-i', 'source.mp4',
             '-filter_complex',
             '[0:a]volume=20.00[aout0]',
             '-map', '0:v',
@@ -206,18 +224,16 @@ class FFMPEGTestCase(TestCase):
             '-map', '[aout0]',
             '-c:a', 'aac', '-b:a', '128000',
             '/tmp/out.flv'
-        ]
-        self.assertEqual(ff.get_args(), ensure_binary(expected))
+        )
 
     def test_reuse_input_files(self):
         """ Reuse input files multiple times."""
-        v = inputs.Stream(VIDEO)
-        a = inputs.Stream(AUDIO)
-        ff = FFMPEG(inputs.Input(input_file='/tmp/input.mp4', streams=(v, a)))
-        cv0 = codecs.VideoCodec('copy')
-        ca0 = codecs.AudioCodec('copy')
-        out0 = outputs.output_file('/tmp/out0.flv', cv0, ca0)
-        ff > out0
+        ff = self.ffmpeg
+        ff < self.source
+        v = self.source.streams[0]
+        a = self.source.streams[1]
+
+        ff > self.output
 
         cv1 = codecs.VideoCodec('copy')
         ca1 = codecs.AudioCodec('copy')
@@ -225,46 +241,40 @@ class FFMPEGTestCase(TestCase):
         v > cv1
         a > ca1
         ff > out1
-        expected = [
+        self.assert_ffmpeg_args(
             'ffmpeg',
-            '-i', '/tmp/input.mp4',
+            '-i', 'source.mp4',
             '-map', '0:v',
-            '-c:v', 'copy',
+            '-c:v', 'libx264', '-b:v', '3600000',
             '-map', '0:a',
-            '-c:a', 'copy',
-            '/tmp/out0.flv',
+            '-c:a', 'aac', '-b:a', '192000',
+            'output.mp4',
             '-map', '0:v',
             '-c:v', 'copy',
             '-map', '0:a',
             '-c:a', 'copy',
             '/tmp/out1.flv',
-        ]
-        self.assertEqual(ff.get_args(), ensure_binary(expected))
+        )
 
     def test_handle_codec_copy_with_other_filters(self):
         """ vcodec=copy with separate transcoded output."""
-        v = inputs.Stream(VIDEO)
-        a = inputs.Stream(AUDIO)
-        ff = FFMPEG(inputs.Input(input_file='/tmp/input.mp4', streams=(v, a)))
+        ff = self.ffmpeg
+        ff < self.source
 
         cv0 = codecs.VideoCodec('copy')
         ca0 = codecs.AudioCodec('copy')
-        out0 = outputs.output_file('/tmp/copy.flv', cv0, ca0)
-
-        ff > out0
+        ff > outputs.output_file('/tmp/copy.flv', cv0, ca0)
 
         cv1 = codecs.VideoCodec('libx264')
         ca1 = codecs.AudioCodec('aac')
-        out1 = outputs.output_file('/tmp/out.flv', cv1, ca1)
+        self.source.streams[0] | filters.Scale(640, 360) > cv1
+        self.source.streams[1] > ca1
 
-        v | filters.Scale(640, 360) > cv1
-        a > ca1
-
-        ff.add_output(out1)
+        ff > outputs.output_file('/tmp/out.flv', cv1, ca1)
 
         expected = [
             'ffmpeg',
-            '-i', '/tmp/input.mp4',
+            '-i', 'source.mp4',
             '-filter_complex',
             '[0:v]scale=w=640:h=360[vout0]',
             '-map', '0:v',
@@ -283,16 +293,16 @@ class FFMPEGTestCase(TestCase):
 
     def test_transcoding_without_graph(self):
         """ Transcoding works without filter graph."""
-        ff = FFMPEG()
-        ff < inputs.Input(input_file='input.mp4')
-        ff.add_output(outputs.output_file('/dev/null', format='null'))
-        expected = [
+        ff = self.ffmpeg
+        ff < self.source
+        ff > outputs.output_file('/dev/null', format='null')
+        self.assert_ffmpeg_args(
             'ffmpeg',
-            '-i', 'input.mp4',
+            '-i', 'source.mp4',
+            '-vn', '-an',
             '-f', 'null',
             '/dev/null'
-        ]
-        self.assertEqual(ff.get_args(), ensure_binary(expected))
+        )
 
     # TODO #19 reimplement TeeMuxer
     @expectedFailure
@@ -322,40 +332,34 @@ class FFMPEGTestCase(TestCase):
 
     def test_concat(self):
         """ Concat source files."""
-        ff = FFMPEG()
-        ff < inputs.Input(input_file='preroll.mp4')
-        ff < inputs.Input(input_file='input.mp4')
-
-        cv0 = codecs.VideoCodec('libx264')
-        ca0 = codecs.AudioCodec('aac')
+        ff = self.ffmpeg
+        ff < self.preroll
+        ff < self.source
 
         preroll_ready = ff.video | filters.Scale(640, 480) | SetSAR(1)
         concat = filters.Concat(VIDEO)
         preroll_ready | concat
         ff.video | concat
 
-        concat > cv0
+        concat > self.video_codec
 
         aconcat = filters.Concat(AUDIO)
         ff.audio | aconcat
         ff.audio | aconcat
 
-        aconcat > ca0
-        ff.add_output(outputs.output_file('output.mp4', cv0, ca0))
+        aconcat > self.audio_codec
+        ff > self.output
 
-        expected = [
+        self.assert_ffmpeg_args(
             'ffmpeg',
             '-i', 'preroll.mp4',
-            '-i', 'input.mp4',
+            '-i', 'source.mp4',
             '-filter_complex',
             "[0:v]scale=w=640:h=480[v:scale0];"
             "[v:scale0]setsar=1[v:setsar0];"
             "[v:setsar0][1:v]concat[vout0];"
             "[0:a][1:a]concat=v=0:a=1:n=2[aout0]",
-            '-map', '[vout0]',
-            '-c:v', 'libx264',
-            '-map', '[aout0]',
-            '-c:a', 'aac',
+            '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '3600000',
+            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '192000',
             'output.mp4'
-        ]
-        self.assertEqual(ff.get_args(), ensure_binary(expected))
+        )

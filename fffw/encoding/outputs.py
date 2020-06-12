@@ -84,6 +84,8 @@ class Output(BaseWrapper):
     :arg output_file: output file name.
     """
     codecs: List[Codec] = param(skip=True)
+    no_video: Optional[bool] = param(default=None, name='vn')
+    no_audio: Optional[bool] = param(default=None, name='an')
     format: str = param(name="f")
     output_file: str = param(name="")
 
@@ -140,10 +142,18 @@ class Output(BaseWrapper):
         """
         :returns: codec args and output file parameters for ffmpeg
         """
-        args = (
-                list(chain(*(codec.get_args() for codec in self.codecs))) +
-                super().get_args()
-        )
+        args = []
+        for codec in self.codecs:
+            if codec.kind == base.VIDEO:
+                self.no_video = False
+            if codec.kind == base.AUDIO:
+                self.no_audio = False
+            args.extend(codec.get_args())
+        if self.no_video is None:
+            self.no_video = True
+        if self.no_audio is None:
+            self.no_audio = True
+        args.extend(super().get_args())
         return args
 
 
