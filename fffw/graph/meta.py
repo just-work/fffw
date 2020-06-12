@@ -96,11 +96,11 @@ class Meta:
     Describes common stream characteristics like bitrate and duration.
     """
     duration: TS
-    """ Stream duration."""
+    """ Resulting stream duration."""
     start: TS
-    """ First frame/sample timestamp for stream."""
+    """ First frame/sample timestamp for resulting stream."""
     bitrate: int
-    """ Stream bitrate in bits per second."""
+    """ Input stream bitrate in bits per second."""
     scenes: List[Scene]
     """ 
     List of continuous stream fragments (maybe from different files), that need
@@ -113,6 +113,9 @@ class Meta:
 
     @property
     def end(self) -> TS:
+        """
+        :return: Timestamp of last frame resulting stream.
+        """
         return self.start + self.duration
 
 
