@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Optional, Literal, Union
+from typing import List, Optional, Union
 
 from fffw.encoding import inputs
 from fffw.encoding.complex import FilterComplex
@@ -9,10 +9,6 @@ from fffw.graph import base
 from fffw.wrapper import BaseWrapper, ensure_binary, param
 
 __all__ = ['FFMPEG']
-
-LogLevel = Literal['quiet', 'panic', 'fatal', 'error', 'warning',
-                   'info', 'verbose', 'debug', 'trace']
-""" Allowed values for ffmpeg log level."""
 
 
 @dataclass
@@ -43,8 +39,10 @@ class FFMPEG(BaseWrapper):
     input: Union[str, Input] = param(skip=True)
     output: Union[str, Output] = param(skip=True)
 
-    loglevel: LogLevel = param()
+    loglevel: str = param()
+    """ Loglevel: i.e. `level+info`."""
     overwrite: bool = param(name='y')
+    """ Overwrite output files without manual confirmation."""
 
     def __post_init__(self) -> None:
         """
