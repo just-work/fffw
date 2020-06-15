@@ -4,7 +4,7 @@ from fffw.encoding import *
 ff = FFMPEG(overwrite=True, loglevel='level+info')
 
 # add an input file
-ff < input_file('input.mp4')
+ff < input_file('input.mp4', duration=5.0)
 
 # scale video stream
 scale = ff.video | Scale(width=1280, height=720)

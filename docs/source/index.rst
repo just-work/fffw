@@ -6,7 +6,6 @@ FFMPEG filter graph wrapper
    :caption: Contents:
 
    quickstart
-   installation
    transcoding
    extending
    simd
