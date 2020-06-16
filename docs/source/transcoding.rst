@@ -87,16 +87,15 @@ Let's look how this command line structure is implemented in ``fffw``.
 Common ffmpeg flags
 ^^^^^^^^^^^^^^^^^^^
 
-:py:class:`FFMPEG` is responsible for rendering common flags like ``overwrite``
-or ``loglevel``. There are a lot of other flags that are not covered by included
-implementation and should be added manually via :py:class:`FFMPEG` inheritance
-as discussed in :doc:`extending`.
+:py:class:`fffw.encoding.FFMPEG` is responsible for rendering common flags like
+``overwrite`` or ``loglevel``. There are a lot of other flags that are not
+covered by included implementation and should be added manually via ``FFMPEG``
+inheritance as discussed in :doc:`extending`.
 
-.. autoclass:: fffw.encoding.ffmpeg.FFMPEG
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. code-block:: python
 
+  from fffw.encoding import FFMPEG
+  ff = FFMPEG(overwrite=True)
 
 Input file flags
 ^^^^^^^^^^^^^^^^
@@ -122,3 +121,36 @@ Filter complex
 :py:class:`FilterComplex` hides all the complexity of properly linking filters
 together. It is also responsible for tracing metadata transformations (like
 dimensions change in ``Scale`` filter or duration change in ``Trim``).
+
+.. literalinclude:: ../../examples/overlay.py
+
+Output files
+^^^^^^^^^^^^
+
+FFMPEG results are defined by :py:class:`fffw.encoding.Output`, which contains
+a list of :py:class:`fffw.encoding.Codec` representing video and audio streams
+in destination file encoded by some codecs.
+
+* Each codec has ``-map`` parameter which links it either to input stream or to
+  a destination node in filter graph
+* Codec defines a set of encoding parameters like ``bitrate`` or number of audio
+  channels. These parameters are not defined by ``fffw`` library and should be
+  defined via inheritance as discussed in :doc:`extending`.
+* After codec list definition follows a set of muxing parameters (like
+  ``format``) and destination file name. There parameters are kept by
+  ``Output`` instance
+* FFMPEG may have multiple outputs.
+
+.. literalinclude:: ../../examples/multi_bitrate.py
+
+
+Usage
+-----
+
+To process something with ``fffw`` you need:
+
+1. Create ``FFMPEG`` instance
+2. Add one or more ``Input`` files to it
+3. If necessary, initialize some processing graph
+4. Add one or more ``Output`` files
+5. Run command with :py:meth:`fffw.encoding.ffmpeg.FFMPEG.run`
