@@ -30,14 +30,14 @@ class AudioCodec(outputs.Codec):
     """
     Base class for describing audio codecs.
 
-    See `fffw.encoding.outputs.Codec` for params definition.
+    See :py:class:`fffw.encoding.outputs.Codec` for params definition.
 
     >>> from dataclasses import dataclass
     >>> from fffw.wrapper import param
     >>> @dataclass
     ... class FdkAAC(AudioCodec):
     ...     codec = 'libfdk_aac'
-    ...     rate: int = param(default=48000, name='-r')
+    ...     rate: int = param(default=48000, name='r')
     ...
     >>> codec = FdkAAC(bitrate=192000, rate=44100)
     >>> copy = AudioCodec('copy')

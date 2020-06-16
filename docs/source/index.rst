@@ -10,6 +10,8 @@ FFMPEG filter graph wrapper
    extending
    simd
    buffering
+   filters
+   modules
 
 Indices and tables
 ==================

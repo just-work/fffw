@@ -59,3 +59,7 @@ html_static_path = ['_static']
 # -- sphinx.ext.autodoc
 
 autodoc_member_order = 'groupwise'
+
+# -- modindex --
+
+modindex_common_prefix = ['fffw']
