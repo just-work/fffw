@@ -20,7 +20,7 @@ Alternate inputs
 ----------------
 
 Files are not the only sources for ``ffmpeg``. Audio/video streams could be read
-from network or hardware devices. Below is an sample implementation of
+from network or hardware devices. Below there is a sample implementation of
 `screen grabbing input <http://ffmpeg.org/ffmpeg-all.html#X11-grabbing>`_.
 
 .. literalinclude:: ../../examples/grabbing.py

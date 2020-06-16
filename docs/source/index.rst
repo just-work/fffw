@@ -11,6 +11,7 @@ command line arguments list, executes it and checks program output for errors.
    quickstart
    transcoding
    extending
+   graph
    simd
    buffering
    filters
