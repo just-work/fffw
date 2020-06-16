@@ -12,6 +12,7 @@ class VideoCodec(outputs.Codec):
     Base class for describing video codecs.
 
     See `fffw.encoding.outputs.Codec` for params definition.
+
     >>> from dataclasses import dataclass
     >>> from fffw.wrapper import param
     >>> @dataclass
@@ -30,6 +31,7 @@ class AudioCodec(outputs.Codec):
     Base class for describing audio codecs.
 
     See `fffw.encoding.outputs.Codec` for params definition.
+
     >>> from dataclasses import dataclass
     >>> from fffw.wrapper import param
     >>> @dataclass
