@@ -13,3 +13,16 @@
 ```
 dmypy run -- --config-file=mypy.ini .
 ```
+
+### Sphinx autodoc
+
+```
+cd docs/source && rm fffw*.rst
+cd docs && sphinx-apidoc -o source ../fffw
+```
+
+### Sphinx documentation
+
+```
+cd docs && make html
+```
