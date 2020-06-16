@@ -103,7 +103,7 @@ class Output(BaseWrapper):
     :arg format: output file format.
     :arg output_file: output file name.
     """
-    codecs: List[Codec] = param(skip=True)
+    codecs: List[Codec] = param(default=list, skip=True)
     no_video: Optional[bool] = param(default=None, name='vn')
     no_audio: Optional[bool] = param(default=None, name='an')
     format: str = param(name="f")
