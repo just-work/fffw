@@ -107,7 +107,7 @@ class Output(BaseWrapper):
     no_video: Optional[bool] = param(default=None, name='vn')
     no_audio: Optional[bool] = param(default=None, name='an')
     format: str = param(name="f")
-    output_file: str = param(name="")
+    output_file: str = param(name="", skip=True)
 
     def __lt__(self, other: base.InputType) -> Codec:
         """
@@ -178,6 +178,7 @@ class Output(BaseWrapper):
         if self.no_audio is None:
             self.no_audio = True
         args.extend(super().get_args())
+        args.append(self.output_file)
         return args
 
 

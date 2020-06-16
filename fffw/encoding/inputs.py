@@ -90,7 +90,7 @@ class Input(BaseWrapper):
 
     fast_seek: Union[TS, float, int] = param(name='ss')
     duration: Union[TS, float, int] = param(name='t')
-    input_file: str = param(name='i')
+    input_file: str = param(name='i', skip=True)
     slow_seek: Union[TS, float, int] = param(name='ss')
 
     def __post_init__(self) -> None:
@@ -119,6 +119,12 @@ class Input(BaseWrapper):
             else:
                 raise ValueError(stream.kind)
             stream.source = self
+
+    def as_pairs(self) -> List[Tuple[Optional[str], Optional[str]]]:
+        """
+        Adds `input_file` parameter to the end of arguments list.
+        """
+        return super().as_pairs() + [('i', self.input_file)]
 
 
 def input_file(filename: str, *streams: Stream, **kwargs: Any) -> Input:

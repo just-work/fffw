@@ -62,10 +62,17 @@ class Params:
             raise RuntimeError("Parameters are frozen")
         object.__setattr__(self, key, value)
 
+    @property
+    def _fields(self) -> Tuple[Field]:
+        """
+        :return: ordered list of dataclass field
+        """
+        return fields(self)
+
     def as_pairs(self) -> List[Tuple[Optional[str], Optional[str]]]:
         """
         :return: a list or pairs (key, value), where key is optional ffmpeg
-        parameter name and value is parameter value
+            parameter name and value is parameter value
 
         * parameters are all dataclass fields without `skip` flag.
         * by default field name is used as ffmpeg parameter name, but this
@@ -79,7 +86,7 @@ class Params:
         * if value is `True`, parameter is added as a flag without a value
         """
         args = cast(List[Tuple[Optional[str], Optional[str]]], [])
-        for f in fields(self):  # type: Field
+        for f in self._fields:  # type: Field
             key = f.name
             value = getattr(self, key)
             if f.default == value and f.init:

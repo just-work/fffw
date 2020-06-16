@@ -6,6 +6,8 @@ Data Model
 
 This section explains ``ffmpeg``/``fffw`` data model in details.
 
+.. _command-line-structure:
+
 ffmpeg command line structure
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
