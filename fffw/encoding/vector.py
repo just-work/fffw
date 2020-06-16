@@ -103,7 +103,7 @@ def map_sources_to_destinations(
         pair.
     :param destinations: list of outgoing nodes (or None if disabled by mask).
     :param dst_clones: contains actual dst clone for each source/destination
-    pair.
+        pair.
     :returns: final vector with results of src/dst connection.
     """
     links: Dict[Tuple[int, int], Outgoing] = dict()
