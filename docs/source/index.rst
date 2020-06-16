@@ -11,7 +11,6 @@ FFMPEG filter graph wrapper
    simd
    buffering
 
-
 Indices and tables
 ==================
 

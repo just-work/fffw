@@ -1,6 +1,9 @@
 Transcoding
 ===========
 
+Data Model
+----------
+
 This section explains ``ffmpeg``/``fffw`` data model in details.
 
 ffmpeg command line structure
@@ -76,4 +79,46 @@ There are two syntaxes to define edges between graph nodes:
   named edges (``[logo]``, ``[vout0]``) to have control about how nodes are
   connected to each other and to codecs.
 
+Implementation
+--------------
 
+Let's look how this command line structure is implemented in ``fffw``.
+
+Common ffmpeg flags
+^^^^^^^^^^^^^^^^^^^
+
+:py:class:`FFMPEG` is responsible for rendering common flags like ``overwrite``
+or ``loglevel``. There are a lot of other flags that are not covered by included
+implementation and should be added manually via :py:class:`FFMPEG` inheritance
+as discussed in :doc:`extending`.
+
+.. autoclass:: fffw.encoding.ffmpeg.FFMPEG
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+Input file flags
+^^^^^^^^^^^^^^^^
+
+Input files in ``fffw`` are described by :py:class:`Input` which stores a list
+of :py:class:`Stream` objects. When ``Input`` is a file, ``Stream`` is a video
+or audio stream in this file. An ``Input`` could also be a capture device like
+``x11grab`` or a network client like ``hls``.
+
+You may initialize ``Input`` directly or use :py:func:`input_file` helper.
+
+Each ``Stream`` can contain metadata - information about dimensions, duration,
+bitrate and another characteristics described by :py:class:`VideoMeta` and
+:py:class:`AudioMeta`.
+
+For an input file you can set such flags as ``fast seek`` or ``input format``.
+
+.. literalinclude:: ../../examples/inputs.py
+
+Filter complex
+^^^^^^^^^^^^^^
+
+:py:class:`FilterComplex` hides all the complexity of properly linking filters
+together. It is also responsible for tracing metadata transformations (like
+dimensions change in ``Scale`` filter or duration change in ``Trim``).
