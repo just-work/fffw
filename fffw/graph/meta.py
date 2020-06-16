@@ -12,6 +12,7 @@ __all__ = [
     'TS',
     'video_meta_data',
     'audio_meta_data',
+    'from_media_info',
 ]
 
 
