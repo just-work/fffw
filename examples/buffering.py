@@ -1,13 +1,9 @@
-# detect information about input file
-import os
-
 from pymediainfo import MediaInfo
 
 from fffw.encoding import *
 from fffw.graph import *
 
-os.chdir('/home/tumbler/Videos/Encoding')
-
+# detect information about input file
 mi = MediaInfo.parse('source.mp4')
 streams = [Stream(m.kind, m) for m in from_media_info(mi)]
 
@@ -27,12 +23,12 @@ ff < source
 result = output_file('result.mp4', VideoCodec('libx264'), AudioCodec('aac'))
 backup = output_file('backup.mp4', VideoCodec('libx264'), AudioCodec('aac'))
 
-split = source.streams[0] | Split(VIDEO)
-split > backup.codecs[0]
+split = source | Split(VIDEO)
+split > backup
 
-concat = preroll.streams[0] | Concat(VIDEO)
+concat = preroll | Concat(VIDEO)
 split | concat
-concat > result.codecs[0]
+concat > result
 
 ff > result
 ff > backup

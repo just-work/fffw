@@ -2,9 +2,9 @@ from dataclasses import dataclass
 from typing import Optional, List, Tuple, cast, Iterable, Union, Any
 
 import fffw.graph.meta
-from fffw.encoding import filters
+from fffw.encoding import filters, outputs
 from fffw.graph import base
-from fffw.graph.meta import Meta, TS
+from fffw.graph.meta import Meta, TS, StreamType
 from fffw.wrapper import BaseWrapper, param
 
 __all__ = [
@@ -22,7 +22,7 @@ class Stream(base.Source):
     index = cast(int, base.Once('index'))
     """ Index of current stream in source file."""
 
-    def __init__(self, kind: fffw.graph.meta.StreamType, meta: Optional[Meta] = None):
+    def __init__(self, kind: StreamType, meta: Optional[Meta] = None):
         """
         :param kind: stream kind, video or audio
         :param meta: stream metadata
@@ -39,7 +39,8 @@ class Stream(base.Source):
         """
         Splits input stream to reuse it as input node for multiple output nodes.
 
-import fffw.graph.meta        >>> stream = Stream(fffw.graph.meta.VIDEO)
+        >>> from fffw.graph import meta
+        >>> stream = Stream(meta.VIDEO)
         >>> s1, s2 = stream.split(2)
         >>> s1 | filters.Scale(1280, 720)
         >>> s2 | filters.Scale(640, 360)
@@ -91,7 +92,7 @@ class Input(BaseWrapper):
 
     fast_seek: Union[TS, float, int] = param(name='ss')
     duration: Union[TS, float, int] = param(name='t')
-    input_file: str = param(name='i', skip=True)
+    input_file: str = param(name='i')
     slow_seek: Union[TS, float, int] = param(name='ss')
 
     def __post_init__(self) -> None:
@@ -100,6 +101,22 @@ class Input(BaseWrapper):
         """
         self.__link_streams_to_input()
         super().__post_init__()
+
+    def __or__(self, other: filters.Filter) -> filters.Filter:
+        """
+        Connect first available stream to a filter.
+        """
+        if not isinstance(other, filters.Filter):
+            return NotImplemented
+        return self.get_stream(other.kind) | other
+
+    def __gt__(self, other: outputs.Codec) -> outputs.Codec:
+        """
+        Connect first available stream to a codec.
+        """
+        if not isinstance(other, outputs.Codec):
+            return NotImplemented
+        return self.get_stream(other.kind) > other
 
     def __link_streams_to_input(self) -> None:
         """
@@ -121,11 +138,16 @@ class Input(BaseWrapper):
                 raise ValueError(stream.kind)
             stream.source = self
 
-    def as_pairs(self) -> List[Tuple[Optional[str], Optional[str]]]:
+    def get_stream(self, kind: StreamType) -> Stream:
         """
-        Adds `input_file` parameter to the end of arguments list.
+        :param kind: desired stream kind
+        :return: first available stream of desired kind
+        :raises KeyError: if no streams of this kind found.
         """
-        return super().as_pairs() + [('i', self.input_file)]
+        for stream in self.streams:
+            if stream.kind == kind:
+                return stream
+        raise KeyError(kind)
 
 
 def input_file(filename: str, *streams: Stream, **kwargs: Any) -> Input:

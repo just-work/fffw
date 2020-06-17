@@ -39,7 +39,7 @@ connected to filter graph. "Pipe" operator connects an input stream
   like::
 
     vol = Volume(20)
-    source.streams[1] | vol  # audio.connect_dest(vol)
+    source | vol  # source.audio.connect_dest(vol)
 
 * Pipelines are useful if a stream is processed with long filter chain
 * When a filter has multiple inputs, it can be used more than once as an

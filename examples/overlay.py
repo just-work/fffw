@@ -9,7 +9,7 @@ ff = FFMPEG()
 # layer to overlay filter.
 overlay = ff.video | Overlay(x=1720, y=100)
 # scale logo to 100x100 and pass as top layer to overlay filter
-logo.streams[0] | Scale(width=100, height=100) | overlay
+logo | Scale(width=100, height=100) | overlay
 
 output = output_file('output.mp4')
 # output video with logo to destination file

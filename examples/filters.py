@@ -27,7 +27,7 @@ ff = FFMPEG()
 ff < input_file('preroll.mp4')
 ff < input_file('input.mp4')
 
-# don't know what that formulas mean, it's from ffmpeg docs.
+# don't know what that formulas mean, it's from ffmpeg docs
 scale2ref = ff.video | Scale2Ref('oh*mdar', 'ih/10')
 # pass second file to same filter as second input
 ff.video | scale2ref

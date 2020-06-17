@@ -267,8 +267,8 @@ class FFMPEGTestCase(BaseTestCase):
 
         cv1 = codecs.VideoCodec('libx264')
         ca1 = codecs.AudioCodec('aac')
-        self.source.streams[0] | filters.Scale(640, 360) > cv1
-        self.source.streams[1] > ca1
+        self.source | filters.Scale(640, 360) > cv1
+        self.source > ca1
 
         ff > outputs.output_file('/tmp/out.flv', cv1, ca1)
 

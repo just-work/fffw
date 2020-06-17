@@ -211,7 +211,7 @@ class VectorTestCase(BaseTestCase):
         """
         logo = input_file('logo.png', Stream(VIDEO, video_meta_data()))
         self.simd < logo
-        overlay = logo.streams[0] | Overlay(0, 0)
+        overlay = logo | Overlay(0, 0)
 
         v = self.simd.video.connect(Scale, params=[(1280, 720), (640, 360)])
         v.connect(overlay) > self.simd
@@ -241,7 +241,7 @@ class VectorTestCase(BaseTestCase):
         """
         logo = input_file('logo.png', Stream(VIDEO, video_meta_data()))
         self.simd < logo
-        overlay = logo.streams[0] | Overlay(0, 0)
+        overlay = logo | Overlay(0, 0)
 
         self.simd.video.connect(overlay, mask=[True, False]) > self.simd
 

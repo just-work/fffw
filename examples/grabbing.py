@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import List, Tuple, Optional
 
 from fffw import encoding
 from fffw.encoding import *
@@ -11,7 +12,7 @@ class X11Grab(encoding.Input):
     X-server grabbing input.
     """
     # `skip=True` removes parameter from argument list
-    # (it is added manually in `encoding.Input.as_pairs`).
+    # (it is added manually in `as_pairs`).
     # This field overwrites `default` from `encoding.Input`.
     input_file: str = param(name='i', default=':0.0', skip=True)
 
@@ -22,6 +23,9 @@ class X11Grab(encoding.Input):
 
     size: str = param(name='video_size')
     fps: float = param(name='framerate')
+
+    def as_pairs(self) -> List[Tuple[Optional[str], Optional[str]]]:
+        return super().as_pairs() + [('i', self.input_file)]
 
 
 ff = FFMPEG()

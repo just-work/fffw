@@ -2,19 +2,19 @@ Vectorize your code
 ===================
 
 There are at least two situations when you apply same ffmpeg filters to a set of
-files. First is adaptive streaming for internet video (a number of files with
-same content and different bitrate are produced); second one is linear editing
+streams. First is adaptive streaming for internet video (which requires a number
+of files with same content and different bitrate); second one is linear editing
 (parts of video are cut from source and concatenated together to form new video
-sequence). May be there are more, and ``fffw`` provides a way to handle stream
+sequence). Maybe there are more, and ``fffw`` provides a way to handle stream
 vector transformations.
 
 SIMD Wrapper
 ------------
 
-To use :py:class:`fffw.encoding.vector.SIMD` helper you'll need to initialize
-input file with streams including meta. This is used to track changes applied to
-input streams. Also, ``SIMD`` requires a list of outputs including codecs to be
-able to connect input streams to corresponding outputs.
+To use :py:class:`SIMD <fffw.encoding.vector.SIMD>` helper you'll need to
+initialize input file with streams (including meta). This is used to track
+changes applied to input streams. Also, ``SIMD`` requires a list of outputs
+including codecs to be able to connect input streams to corresponding outputs.
 
 .. code-block:: python
 
@@ -41,7 +41,7 @@ operator" (``|``)::
 
   cursor = self.simd | Volume(30)
 
-If a vector has only single element (i.e. input stream itself), no preliminary
+If a vector has only one element (i.e. input stream itself), no preliminary
 splitting occurs. ``Split`` filter is added automatically if applied filter
 vector contains distinct elements, like a filter with different parameters::
 

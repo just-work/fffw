@@ -59,7 +59,7 @@ class FilterGraphTestCase(TestCase):
         deint.enabled = False  # deinterlace is skipped
 
         # first video stream is deinterlaced
-        next_node = self.source.streams[0] | deint
+        next_node = self.source | deint
 
         left, top = 20, 20  # logo position
 
@@ -74,7 +74,7 @@ class FilterGraphTestCase(TestCase):
         next_node = vs | Scale(logo_width, logo_height) | over
 
         # audio is split to two streams
-        asplit = self.source.streams[1] | Split(AUDIO)
+        asplit = self.source | Split(AUDIO)
 
         for out in self.output_list:
             asplit > out
@@ -134,19 +134,19 @@ class FilterGraphTestCase(TestCase):
         with self.subTest("last filter disabled"):
             fc, src, dst = fc_factory()
 
-            src.streams[0] | Scale(640, 360) | deint_factory() > dst.video
+            src | Scale(640, 360) | deint_factory() > dst.video
             self.assertEqual('[0:v]scale=w=640:h=360[vout0]', fc.render())
 
         with self.subTest("intermediate filter disabled"):
             fc, src, dst = fc_factory()
 
-            src.streams[0] | deint_factory() | Scale(640, 360) > dst.video
+            src | deint_factory() | Scale(640, 360) > dst.video
             self.assertEqual('[0:v]scale=w=640:h=360[vout0]', fc.render())
 
         with self.subTest("all filters disabled"):
             fc, src, dst = fc_factory()
 
-            tmp = src.streams[0] | deint_factory()
+            tmp = src | deint_factory()
             tmp = tmp | deint_factory()
             tmp | Scale(640, 360) > dst.video
             self.assertEqual('[0:v]scale=w=640:h=360[vout0]', fc.render())
@@ -154,7 +154,7 @@ class FilterGraphTestCase(TestCase):
         with self.subTest("two filters disabled"):
             fc, src, dst = fc_factory()
 
-            tmp = src.streams[0] | Scale(640, 360)
+            tmp = src | Scale(640, 360)
             tmp = tmp | deint_factory()
             tmp | deint_factory() > dst.video
             self.assertEqual('[0:v]scale=w=640:h=360[vout0]', fc.render())
@@ -163,7 +163,7 @@ class FilterGraphTestCase(TestCase):
         """ Skip unused sources in filter complex.
         """
         # passing only video to FilterComplex
-        self.source.streams[0] | Scale(640, 360) > self.output
+        self.source | Scale(640, 360) > self.output
 
         self.assertEqual('[0:v]scale=w=640:h=360[vout0]', self.fc.render())
 
@@ -204,7 +204,7 @@ class FilterGraphTestCase(TestCase):
         """
         vs = inputs.Stream(VIDEO, meta=video_meta_data(width=100, height=100))
         self.input_list.append(inputs.input_file('logo.png', vs))
-        overlay = self.source.streams[0] | Overlay(
+        overlay = self.source | Overlay(
             x=self.video_metadata.width - 2,
             y=self.video_metadata.height - 2)
         vs | overlay
@@ -225,7 +225,7 @@ class FilterGraphTestCase(TestCase):
         vs = inputs.Stream(VIDEO, meta=video_meta_data(duration=1000.0))
         self.input_list.append(inputs.input_file('second.mp4', vs))
         concat = vs | Concat(VIDEO)
-        self.source.streams[0] | concat
+        self.source | concat
 
         concat > self.output
 
@@ -241,7 +241,7 @@ class FilterGraphTestCase(TestCase):
         Note that resulting video has 3 seconds of frozen frame at 00:00:03.000,
         total duration is 4.
         """
-        self.source.streams[0] | Trim(VIDEO, start=3.0, end=4.0) > self.output
+        self.source | Trim(VIDEO, start=3.0, end=4.0) > self.output
         vm = cast(VideoMeta, self.output.codecs[0].get_meta_data())
         self.assertEqual(vm.start, TS(3.0))
         self.assertEqual(vm.duration, TS(4.0))
@@ -253,7 +253,7 @@ class FilterGraphTestCase(TestCase):
         $ ffmpeg -y -i source.mp4 \
         -vf trim=start=3:end=4,setpts=PTS-STARTPTS -an test.mp4
         """
-        trim = self.source.streams[0] | Trim(VIDEO, start=3.0, end=4.0)
+        trim = self.source | Trim(VIDEO, start=3.0, end=4.0)
         trim | SetPTS(VIDEO) > self.output
         vm = cast(VideoMeta, self.output.codecs[0].get_meta_data())
         self.assertEqual(vm.start, TS(0))

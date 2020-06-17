@@ -1,7 +1,7 @@
 Transcoding
 ===========
 
-Data Model
+Data model
 ----------
 
 This section explains ``ffmpeg``/``fffw`` data model in details.
@@ -68,9 +68,8 @@ There are two syntaxes to define edges between graph nodes:
 
     deint,crop=0:10:1920:1060,scale=1280:720
 
-  This syntax means has no named edges and means that three filters
-  (deinterlace, crop and scale) are applied subsequently to a single video
-  stream.
+  This syntax has no named edges and means that three filters (``deint``,
+  ``crop`` and ``scale``) are applied subsequently to a single video stream.
 
 * Full syntax describes complicate graph filter::
 
@@ -89,10 +88,10 @@ Let's look how this command line structure is implemented in ``fffw``.
 Common ffmpeg flags
 ^^^^^^^^^^^^^^^^^^^
 
-:py:class:`fffw.encoding.FFMPEG` is responsible for rendering common flags like
-``overwrite`` or ``loglevel``. There are a lot of other flags that are not
-covered by included implementation and should be added manually via ``FFMPEG``
-inheritance as discussed in :doc:`extending`.
+:py:class:`FFMPEG <fffw.encoding.FFMPEG>` class is responsible for rendering
+common flags like ``overwrite`` or ``loglevel``. There are a lot of other flags
+that are not covered by provided implementation and should be added manually
+via ``FFMPEG`` inheritance as discussed in :doc:`extending`.
 
 .. code-block:: python
 
@@ -102,16 +101,19 @@ inheritance as discussed in :doc:`extending`.
 Input file flags
 ^^^^^^^^^^^^^^^^
 
-Input files in ``fffw`` are described by :py:class:`Input` which stores a list
-of :py:class:`Stream` objects. When ``Input`` is a file, ``Stream`` is a video
-or audio stream in this file. An ``Input`` could also be a capture device like
-``x11grab`` or a network client like ``hls``.
+Input files in ``fffw`` are described by
+:py:class:`Input <fffw.encoding.inputs.Input>` which stores a list of
+:py:class:`Stream <fffw.encoding.inputs.Stream>` objects. When ``Input`` is a
+file, ``Stream`` is a video or audio sequence in this file. An ``Input`` could
+also be a capture device like ``x11grab`` or a network client like ``hls``.
 
-You may initialize ``Input`` directly or use :py:func:`input_file` helper.
+You may initialize ``Input`` directly or use
+:py:func:`input_file <fffw.encoding.inputs.input_file>` helper.
 
 Each ``Stream`` can contain metadata - information about dimensions, duration,
-bitrate and another characteristics described by :py:class:`VideoMeta` and
-:py:class:`AudioMeta`.
+bitrate and another characteristics described by
+:py:class:`VideoMeta <fffw.graph.meta.VideoMeta>` and
+:py:class:`AudioMeta <fffw.graph.meta.AudioMeta>`.
 
 For an input file you can set such flags as ``fast seek`` or ``input format``.
 
@@ -120,31 +122,32 @@ For an input file you can set such flags as ``fast seek`` or ``input format``.
 Filter complex
 ^^^^^^^^^^^^^^
 
-:py:class:`FilterComplex` hides all the complexity of properly linking filters
-together. It is also responsible for tracing metadata transformations (like
-dimensions change in ``Scale`` filter or duration change in ``Trim``).
+:py:class:`FilterComplex <fffw.encoding.complex.FilterComplex>` hides all the
+complexity of properly linking filters together. It is also responsible for
+tracing metadata transformations (like dimensions change in ``Scale`` filter or
+duration change in ``Trim``).
 
 .. literalinclude:: ../../examples/overlay.py
 
 Output files
 ^^^^^^^^^^^^
 
-FFMPEG results are defined by :py:class:`fffw.encoding.Output`, which contains
-a list of :py:class:`fffw.encoding.Codec` representing video and audio streams
-in destination file encoded by some codecs.
+``ffmpeg`` results are defined by
+:py:class:`Output <fffw.encoding.outputs.Output>` class, which contains
+a list of :py:class:`Codec <fffw.encoding.outputs.Codec>` objects representing
+video and audio streams in destination file encoded by some codecs.
 
 * Each codec has ``-map`` parameter which links it either to input stream or to
   a destination node in filter graph
 * Codec defines a set of encoding parameters like ``bitrate`` or number of audio
   channels. These parameters are not defined by ``fffw`` library and should be
   defined via inheritance as discussed in :doc:`extending`.
-* After codec list definition follows a set of muxing parameters (like
+* Codec list definition is followed by a set of muxing parameters (like
   ``format``) and destination file name. There parameters are kept by
-  ``Output`` instance
+  ``Output`` instance.
 * FFMPEG may have multiple outputs.
 
 .. literalinclude:: ../../examples/multi_bitrate.py
-
 
 Usage
 -----
@@ -155,4 +158,4 @@ To process something with ``fffw`` you need:
 2. Add one or more ``Input`` files to it
 3. If necessary, initialize some processing graph
 4. Add one or more ``Output`` files
-5. Run command with :py:meth:`fffw.encoding.ffmpeg.FFMPEG.run`
+5. Run command with :py:meth:`FFMPEG.run <fffw.encoding.ffmpeg.FFMPEG.run>`

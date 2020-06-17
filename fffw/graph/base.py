@@ -194,6 +194,7 @@ class Edge(Traversable):
         dest.connect_edge(self)
 
 
+D = TypeVar('D', bound=Dest)
 N = TypeVar('N', bound="Node")
 
 
@@ -415,7 +416,7 @@ class Source(Traversable, metaclass=abc.ABCMeta):
             return NotImplemented
         return self.connect_dest(other)
 
-    def __gt__(self, other: Dest) -> Dest:
+    def __gt__(self, other: D) -> D:
         """
         Connects a codec to a source
         :param other: codec that will process current source stream
@@ -453,7 +454,7 @@ class Source(Traversable, metaclass=abc.ABCMeta):
         ...
 
     @overload
-    def connect_dest(self, other: Dest) -> Dest:
+    def connect_dest(self, other: D) -> D:
         ...
 
     def connect_dest(self, other: OutputType) -> OutputType:

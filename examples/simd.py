@@ -57,7 +57,7 @@ for stream in audio:
 
 # add a logo to an edited video stream
 with_logo = concat | Overlay(x=100, y=100)
-logo.streams[0] | with_logo
+logo | with_logo
 
 # now we need to vectorize video stream again to perform
 # scaling to multiple sizes
