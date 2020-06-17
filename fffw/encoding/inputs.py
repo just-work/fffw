@@ -1,10 +1,9 @@
 from dataclasses import dataclass
 from typing import Optional, List, Tuple, cast, Iterable, Union, Any
 
-import fffw.graph.meta
 from fffw.encoding import filters, outputs
 from fffw.graph import base
-from fffw.graph.meta import Meta, TS, StreamType
+from fffw.graph.meta import Meta, TS, StreamType, AUDIO, VIDEO
 from fffw.wrapper import BaseWrapper, param
 
 __all__ = [
@@ -70,7 +69,7 @@ def default_streams() -> Tuple[Stream, ...]:
 
     :returns: a tuple with one video and one audio stream.
     """
-    return Stream(fffw.graph.meta.VIDEO), Stream(fffw.graph.meta.AUDIO)
+    return Stream(VIDEO), Stream(AUDIO)
 
 
 @dataclass
@@ -128,10 +127,10 @@ class Input(BaseWrapper):
         if self.streams is None:
             raise RuntimeError("Streams not initialized")
         for stream in self.streams:
-            if stream.kind == fffw.graph.meta.VIDEO:
+            if stream.kind == VIDEO:
                 stream.index = video_streams
                 video_streams += 1
-            elif stream.kind == fffw.graph.meta.AUDIO:
+            elif stream.kind == AUDIO:
                 stream.index = audio_streams
                 audio_streams += 1
             else:

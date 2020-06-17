@@ -1,14 +1,12 @@
 from dataclasses import dataclass, replace, asdict, field
 from typing import Union, List, cast
 
-import fffw.graph.meta
 from fffw.graph import base
-from fffw.graph.meta import Meta, VideoMeta, TS, Scene
+from fffw.graph.meta import Meta, VideoMeta, TS, Scene, VIDEO, AUDIO, StreamType
 from fffw.wrapper.params import Params, param
 
 __all__ = [
     'AutoFilter',
-
     'AudioFilter',
     'VideoFilter',
     'Concat',
@@ -105,7 +103,7 @@ class VideoFilter(Filter):
     ...
     >>>
     """
-    kind = fffw.graph.meta.VIDEO
+    kind = VIDEO
 
 
 class AudioFilter(Filter):
@@ -119,7 +117,7 @@ class AudioFilter(Filter):
     ...
     >>>
     """
-    kind = fffw.graph.meta.AUDIO
+    kind = AUDIO
 
 
 @dataclass
@@ -128,7 +126,7 @@ class AutoFilter(Filter):
     Base class for stream kind autodetect.
     """
 
-    kind: fffw.graph.meta.StreamType = field(metadata={'skip': True})
+    kind: StreamType = field(metadata={'skip': True})
     """ 
     Stream kind used to generate filter name. Required. Not used as filter 
     parameter.
@@ -138,7 +136,7 @@ class AutoFilter(Filter):
 
     def __post_init__(self) -> None:
         """ Adds audio prefix to filter name for audio filters."""
-        if self.kind == fffw.graph.meta.AUDIO:
+        if self.kind == AUDIO:
             self.filter = f'a{self.filter}'
         super().__post_init__()
 
@@ -296,7 +294,7 @@ class Concat(Filter):
     """
     filter = 'concat'
 
-    kind: fffw.graph.meta.StreamType
+    kind: StreamType
     input_count: int = 2
 
     def __post_init__(self) -> None:
@@ -309,7 +307,7 @@ class Concat(Filter):
 
     @property
     def args(self) -> str:
-        if self.kind == fffw.graph.meta.VIDEO:
+        if self.kind == VIDEO:
             if self.input_count == 2:
                 return ''
             return 'n=%s' % self.input_count

@@ -1,8 +1,7 @@
 from typing import *
 
-import fffw.graph.meta
+from fffw.graph.meta import AUDIO, VIDEO, StreamType
 from fffw.encoding import filters, inputs, outputs, FFMPEG
-from fffw.graph import base
 
 Group = Dict[int, Set[int]]
 """ Grouping result."""
@@ -247,7 +246,7 @@ class Vector(tuple):
         return self.connect(other)
 
     @property
-    def kind(self) -> fffw.graph.meta.StreamType:
+    def kind(self) -> StreamType:
         """
         :returns a kind of streams in vector.
         """
@@ -257,7 +256,8 @@ class Vector(tuple):
     def connect(self, dst: filters.Filter, mask: Optional[List[bool]] = None
                 ) -> "Vector":
         """
-import fffw.graph.meta        >>> vector = Vector(inputs.Stream(fffw.graph.meta.VIDEO))
+
+        >>> vector = Vector(inputs.Stream(VIDEO))
         >>> vector.connect(filters.Scale(), mask=[True, False])
         """
         ...
@@ -269,7 +269,8 @@ import fffw.graph.meta        >>> vector = Vector(inputs.Stream(fffw.graph.meta.
                 params: Union[List[Dict[str, Any]], List[List[Any]], List[Any]]
                 ) -> "Vector":
         """
-import fffw.graph.meta        >>> vector = Vector(inputs.Stream(fffw.graph.meta.VIDEO))
+
+        >>> vector = Vector(inputs.Stream(VIDEO))
         >>> vector.connect(filters.Scale, params=[
         ... {'width': 1280, 'height': 720},
         ... {'width': 640, 'height': 360}])
@@ -281,7 +282,8 @@ import fffw.graph.meta        >>> vector = Vector(inputs.Stream(fffw.graph.meta.
     def connect(self, dst: "Vector", mask: Optional[List[bool]] = None
                 ) -> "Vector":
         """
-import fffw.graph.meta        >>> vector = Vector(inputs.Stream(fffw.graph.meta.VIDEO))
+
+        >>> vector = Vector(inputs.Stream(VIDEO))
         >>> out = Vector([
         ... outputs.Codec(codec='libx264'),
         ... outputs.Codec(codec='libx264')])
@@ -472,16 +474,16 @@ class SIMD:
         """
         :returns: a vector with single video input stream
         """
-        return Vector(self.get_stream(fffw.graph.meta.VIDEO))
+        return Vector(self.get_stream(VIDEO))
 
     @property
     def audio(self) -> Vector:
         """
         :returns: a vector with single audio input stream
         """
-        return Vector(self.get_stream(fffw.graph.meta.AUDIO))
+        return Vector(self.get_stream(AUDIO))
 
-    def get_stream(self, kind: fffw.graph.meta.StreamType) -> inputs.Stream:
+    def get_stream(self, kind: StreamType) -> inputs.Stream:
         """
         :param kind: desired stream kind
         :return: first stream of desired kind from input file
@@ -492,7 +494,7 @@ class SIMD:
                 return stream
         raise KeyError(kind)
 
-    def get_codecs(self, kind: fffw.graph.meta.StreamType) -> Vector:
+    def get_codecs(self, kind: StreamType) -> Vector:
         """
         :param kind: desired vector kind
         :return: a vector of all codecs of desired kind for each output.
