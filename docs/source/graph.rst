@@ -8,8 +8,8 @@ Let's see how different parts are combined together to build this graph.
 
   ff = FFMPEG()
 
-Working with input streams
-__________________________
+Input streams
+-------------
 
 .. code-block:: python
 
@@ -23,8 +23,8 @@ file to ``FFMPEG`` instance. We could call
 :py:meth:`fffw.encoding.ffmpeg.FFMPEG.add_input` if short variant is not
 appropriate.
 
-Connecting input streams to filters
------------------------------------
+Connect to filters
+------------------
 
 .. code-block:: python
 
@@ -61,8 +61,8 @@ available input for next filter.
   each ``Stream`` may be used in filter graph only once, so use ``Split`` filter
   to reuse same input stream.
 
-Landing streams to codecs
--------------------------
+Output to codecs
+----------------
 
 Each stream in filter graph must be connected to an output codec. This is done
 via "stdout redirection operator"::
@@ -86,8 +86,8 @@ via "stdout redirection operator"::
 * Input stream can be used in filter graph only once (use
   :py:class:`fffw.encoding.filters.Split` to handle that).
 
-Write output files
-------------------
+Write files
+-----------
 
 To write any output file you must connect it to ffmpeg as an output using
 "stdout redirection operator"::
