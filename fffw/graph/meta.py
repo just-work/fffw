@@ -237,7 +237,7 @@ def video_meta_data(**kwargs: Any) -> VideoMeta:
 def from_media_info(mi: MediaInfo) -> List[Meta]:
     streams: List[Meta] = []
     for track in mi.tracks:
-        if track.track_type == 'Video':
+        if track.track_type in ('Video', 'Image'):
             streams.append(video_meta_data(**track.__dict__))
         elif track.track_type == 'Audio':
             streams.append(audio_meta_data(**track.__dict__))

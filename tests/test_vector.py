@@ -115,7 +115,7 @@ class VectorTestCase(BaseTestCase):
     def test_apply_filter_with_params_vector(self):
         cursor = self.simd.audio.connect(Volume, params=[20, 30])
         cursor > self.simd
-        expected = ensure_binary([
+        self.assert_simd_args(
             'ffmpeg',
             '-i',
             'input.mp4',
@@ -128,9 +128,8 @@ class VectorTestCase(BaseTestCase):
             'output1.mp4',
             '-map', '0:v', '-c:v', 'libx265',
             '-map', '[aout1]', '-c:a', 'libfdk_aac',
-            'output2.mp5'])
-        self.assertEqual(expected, self.simd.ffmpeg.get_args())
-
+            'output2.mp5')
+        
     def test_apply_filter_with_equal_params(self):
         cursor = self.simd.audio.connect(Volume, params=[30, 30])
         cursor > self.simd

@@ -7,7 +7,7 @@ __all__ = [
 import abc
 from collections import Counter
 from enum import Enum
-from typing import Dict, Any, TypeVar, Type, overload, cast
+from typing import Dict, Any, TypeVar, Type, overload
 from typing import Optional, List, Union
 
 from fffw.graph.meta import Meta
@@ -208,6 +208,9 @@ class Edge(Traversable):
             inputs[inputs.index(self)] = None
         self.__output = dest
         dest.connect_edge(self)
+
+
+N = TypeVar('N', bound="Node")
 
 
 class Node(Traversable, abc.ABC):
@@ -419,7 +422,7 @@ class Source(Traversable, metaclass=abc.ABCMeta):
     def __repr__(self) -> str:
         return f"Source('[{self.name}]')"
 
-    def __or__(self, other: Node) -> Node:
+    def __or__(self, other: N) -> N:
         """
         Connect a filter to a source
         :return: connected filter
@@ -462,7 +465,7 @@ class Source(Traversable, metaclass=abc.ABCMeta):
         return self._meta
 
     @overload
-    def connect_dest(self, other: Node) -> Node:
+    def connect_dest(self, other: N) -> N:
         ...
 
     @overload

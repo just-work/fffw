@@ -178,7 +178,7 @@ class Output(BaseWrapper):
         if self.no_audio is None:
             self.no_audio = True
         args.extend(super().get_args())
-        args.append(self.output_file)
+        args.append(ensure_binary(self.output_file))
         return args
 
 

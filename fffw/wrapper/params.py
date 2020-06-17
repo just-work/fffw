@@ -63,7 +63,7 @@ class Params:
         object.__setattr__(self, key, value)
 
     @property
-    def _fields(self) -> Tuple[Field]:
+    def _fields(self) -> Tuple[Field, ...]:
         """
         :return: ordered list of dataclass field
         """
