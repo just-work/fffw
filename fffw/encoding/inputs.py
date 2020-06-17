@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, List, Tuple, cast, Iterable, Union, Any
 
+import fffw.graph.meta
 from fffw.encoding import filters
 from fffw.graph import base
 from fffw.graph.meta import Meta, TS
@@ -21,7 +22,7 @@ class Stream(base.Source):
     index = cast(int, base.Once('index'))
     """ Index of current stream in source file."""
 
-    def __init__(self, kind: base.StreamType, meta: Optional[Meta] = None):
+    def __init__(self, kind: fffw.graph.meta.StreamType, meta: Optional[Meta] = None):
         """
         :param kind: stream kind, video or audio
         :param meta: stream metadata
@@ -38,7 +39,7 @@ class Stream(base.Source):
         """
         Splits input stream to reuse it as input node for multiple output nodes.
 
-        >>> stream = Stream(base.VIDEO)
+import fffw.graph.meta        >>> stream = Stream(fffw.graph.meta.VIDEO)
         >>> s1, s2 = stream.split(2)
         >>> s1 | filters.Scale(1280, 720)
         >>> s2 | filters.Scale(640, 360)
@@ -68,7 +69,7 @@ def default_streams() -> Tuple[Stream, ...]:
 
     :returns: a tuple with one video and one audio stream.
     """
-    return Stream(base.VIDEO), Stream(base.AUDIO)
+    return Stream(fffw.graph.meta.VIDEO), Stream(fffw.graph.meta.AUDIO)
 
 
 @dataclass
@@ -110,10 +111,10 @@ class Input(BaseWrapper):
         if self.streams is None:
             raise RuntimeError("Streams not initialized")
         for stream in self.streams:
-            if stream.kind == base.VIDEO:
+            if stream.kind == fffw.graph.meta.VIDEO:
                 stream.index = video_streams
                 video_streams += 1
-            elif stream.kind == base.AUDIO:
+            elif stream.kind == fffw.graph.meta.AUDIO:
                 stream.index = audio_streams
                 audio_streams += 1
             else:

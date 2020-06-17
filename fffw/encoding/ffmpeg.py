@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Optional, Union
 
+import fffw.graph.meta
 from fffw.encoding import inputs
 from fffw.encoding.complex import FilterComplex
 from fffw.encoding.inputs import InputList, Input
@@ -103,7 +104,7 @@ class FFMPEG(BaseWrapper):
         Scale(width=1280, height=720)
         >>>
         """
-        return self._get_free_source(base.VIDEO)
+        return self._get_free_source(fffw.graph.meta.VIDEO)
 
     @property
     def audio(self) -> inputs.Stream:
@@ -118,9 +119,9 @@ class FFMPEG(BaseWrapper):
         AudioCodec(codec='aac', bitrate=0)
         >>>
         """
-        return self._get_free_source(base.AUDIO)
+        return self._get_free_source(fffw.graph.meta.AUDIO)
 
-    def _get_free_source(self, kind: base.StreamType) -> inputs.Stream:
+    def _get_free_source(self, kind: fffw.graph.meta.StreamType) -> inputs.Stream:
         """
         :param kind: stream type
         :return: first stream of this kind not connected to destination

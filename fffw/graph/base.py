@@ -1,25 +1,9 @@
-__all__ = [
-    'StreamType',
-    'AUDIO',
-    'VIDEO',
-]
-
 import abc
 from collections import Counter
-from enum import Enum
 from typing import Dict, Any, TypeVar, Type, overload
 from typing import Optional, List, Union
 
-from fffw.graph.meta import Meta
-
-
-class StreamType(Enum):
-    VIDEO = 'v'
-    AUDIO = 'a'
-
-
-VIDEO = StreamType.VIDEO
-AUDIO = StreamType.AUDIO
+from fffw.graph.meta import Meta, StreamType
 
 InputType = Union["Source", "Node"]
 OutputType = Union["Dest", "Node"]

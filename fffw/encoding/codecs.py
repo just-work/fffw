@@ -1,3 +1,4 @@
+import fffw.graph.meta
 from fffw.graph import base
 from fffw.encoding import outputs
 
@@ -23,7 +24,7 @@ class VideoCodec(outputs.Codec):
     >>> codec = X264(bitrate=4000000, gop=25)
     >>> copy = VideoCodec('copy')
     """
-    kind = base.VIDEO
+    kind = fffw.graph.meta.VIDEO
 
 
 class AudioCodec(outputs.Codec):
@@ -42,4 +43,4 @@ class AudioCodec(outputs.Codec):
     >>> codec = FdkAAC(bitrate=192000, rate=44100)
     >>> copy = AudioCodec('copy')
     """
-    kind = base.AUDIO
+    kind = fffw.graph.meta.AUDIO

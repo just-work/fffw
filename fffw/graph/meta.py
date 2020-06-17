@@ -1,5 +1,7 @@
+import abc
 from dataclasses import dataclass
 from datetime import timedelta
+from enum import Enum
 from typing import List, Union, Any, Optional
 
 from pymediainfo import MediaInfo  # type: ignore
@@ -7,6 +9,9 @@ from pymediainfo import MediaInfo  # type: ignore
 __all__ = [
     'AudioMeta',
     'VideoMeta',
+    'StreamType',
+    'AUDIO',
+    'VIDEO',
     'Meta',
     'Scene',
     'TS',
@@ -14,6 +19,15 @@ __all__ = [
     'audio_meta_data',
     'from_media_info',
 ]
+
+
+class StreamType(Enum):
+    VIDEO = 'v'
+    AUDIO = 'a'
+
+
+VIDEO = StreamType.VIDEO
+AUDIO = StreamType.AUDIO
 
 
 class TS(timedelta):
@@ -119,6 +133,10 @@ class Meta:
         """
         return self.start + self.duration
 
+    @property
+    def kind(self) -> StreamType:
+        raise NotImplementedError()
+
 
 @dataclass
 class VideoMeta(Meta):
@@ -138,6 +156,10 @@ class VideoMeta(Meta):
 
     def __post_init__(self) -> None:
         self.validate()
+
+    @property
+    def kind(self) -> StreamType:
+        return VIDEO
 
     def validate(self) -> None:
         if self.height != 0:
@@ -162,6 +184,10 @@ class AudioMeta(Meta):
 
     def __post_init__(self) -> None:
         self.validate()
+
+    @property
+    def kind(self) -> StreamType:
+        return AUDIO
 
     def validate(self) -> None:
         duration = self.duration.total_seconds()

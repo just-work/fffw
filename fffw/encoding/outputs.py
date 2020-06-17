@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from itertools import chain
 from typing import List, cast, Optional, Iterable, Any
 
+import fffw.graph.meta
 from fffw.graph import base
 from fffw.wrapper import BaseWrapper, ensure_binary, param
 
@@ -126,7 +127,7 @@ class Output(BaseWrapper):
 
         If no free codecs left, new one codec stub is appended to output.
         """
-        return self.get_free_codec(base.VIDEO)
+        return self.get_free_codec(fffw.graph.meta.VIDEO)
 
     @property
     def audio(self) -> Codec:
@@ -135,9 +136,9 @@ class Output(BaseWrapper):
 
         If no free codecs left, new one codec stub is appended to output.
         """
-        return self.get_free_codec(base.AUDIO)
+        return self.get_free_codec(fffw.graph.meta.AUDIO)
 
-    def get_free_codec(self, kind: base.StreamType, create: bool = True
+    def get_free_codec(self, kind: fffw.graph.meta.StreamType, create: bool = True
                        ) -> Codec:
         """
         Finds first codec not connected to filter graph or to an input, or
@@ -168,9 +169,9 @@ class Output(BaseWrapper):
         # Skipping `-an` / `-vn` parameters is still supported by  manually
         # setting `no_audio` / `no_video` parameters to `False`.
         for codec in self.codecs:
-            if codec.kind == base.VIDEO:
+            if codec.kind == fffw.graph.meta.VIDEO:
                 self.no_video = False
-            if codec.kind == base.AUDIO:
+            if codec.kind == fffw.graph.meta.AUDIO:
                 self.no_audio = False
             args.extend(codec.get_args())
         if self.no_video is None:
@@ -239,7 +240,7 @@ class OutputList(list):
         return result
 
     def __set_index(self, codec: Codec) -> None:
-        if codec.kind == base.VIDEO:
+        if codec.kind == fffw.graph.meta.VIDEO:
             codec.index = self.__video_index
             self.__video_index += 1
         else:

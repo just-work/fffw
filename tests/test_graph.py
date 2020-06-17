@@ -6,7 +6,6 @@ from fffw.encoding import inputs, outputs
 from fffw.encoding.complex import FilterComplex
 from fffw.encoding.filters import *
 from fffw.graph import *
-from fffw.graph import VIDEO
 
 
 @dataclass

@@ -1,7 +1,6 @@
 from pymediainfo import MediaInfo
 
 from fffw.encoding import *
-from fffw.graph import VIDEO, AUDIO
 from fffw.graph.meta import *
 
 # detect information about input file
