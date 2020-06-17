@@ -1,4 +1,4 @@
-from dataclasses import dataclass, replace, asdict, MISSING, field
+from dataclasses import dataclass, replace, asdict, field
 from typing import Union, List, cast
 
 import fffw.graph.meta
@@ -145,7 +145,13 @@ class AutoFilter(Filter):
 
 @dataclass
 class Scale(VideoFilter):
-    """ Video scaling filter."""
+    # noinspection PyUnresolvedReferences
+    """
+    Video scaling filter.
+
+    :arg width: resulting video width
+    :arg height: resulting video height
+    """
     filter = "scale"
 
     width: int = param(name='w')
@@ -197,7 +203,7 @@ class Split(AutoFilter):
 class Trim(AutoFilter):
     # noinspection PyUnresolvedReferences
     """
-    Cut the input so that the output contains one continuous subpart
+    Cuts the input so that the output contains one continuous subpart
     of the input.
 
     :arg kind: stream kind (for proper concatenated streams definitions).
@@ -339,7 +345,7 @@ class Overlay(VideoFilter):
     Combines two video streams one on top of another.
 
     :arg x: horizontal position of top image in bottom one.
-    :arg x: vertical position of top image in bottom one.
+    :arg y: vertical position of top image in bottom one.
     """
     input_count = 2
     filter = "overlay"
