@@ -2,9 +2,9 @@ Extending fffw
 ==============
 
 The aim of ``fffw`` library is to provide mechanics for preparing ``ffmpeg``
-command line arguments, not to cover all possible params. It provides all
-necessary base classes to extend input file handling, filtering and output
-configuration.
+command line arguments, not to cover all possible ``ffmpeg`` parameters.
+It provides all necessary base classes to extend input file handling, filtering
+and output configuration.
 
 Before writing code it's useful to read section :ref:`command-line-structure`.
 

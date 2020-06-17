@@ -2,7 +2,7 @@ Filter Graph
 ============
 
 Building filter graph is the most complicated part of ``fffw`` library.
-Let's see how different parts are combined together to build this graph.
+Let's see how different parts work together to build this graph.
 
 .. code-block:: python
 
@@ -20,8 +20,8 @@ Input streams
 
 In this example we use "stdin redirection operator" (``<``) to add new input
 file to ``FFMPEG`` instance. We could call
-:py:meth:`fffw.encoding.ffmpeg.FFMPEG.add_input` if short variant is not
-appropriate.
+:py:meth:`FFMPEG.add_input <fffw.encoding.ffmpeg.FFMPEG.add_input>` if short
+variant is not appropriate.
 
 Connect to filters
 ------------------
@@ -30,10 +30,10 @@ Connect to filters
 
   scale = ff.video | Crop(w=1920, h=1080) | Scale(1280, 720)
 
-:py:attr:`fffw.encoding.ffmpeg.FFMPEG.video` returns first available video
-stream across all inputs connected to ``FFMPEG`` that is not yet connected to
-filter graph. "Pipe" operator connects an input stream (or a filter) to first
-available input for next filter.
+:py:attr:`FFMPEG.video <fffw.encoding.ffmpeg.FFMPEG.video>` returns first
+available video stream across all inputs connected to ``FFMPEG`` that is not yet
+connected to filter graph. "Pipe" operator connects an input stream
+(or a filter) to first available input of next filter.
 
 * If you need to point specific input stream, you may do it
   like::
@@ -43,14 +43,13 @@ available input for next filter.
 
 * Pipelines are useful if a stream is processed with long filter chain
 * When a filter has multiple inputs, it can be used more than once as an
-  argument for :py:meth:`connect_dest`::
+  argument for :py:meth:`connect_dest <fffw.graph.base.Node.connect_dest>`::
 
     overlay = Overlay(x=100, y=100)
     main_video_stream | overlay
     logo_video_stream | overlay
 
-* When a filter has multiple outputs, :py:meth:`connect_dest` method may be
-  called multiple times for different filters::
+* When a filter has multiple outputs, it can be connected to multiple filters::
 
     split = video | Split(VIDEO, output_count=3)
     split | Scale(1280, 720)
@@ -58,8 +57,9 @@ available input for next filter.
     split | Scale(640, 360)
 
 .. note::
-  each ``Stream`` may be used in filter graph only once, so use ``Split`` filter
-  to reuse same input stream.
+  each ``Stream`` can be used in filter graph only once, so use
+  :py:class:`Split <fffw.encoding.filters.Split>` filter to reuse same input
+  stream.
 
 Output to codecs
 ----------------
@@ -84,7 +84,7 @@ via "stdout redirection operator"::
 * An input stream can be connected to multiple codecs (i.e. in different output
   files).
 * Input stream can be used in filter graph only once (use
-  :py:class:`fffw.encoding.filters.Split` to handle that).
+  :py:class:`Split <fffw.encoding.filters.Split>` filter to handle that).
 
 Write files
 -----------

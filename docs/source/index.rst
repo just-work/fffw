@@ -9,12 +9,13 @@ command line arguments list, executes it and checks program output for errors.
    :caption: Contents:
 
    quickstart
-   transcoding
-   extending
    graph
+   transcoding
+   filters
+   extending
+   running
    simd
    buffering
-   filters
    modules
 
 Indices and tables

@@ -80,11 +80,12 @@ Example
 Trim
 ----
 
-``Trim`` leaves in output only frames that match ``start`` - ``end`` interval.
+``Trim`` leaves only frames that match ``start`` - ``end`` interval.
 
 .. note::
   Without ``SetPTS`` filter trim does not adjust first frame timestamp, so
-  resulting stream will have duration equal to ``Trim.end`` value.
+  resulting stream will have duration equal to ``Trim.end`` value, while first
+  ``Trim.start`` seconds first frame will be shown frozen.
 
 .. autoclass:: fffw.encoding.filters.Trim
    :noindex:
