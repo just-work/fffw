@@ -1,175 +1,204 @@
-from itertools import chain
-from typing import List, Tuple, Any, Union, Iterable
+from dataclasses import dataclass
+from typing import List, Optional, Union
 
-from fffw.encoding import Muxer
-from fffw.encoding import codec
-from fffw.graph import FilterComplex, base, sources
-from fffw.wrapper import BaseWrapper, ensure_binary
+from fffw.encoding import inputs
+from fffw.encoding.complex import FilterComplex
+from fffw.encoding.inputs import InputList, Input
+from fffw.encoding.outputs import OutputList, Output, Codec
+from fffw.graph import base
+from fffw.graph.meta import AUDIO, VIDEO, StreamType
+from fffw.wrapper import BaseWrapper, ensure_binary, param
 
 __all__ = ['FFMPEG']
 
 
-class InputList(list):
-    def __call__(self) -> List[str]:
-        """ Delegates arguments formatting to Source objects."""
-        result: List[str] = []
-        for src in self:
-            if hasattr(src, 'get_args') and callable(src.get_args):
-                result.extend(src.get_args())
-            else:
-                result.append(str(src))
-        return result
-
-
+@dataclass
 class FFMPEG(BaseWrapper):
+    """
+    ffmpeg command line basic wrapper.
+
+    >>> from fffw.encoding.codecs import VideoCodec, AudioCodec
+    >>> from fffw.encoding.filters import Scale
+    >>> from fffw.encoding.outputs import output_file
+    >>> ff = FFMPEG('/tmp/input.mp4', overwrite=True)
+    >>> c = VideoCodec('libx264', bitrate=4_000_000)
+    >>> ff.video | Scale(1280, 720) > c
+    VideoCodec(codec='libx264', bitrate=4000000)
+    >>> ff.overwrite = True
+    >>> ff > output_file('/tmp/output.mp4', c,
+    ...                  AudioCodec('libfdk_aac', bitrate=192_000))
+    >>> ff.get_cmd()
+    'ffmpeg -y -i /tmp/input.mp4\
+ -filter_complex "[0:v]scale=w=1280:h=720[vout0]"\
+ -map "[vout0]" -c:v libx264 -b:v 4000000 -map 0:a -c:a libfdk_aac -b:a 192000\
+ /tmp/output.mp4'
+    >>>
+    """
     command = 'ffmpeg'
     stderr_markers = ['[error]', '[fatal]']
+    input: Union[str, Input] = param(skip=True)
+    output: Union[str, Output] = param(skip=True)
 
-    arguments = [
-        ('loglevel', '-loglevel '),
-        ('strict', '-strict '),
-        ('realtime', '-re '),
-        ('threads', '-threads '),
-        ('time_offset', '-ss '),
-        ('no_autorotate', '-noautorotate'),
-        ('inputformat', '-f '),
-        ('inputfile', '-i '),
-        ('pix_fmt', '-pix_fmt '),
-        ('presize_offset', '-ss '),
-        ('filter_complex', '-filter_complex '),
-        ('time_limit', '-t '),
-        ('vframes', '-vframes '),
-        ('overwrite', '-y '),
-        ('verbose', '-v '),
-        ('novideo', '-vn '),
-        ('noaudio', '-an '),
-        ('vfilter', '-vf '),
-        ('afilter', '-af '),
-        ('metadata', '-metadata '),
-        ('map_chapters', '-map_chapters '),
-        ('map_metadata', '-map_metadata '),
-        ('vbsf', '-bsf:v '),
-        ('absf', '-bsf:a '),
-        ('format', '-f '),
-        ('segment_list_flags', '-segment_list_flags '),
-    ]
+    loglevel: str = param()
+    """ Loglevel: i.e. `level+info`."""
+    overwrite: bool = param(name='y')
+    """ Overwrite output files without manual confirmation."""
 
-    def __init__(self,
-                 inputfile: Union[
-                     None, sources.BaseSource,
-                     Iterable[sources.BaseSource]] = None,
-                 **kw: Any):
-        super(FFMPEG, self).__init__(**kw)
-        self._args['inputfile'] = self.__inputs = InputList()
-        self.__outputs: List[Tuple[Tuple[codec.BaseCodec, ...], Muxer]] = []
-        self.__vdest = self.__adest = 0
-
-        self.__video = sources.Input(kind=base.VIDEO)
-        self.__audio = sources.Input(kind=base.AUDIO)
-
-        if isinstance(inputfile, sources.BaseSource):
-            self.add_input(inputfile)
-        elif isinstance(inputfile, (list, tuple)):
-            for i in inputfile:
-                self.add_input(i)
-        else:
-            assert inputfile is None, "invalid inputfile type"
-
-    def init_filter_complex(self) -> FilterComplex:
-        assert self.__inputs, "no inputs defined yet"
-        assert not self.__outputs, "outputs already defined"
-        self._args['filter_complex'] = fc = FilterComplex(
-            video=self.__video,
-            audio=self.__audio
-        )
-        return fc
-
-    @property
-    def filter_complex(self) -> FilterComplex:
-        return self._args['filter_complex']
-
-    def get_args(self) -> List[bytes]:
-        return (ensure_binary([self.command]) +
-                super(FFMPEG, self).get_args() +
-                ensure_binary(self.get_output_args()))
-
-    def get_output_args(self) -> List[bytes]:
-        result: List[bytes] = []
-        for codecs, muxer in self.__outputs:
-            args = list(chain.from_iterable(c.get_args() for c in codecs))
-            output = [ensure_binary(muxer.output)]
-            result.extend(args + muxer.get_args() + output)
-        return result
-
-    def add_input(self, inputfile: sources.BaseSource) -> None:
-        """ Adds new source to ffmpeg.
+    def __post_init__(self) -> None:
         """
-        assert not self.filter_complex, "filter complex already initialized"
-        assert isinstance(inputfile, sources.BaseSource)
-        self.__inputs.append(inputfile)
+        Fills internal shared structures for input and output files, and
+        initializes filter graph.
+        """
 
-        for _ in range(inputfile.video_streams):
-            i = len(self.__video.streams)
-            self.__video < base.Source('%s:v' % i, base.VIDEO)
-        if not inputfile.video_streams:
-            self.__video < base.Source(None, base.VIDEO)
+        self.__inputs = InputList()
+        if self.input:
+            if not isinstance(self.input, Input):
+                self.__inputs.append(Input(input_file=self.input))
+            else:
+                self.__inputs.append(self.input)
 
-        for _ in range(inputfile.audio_streams):
-            i = len(self.__audio.streams)
-            self.__audio < base.Source('%s:a' % i, base.AUDIO)
-        if not inputfile.audio_streams:
-            self.__audio < base.Source(None, base.AUDIO)
+        self.__outputs = OutputList()
+        if self.output:
+            if not isinstance(self.output, Output):
+                self.__outputs.append(Output(output_file=self.output))
+            else:
+                self.__outputs.append(self.output)
 
-    def add_output(self, muxer: Muxer, *codecs: codec.BaseCodec) -> None:
-        assert isinstance(muxer, Muxer)
-        for c in codecs:
-            assert isinstance(c, codec.BaseCodec)
-            fc = self.filter_complex
-            if not fc or getattr(c, 'map', None):
-                # If filter_complex is not present or codec has source set,
-                # connect codec to inputs directly.
-                if c.codec_type == base.VIDEO:
-                    self.__video | c
-                if c.codec_type == base.AUDIO:
-                    self.__audio | c
-                continue
-            if c.codec_type == base.VIDEO:
-                try:
-                    c.connect(
-                        fc.get_video_dest(self.__vdest, create=False))
-                    self.__vdest += 1
-                except IndexError:
-                    self.__video | c
-            if c.codec_type == base.AUDIO:
-                try:
-                    c.connect(fc.get_audio_dest(self.__adest, create=False))
-                    self.__adest += 1
-                except IndexError:
-                    self.__audio | c
+        self.__filter_complex = FilterComplex(self.__inputs, self.__outputs)
 
-        self.__outputs.append((codecs, muxer))
+        # calling super() to freeze params.
+        super().__post_init__()
 
-    @property
-    def outputs(self) -> List[Tuple[Tuple[codec.BaseCodec, ...], Muxer]]:
-        return list(self.__outputs)
-
-    def __lt__(self, other: sources.BaseSource) -> None:
+    def __lt__(self, other: Input) -> None:
         """ Adds new source file.
+
+        >>> ff = FFMPEG()
+        >>> ff < Input(input_file='/tmp/input.mp4')
+        >>>
         """
+        if not isinstance(other, Input):
+            return NotImplemented
         self.add_input(other)
 
-    def __setattr__(self, key: str, value: Any) -> None:
-        if key == 'filter_complex':
-            raise NotImplementedError("use init_filter_complex instead")
-        if key == 'inputfile':
-            raise NotImplementedError("use add_input instead")
-        return super(FFMPEG, self).__setattr__(key, value)
+    def __gt__(self, other: Output) -> None:
+        """ Adds new output file.
 
-    def handle_stderr(self, line: str) -> None:
+        >>> from fffw.encoding.inputs import *
+        >>> from fffw.encoding.outputs import *
+        >>> ff = FFMPEG(input=input_file('input.mp4'))
+        >>> ff > output_file('/tmp/output.mp4')
+        >>>
+        """
+        if not isinstance(other, Output):
+            return NotImplemented
+        self.add_output(other)
+
+    @property
+    def video(self) -> inputs.Stream:
+        """
+        :returns: first video stream not yet connected to filter graph or codec.
+
+        >>> from fffw.encoding.filters import Scale
+        >>> ff = FFMPEG('/tmp/input.mp4')
+        >>> ff.video | Scale(1280, 720)
+        Scale(width=1280, height=720)
+        >>>
+        """
+        return self._get_free_source(VIDEO)
+
+    @property
+    def audio(self) -> inputs.Stream:
+        """
+
+        :returns: first audio stream not yet connected to filter graph or codec.
+
+        >>> from fffw.encoding.codecs import AudioCodec
+        >>> ff = FFMPEG('/tmp/input.mp4')
+        >>> ac = AudioCodec('aac')
+        >>> ff.audio > ac
+        AudioCodec(codec='aac', bitrate=0)
+        >>>
+        """
+        return self._get_free_source(AUDIO)
+
+    def _get_free_source(self, kind: StreamType) -> inputs.Stream:
+        """
+        :param kind: stream type
+        :return: first stream of this kind not connected to destination
+        """
+        for stream in self.__inputs.streams:
+            if stream.kind != kind or stream.connected:
+                continue
+            return stream
+        else:
+            raise RuntimeError("no free streams")
+
+    def _add_codec(self, c: Codec) -> Optional[Codec]:
+        """ Connect codec to filter graph output or input stream.
+
+        :param c: codec to connect to free source
+        :returns: None of codec already connected to filter graph or codec
+            itself if it was connected successfully to input stream.
+        """
+        if c.connected:
+            return None
+        node = self._get_free_source(c.kind)
+        node.connect_dest(c)
+        return c
+
+    def get_args(self) -> List[bytes]:
+        """
+        :returns: command line arguments for ffmpeg.
+
+        This includes:
+        - ffmpeg executable name
+        - ffmpeg parameters
+        - input list args
+        - filter_graph definition
+        - output list args
+        """
+
+        with base.Namer():
+            fc = str(self.__filter_complex)
+            fc_args = ['-filter_complex', fc] if fc else []
+
+            # Namer context is used to generate unique output stream names
+            return (ensure_binary([self.command]) +
+                    super().get_args() +
+                    self.__inputs.get_args() +
+                    ensure_binary(fc_args) +
+                    self.__outputs.get_args())
+
+    def add_input(self, input_file: Input) -> None:
+        """ Adds new source to ffmpeg.
+
+        >>> ff = FFMPEG()
+        >>> ff.add_input(Input(input_file="/tmp/input.mp4"))
+        >>>
+        """
+        assert isinstance(input_file, Input)
+        self.__inputs.append(input_file)
+
+    def add_output(self, output: Output) -> None:
+        """
+        Adds output file to ffmpeg and connect it's codecs to free sources.
+
+        >>> ff = FFMPEG()
+        >>> ff.add_output(Output(output_file='/tmp/output.mp4'))
+        >>>
+        """
+        self.__outputs.append(output)
+        for codec in output.codecs:
+            self._add_codec(codec)
+
+    def handle_stderr(self, line: str) -> str:
         """
         Handle ffmpeg output.
 
-        Capture only lines containing one of `stderr_markers`
+        Capture only lines containing one of `stderr_markers`.
+
+        :param line: ffmpeg output line
+        :returns: line to be appended to whole ffmpeg output.
         """
         if not self.stderr_markers:
             # if no markers are defined, handle each line
@@ -177,4 +206,29 @@ class FFMPEG(BaseWrapper):
         # capture only lines containing markers
         for marker in self.stderr_markers:
             if marker in line:
-                super().handle_stderr(line)
+                return super().handle_stderr(line)
+        return ''
+
+    def check_buffering(self) -> None:
+        """
+        Checks that ffmpeg command will not cause frame buffering and
+        out of memory errors.
+
+        Each input file must be read simultaneously be all codecs in outputs,
+        or some streams will be buffered until requested by output codecs.
+        """
+        chains = []
+        for output in self.__outputs:
+            for codec in output.codecs:
+                streams = codec.check_buffering()
+                if streams is None:
+                    # Streams can't be computed because of missing metadata.
+                    raise ValueError(streams)
+                chains.append(streams)
+        for chunk in zip(*chains):
+            # Check that every codec reads same input stream
+            if len(set(chunk)) > 1:
+                # some codec read different file at this step, so one of input
+                # stream will be buffered until this file is read by another
+                # codec.
+                raise BufferError(chunk)

@@ -1,60 +1,15 @@
-__all__ = [
-    'StreamType',
-    'AUDIO',
-    'VIDEO',
-]
-
 import abc
 from collections import Counter
-from enum import Enum
-from typing import Optional, List, Union, Dict, Any
+from typing import Dict, Any, TypeVar, Type, overload
+from typing import Optional, List, Union
+
+from fffw.graph.meta import Meta, StreamType
+
+InputType = Union["Source", "Node"]
+OutputType = Union["Dest", "Node"]
 
 
-class StreamType(Enum):
-    VIDEO = 'v'
-    AUDIO = 'a'
-
-
-VIDEO = StreamType.VIDEO
-AUDIO = StreamType.AUDIO
-
-
-class Namer:
-    """ Unique stream identifiers generator."""
-    _stack: List["Namer"] = []
-
-    @classmethod
-    def name(cls, edge: "Edge") -> str:
-        current = cls._stack[0]
-        return current._name(edge)
-
-    def __init__(self) -> None:
-        self._counters: Dict[str, int] = Counter()
-        self._cache: Dict[int, str] = dict()
-
-    def __enter__(self) -> "Namer":
-        self._stack.append(self)
-        return self._stack[0]
-
-    def __exit__(self, *_: Any) -> None:
-        self._stack.pop(-1)
-
-    def _name(self, edge: "Edge") -> str:
-        if id(edge) not in self._cache:
-            node = edge.input
-            if isinstance(node, Node):
-                prefix = f'{node.kind.value}:{node.name}'
-                # generating unique edge id by src node kind and name
-                name = f'{prefix}{self._counters[prefix]}'
-                self._counters[prefix] += 1
-            else:
-                name = node.name
-            # caching edge name for idempotency
-            self._cache[id(edge)] = name
-        return self._cache[id(edge)]
-
-
-class Renderable(metaclass=abc.ABCMeta):
+class Traversable(metaclass=abc.ABCMeta):
     """
     Abstract class base for filter graph edges/nodes traversing and rendering.
     """
@@ -71,33 +26,48 @@ class Renderable(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError()
 
+    @abc.abstractmethod
+    def get_meta_data(self, dst: OutputType) -> Optional[Meta]:
+        """
+        :param dst: destination node
+        :return: metadata passed to destination node after transformation
+        """
+        raise NotImplementedError()
 
-class Dest(Renderable):
+
+class Dest(Traversable):
     """
     Audio/video output stream node.
 
     Must connect to single filter output only.
     """
-
-    def __init__(self, name: str, kind: StreamType) -> None:
-        """
-        :param name: internal ffmpeg stream name ("v:0", "a:1")
-        :param kind: stream kind (VIDEO/AUDIO)
-        """
-        self._edge: Optional[Edge] = None
-        self._kind = kind
-        self._name = name
+    kind: StreamType
+    _edge: Optional["Edge"] = None
 
     def __repr__(self) -> str:
         return f"Dest('{self.name}')"
 
     @property
     def name(self) -> str:
-        return self._name
+        """
+        :returns: edge name (i.e. [vout0]) for codec `-map` argument only.
+        """
+        if self._edge is None:
+            raise RuntimeError("Dest not connected")
+        return f'[{self._edge.name}]'
 
     @property
-    def kind(self) -> StreamType:
-        return self._kind
+    def meta(self) -> Optional[Meta]:
+        return self.get_meta_data(self)
+
+    @property
+    def edge(self) -> Optional["Edge"]:
+        return self._edge
+
+    def get_meta_data(self, dst: OutputType = None) -> Optional[Meta]:
+        if self._edge is None:
+            raise RuntimeError("Dest not connected")
+        return self._edge.get_meta_data(self)
 
     def connect_edge(self, edge: "Edge") -> "Edge":
         """ Connects and edge to output stream.
@@ -120,11 +90,7 @@ class Dest(Renderable):
         return []
 
 
-InputType = Union["Source", "Node"]
-OutputType = Union["Dest", "Node"]
-
-
-class Edge(Renderable):
+class Edge(Traversable):
     """ Internal ffmpeg data stream graph."""
 
     # noinspection PyShadowingBuiltins
@@ -164,7 +130,10 @@ class Edge(Renderable):
         current node.
         """
         if isinstance(self.output, Dest):
-            return self.output.name
+            # For final edges name is generated from destination node, like
+            # [vout0] or [aout1]
+            return Namer.name(self)
+        # For edges connected to other filters disabled source nodes are skipped
         edge = self
         node = self.input
         while not getattr(node, 'enabled', True) and isinstance(node, Node):
@@ -174,7 +143,7 @@ class Edge(Renderable):
             node = edge.input
         return Namer.name(edge)
 
-    def _connect_source(self, src: Union["Source", "Node"]) -> None:
+    def _connect_source(self, src: InputType) -> None:
         """ Connects input node to the edge.
 
         :param src: source stream or filter output node.
@@ -184,8 +153,15 @@ class Edge(Renderable):
                                % self.__input)
         self.__input = src
 
-    def _connect_dest(self,
-                      dest: Union["Dest", "Node"]) -> Union["Dest", "Node"]:
+    @overload
+    def _connect_dest(self, dest: "Node") -> "Node":
+        ...
+
+    @overload
+    def _connect_dest(self, dest: Dest) -> Dest:
+        ...
+
+    def _connect_dest(self, dest: OutputType) -> OutputType:
         """ Connects output node to the edge.
 
         :param dest: output stream or filter input node
@@ -197,6 +173,9 @@ class Edge(Renderable):
         self.__output = dest
         return dest
 
+    def get_meta_data(self, dst: OutputType) -> Optional[Meta]:
+        return self.__input.get_meta_data(dst)
+
     def render(self, partial: bool = False) -> List[str]:
         if not self.__output:
             if partial:
@@ -204,51 +183,112 @@ class Edge(Renderable):
             raise RuntimeError("output is none")
         return self.__output.render(partial=partial)
 
+    def reconnect(self, dest: OutputType) -> None:
+        """
+        Allows to detach an edge from one output and connect to another one.
+        """
+        if isinstance(self.__output, Node):
+            inputs = self.__output.inputs
+            inputs[inputs.index(self)] = None
+        self.__output = dest
+        dest.connect_edge(self)
 
-class Node(Renderable):
+
+D = TypeVar('D', bound=Dest)
+N = TypeVar('N', bound="Node")
+
+
+class Node(Traversable, abc.ABC):
     """ Graph node describing ffmpeg filter."""
-
+    # Should be overridden in derived classes
     kind: StreamType  # filter type (VIDEO/AUDIO)
-    name: str  # filter name
+    filter: str  # filter name
+
     input_count: int = 1  # number of inputs
     output_count: int = 1  # number of outputs
-
-    def __init__(self, enabled: bool = True):
-        if not enabled:
-            assert self.input_count == 1
-            assert self.output_count == 1
-        self.__enabled = enabled
-        self.inputs: List[Optional[Edge]] = [None] * self.input_count
-        self.outputs: List[Optional[Edge]] = [None] * self.output_count
 
     def __repr__(self) -> str:
         inputs = [f"[{str(i.name if i else '---')}]" for i in self.inputs]
         outputs = [f"[{str(i.name if i else '---')}]" for i in self.outputs]
-        return f"{''.join(inputs)}{self.name}{''.join(outputs)}"
+        return f"{''.join(inputs)}{self.filter}{''.join(outputs)}"
 
-    def __or__(self, other: Union["Node", "Dest"]) -> Union["Node", "Dest"]:
+    def __or__(self, other: "Node") -> "Node":
         """
         connect output edge to node
-        :return: connected edge
+        :return: connected node
         """
-        if not isinstance(other, (Node, Dest)):
+        if not isinstance(other, Node):
+            return NotImplemented
+        return self.connect_dest(other)
+
+    def __gt__(self, other: Dest) -> Dest:
+        """
+        connects output edge to destination
+        :param other: destination codec
+        :return: connected codec
+        """
+        if not isinstance(other, Dest):
             return NotImplemented
         return self.connect_dest(other)
 
     @property
+    @abc.abstractmethod
+    def args(self) -> str:
+        raise NotImplementedError()
+
+    @property
+    def inputs(self) -> List[Optional[Edge]]:
+        """
+        :returns: list of placeholders for input edges.
+        """
+        if 'inputs' not in self.__dict__:
+            self.__dict__['inputs'] = [None] * self.input_count
+        return self.__dict__['inputs']
+
+    @property
+    def outputs(self) -> List[Optional[Edge]]:
+        """
+        :returns: list of placeholders for output edges.
+        """
+        if 'outputs' not in self.__dict__:
+            self.__dict__['outputs'] = [None] * self.output_count
+        return self.__dict__['outputs']
+
+    @property
     def enabled(self) -> bool:
-        return self.__enabled
+        return self.__dict__.get('enabled', True)
 
     @enabled.setter
     def enabled(self, value: bool) -> None:
-        self.__enabled = value
+        if not value:
+            assert self.input_count == 1
+            assert self.output_count == 1
+        self.__dict__['enabled'] = value
 
-    @property
-    def args(self) -> str:
-        """
-        Generates filter params as a string
-        """
-        return ''
+    # noinspection PyMethodMayBeStatic
+    def transform(self, *metadata: Meta) -> Meta:
+        """ Apply filter changes to stream metadata."""
+        return metadata[0]
+
+    def get_meta_data(self, dst: OutputType) -> Optional[Meta]:
+        metadata = []
+        for edge in self.inputs:
+            if edge is None:
+                raise RuntimeError("Input not connected")
+            meta = edge.get_meta_data(self)
+            if meta is None:
+                return None
+            metadata.append(meta)
+
+        meta = self.transform(*metadata)
+
+        for edge in self.outputs:
+            if edge is None:
+                continue
+            if edge.output is dst:
+                return meta
+        else:
+            raise KeyError(dst)
 
     def render(self, partial: bool = False) -> List[str]:
         if not self.enabled:
@@ -288,14 +328,19 @@ class Node(Renderable):
         for edge in self.inputs:
             if edge is None:
                 raise RuntimeError("input is none")
-            inputs.append(f"[{edge.name}]")
+            # Add Source name (i.e. 0:v) or unique node name (v:scale1) as
+            # filter input.
+            inputs.append(f'[{edge.name}]')
 
         for edge in self.outputs:
             if edge is None:
                 if partial:
+                    # outputs not connected, using a stub.
                     outputs.append('[---]')
                     continue
                 raise RuntimeError("output is none")
+            # Skip outgoing disabled nodes till Dest node, to get proper
+            # output name if current node is last enabled before destination.
             node = edge.output
             while isinstance(node, Node) and not node.enabled:
                 # if next node is disabled, use next edge id
@@ -305,9 +350,10 @@ class Node(Renderable):
                 if edge is None:
                     raise RuntimeError("output is none")
                 node = edge.output
+            # Add unique output edge name (vout0 or a:volume1) to filter output
             outputs.append(f"[{edge.name}]")
         args = '=' + self.args if self.args else ''
-        return ''.join(inputs) + self.name + args + ''.join(outputs)
+        return ''.join(inputs) + self.filter + args + ''.join(outputs)
 
     def connect_edge(self, edge: "Edge") -> "Edge":
         """ Connects and edge to one of filter inputs
@@ -320,8 +366,15 @@ class Node(Renderable):
         self.inputs[self.inputs.index(None)] = edge
         return edge
 
-    def connect_dest(self,
-                     other: Union["Node", "Dest"]) -> Union["Node", "Dest"]:
+    @overload
+    def connect_dest(self, other: "Node") -> "Node":
+        ...
+
+    @overload
+    def connect_dest(self, other: Dest) -> Dest:
+        ...
+
+    def connect_dest(self, other: OutputType) -> OutputType:
         """ Connects next filter or output to one of filter outputs.
 
         :param other: next filter or output stream
@@ -335,80 +388,170 @@ class Node(Renderable):
         return other
 
 
-class Source(Renderable):
+class Source(Traversable, metaclass=abc.ABCMeta):
     """ Graph node containing audio or video input.
 
     Must connect to single graph edge only as a source
     """
 
-    def __init__(self, name: Optional[str], kind: StreamType) -> None:
+    def __init__(self, kind: StreamType,
+                 meta: Optional[Meta] = None) -> None:
         """
-        :param name: ffmpeg internal input stream name ("v:0", "a:1")
         :param kind: stream type (VIDEO/AUDIO)
+        :param meta: stream metadata
         """
-        self._edge: Optional[Edge] = None
+        self._outputs: List[Edge] = []
         self._kind = kind
-        self.__name = name
+        self._meta = meta
 
     def __repr__(self) -> str:
         return f"Source('[{self.name}]')"
 
-    def __or__(self, other: Node) -> Node:
+    def __or__(self, other: N) -> N:
         """
         Connect a filter to a source
         :return: connected filter
         """
         if not isinstance(other, Node):
             return NotImplemented
-        return self.connect(other)
+        return self.connect_dest(other)
 
-    @property
-    def name(self) -> str:
-        if self.__name is None:
-            raise RuntimeError("Source name not set")
-        return self.__name
-
-    @property
-    def edge(self) -> Optional["Edge"]:
-        """ Returns an edge connected to current source.
-        :rtype: fffw.graph.base.Edge|NoneType
+    def __gt__(self, other: D) -> D:
         """
-        return self._edge
+        Connects a codec to a source
+        :param other: codec that will process current source stream
+        :return: destination object
+        """
+        if not isinstance(other, Dest):
+            return NotImplemented
+        return self.connect_dest(other)
+
+    @property
+    def connected(self) -> bool:
+        return bool(self._outputs)
+
+    @property
+    @abc.abstractmethod
+    def name(self) -> str:
+        raise NotImplementedError()
 
     @property
     def kind(self) -> StreamType:
-        """ Returns stream type."""
+        """
+        :returns: stream type
+        """
         return self._kind
 
-    def connect(self, other: Node) -> Node:
-        """ Connects a source to a filter or output
-
-        :param other: filter consuming current input stream
-        :return filter connected to current stream
+    @property
+    def meta(self) -> Optional[Meta]:
         """
-        if not isinstance(other, Node):
-            raise ValueError("only node allowed")
-        if self._edge is not None and not getattr(other, 'map', None):
-            raise RuntimeError("Source %s is already connected to %s"
-                               % (self.name, self._edge))
+        :returns: stream metadata
+        """
+        return self._meta
+
+    @overload
+    def connect_dest(self, other: N) -> N:
+        ...
+
+    @overload
+    def connect_dest(self, other: D) -> D:
+        ...
+
+    def connect_dest(self, other: OutputType) -> OutputType:
+        if not isinstance(other, (Node, Dest)):
+            raise ValueError("only node or dest allowed")
         edge = Edge(input=self, output=other)
-        self._edge = self._edge or other.connect_edge(edge)
+        other.connect_edge(edge)
+        self._outputs.append(edge)
         return other
 
-    def render(self, partial: bool = False) -> List[str]:
-        if self._edge is None:
-            if partial:
-                return []
-            raise RuntimeError("Source is not ready for render")
+    def get_meta_data(self, dst: OutputType) -> Optional[Meta]:
+        return self._meta
 
-        node = self._edge.output
-        # if output node is disabled, use next edge identifier.
-        if isinstance(node, Node) and not node.enabled:
-            edge: Optional[Edge] = node.outputs[0]
-            if edge is None:
-                if partial:
-                    return []
-                raise RuntimeError("Skipped node is not ready for render")
-        else:
-            edge = self._edge
-        return edge.render(partial=partial)
+    def render(self, partial: bool = False) -> List[str]:
+        result = []
+        edge: Optional[Edge]
+        for edge in self._outputs:
+            node = edge.output
+            # if output node is disabled, use next edge identifier.
+            if isinstance(node, Node) and not node.enabled:
+                edge = node.outputs[0]
+                if edge is None:
+                    if partial:
+                        return []
+                    raise RuntimeError("Skipped node is not ready for render")
+            result.extend(edge.render(partial=partial))
+        return result
+
+
+Obj = TypeVar('Obj')
+
+
+class Once:
+    """ Property that must be set exactly once."""
+
+    def __init__(self, attr_name: str) -> None:
+        """
+        :param attr_name: instance attribute name
+        """
+        self.attr_name = attr_name
+
+    def __get__(self, instance: Obj, owner: Type[Obj]) -> Any:
+        try:
+            return instance.__dict__[self.attr_name]
+        except KeyError:
+            raise RuntimeError(f"{self.attr_name} is not initialized")
+
+    def __set__(self, instance: Obj, value: Any) -> None:
+        if self.attr_name in instance.__dict__:
+            raise RuntimeError(f"{self.attr_name} already initialized")
+        instance.__dict__[self.attr_name] = value
+
+
+class Namer:
+    """ Unique stream identifiers generator."""
+    _stack: List["Namer"] = []
+
+    @classmethod
+    def name(cls, obj: Edge) -> str:
+        current = cls._stack[0]
+        return current._name(obj)
+
+    def __init__(self) -> None:
+        self._counters: Dict[str, int] = Counter()
+        self._cache: Dict[int, str] = dict()
+
+    def __enter__(self) -> "Namer":
+        self._stack.append(self)
+        return self._stack[0]
+
+    def __exit__(self, *_: Any) -> None:
+        self._stack.pop(-1)
+
+    def _name(self, edge: Edge) -> str:
+        """
+        Generates name for an edge in filter graph.
+
+        :param edge: edge that needs to be named
+        :returns: unique Dest name if edge leads to destination (i.e. vout0),
+        Source name if edge starts from input stream (i.e. 0:v) or unique
+        input Node name generated from node filter (i.e. v:overlay1).
+        """
+        if id(edge) not in self._cache:
+            src = edge.input
+            dst = edge.output
+            if isinstance(dst, Dest):
+                prefix = f'{dst.kind.value}out'
+                # generating unique edge id by dst kind
+                name = f'{prefix}{self._counters[prefix]}'
+                self._counters[prefix] += 1
+            elif isinstance(src, Node):
+                prefix = f'{src.kind.value}:{src.filter}'
+                # generating unique edge id by src node kind and name
+                name = f'{prefix}{self._counters[prefix]}'
+                self._counters[prefix] += 1
+            else:
+                name = f'{src.name}'
+            # caching edge name for idempotency
+            self._cache[id(edge)] = name
+        return self._cache[id(edge)]

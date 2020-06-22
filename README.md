@@ -8,19 +8,21 @@
 
 [FFMPEG](https://github.com/FFmpeg/FFmpeg) command line tools.
 
-1. *fffw.scaler.Scaler* image transformation size computing helper
-2. *fffw.graph.FilterComplex* ffmpeg filter graph helper.
-3. *fffw.encoding.FFMPEG* ffmpeg command wrapper for encoding and muxing. 
-
-TBD:
-
-* [ ] sphinx documentation - manual and auto docs
-* [x] typing
-* [x] coverage measure
-* [x] MyPy integration
-* [x] license
 
 ### PyCharm MyPy plugin
 ```
 dmypy run -- --config-file=mypy.ini .
+```
+
+### Sphinx autodoc
+
+```
+cd docs/source && rm fffw*.rst
+cd docs && sphinx-apidoc -o source ../fffw
+```
+
+### Sphinx documentation
+
+```
+cd docs && make html
 ```
