@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from itertools import chain
 from typing import List, cast, Optional, Iterable, Any
 
+from fffw.graph.meta import AUDIO, VIDEO, StreamType
 from fffw.graph import base
 from fffw.wrapper import BaseWrapper, ensure_binary, param
 
@@ -103,11 +104,11 @@ class Output(BaseWrapper):
     :arg format: output file format.
     :arg output_file: output file name.
     """
-    codecs: List[Codec] = param(skip=True)
+    codecs: List[Codec] = param(default=list, skip=True)
     no_video: Optional[bool] = param(default=None, name='vn')
     no_audio: Optional[bool] = param(default=None, name='an')
     format: str = param(name="f")
-    output_file: str = param(name="")
+    output_file: str = param(name="", skip=True)
 
     def __lt__(self, other: base.InputType) -> Codec:
         """
@@ -126,7 +127,7 @@ class Output(BaseWrapper):
 
         If no free codecs left, new one codec stub is appended to output.
         """
-        return self.get_free_codec(base.VIDEO)
+        return self.get_free_codec(VIDEO)
 
     @property
     def audio(self) -> Codec:
@@ -135,9 +136,9 @@ class Output(BaseWrapper):
 
         If no free codecs left, new one codec stub is appended to output.
         """
-        return self.get_free_codec(base.AUDIO)
+        return self.get_free_codec(AUDIO)
 
-    def get_free_codec(self, kind: base.StreamType, create: bool = True
+    def get_free_codec(self, kind: StreamType, create: bool = True
                        ) -> Codec:
         """
         Finds first codec not connected to filter graph or to an input, or
@@ -168,9 +169,9 @@ class Output(BaseWrapper):
         # Skipping `-an` / `-vn` parameters is still supported by  manually
         # setting `no_audio` / `no_video` parameters to `False`.
         for codec in self.codecs:
-            if codec.kind == base.VIDEO:
+            if codec.kind == VIDEO:
                 self.no_video = False
-            if codec.kind == base.AUDIO:
+            if codec.kind == AUDIO:
                 self.no_audio = False
             args.extend(codec.get_args())
         if self.no_video is None:
@@ -178,6 +179,7 @@ class Output(BaseWrapper):
         if self.no_audio is None:
             self.no_audio = True
         args.extend(super().get_args())
+        args.append(ensure_binary(self.output_file))
         return args
 
 
@@ -238,7 +240,7 @@ class OutputList(list):
         return result
 
     def __set_index(self, codec: Codec) -> None:
-        if codec.kind == base.VIDEO:
+        if codec.kind == VIDEO:
             codec.index = self.__video_index
             self.__video_index += 1
         else:

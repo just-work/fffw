@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from typing import Optional, List, Tuple, cast, Iterable, Union, Any
 
-from fffw.encoding import filters
+from fffw.encoding import filters, outputs
 from fffw.graph import base
-from fffw.graph.meta import Meta, TS
+from fffw.graph.meta import Meta, TS, StreamType, AUDIO, VIDEO
 from fffw.wrapper import BaseWrapper, param
 
 __all__ = [
@@ -21,7 +21,7 @@ class Stream(base.Source):
     index = cast(int, base.Once('index'))
     """ Index of current stream in source file."""
 
-    def __init__(self, kind: base.StreamType, meta: Optional[Meta] = None):
+    def __init__(self, kind: StreamType, meta: Optional[Meta] = None):
         """
         :param kind: stream kind, video or audio
         :param meta: stream metadata
@@ -38,7 +38,8 @@ class Stream(base.Source):
         """
         Splits input stream to reuse it as input node for multiple output nodes.
 
-        >>> stream = Stream(base.VIDEO)
+        >>> from fffw.graph import meta
+        >>> stream = Stream(meta.VIDEO)
         >>> s1, s2 = stream.split(2)
         >>> s1 | filters.Scale(1280, 720)
         >>> s2 | filters.Scale(640, 360)
@@ -68,7 +69,7 @@ def default_streams() -> Tuple[Stream, ...]:
 
     :returns: a tuple with one video and one audio stream.
     """
-    return Stream(base.VIDEO), Stream(base.AUDIO)
+    return Stream(VIDEO), Stream(AUDIO)
 
 
 @dataclass
@@ -100,6 +101,22 @@ class Input(BaseWrapper):
         self.__link_streams_to_input()
         super().__post_init__()
 
+    def __or__(self, other: filters.Filter) -> filters.Filter:
+        """
+        Connect first available stream to a filter.
+        """
+        if not isinstance(other, filters.Filter):
+            return NotImplemented
+        return self.get_stream(other.kind) | other
+
+    def __gt__(self, other: outputs.Codec) -> outputs.Codec:
+        """
+        Connect first available stream to a codec.
+        """
+        if not isinstance(other, outputs.Codec):
+            return NotImplemented
+        return self.get_stream(other.kind) > other
+
     def __link_streams_to_input(self) -> None:
         """
         Add a link to self to input streams and enumerate streams to get
@@ -110,15 +127,26 @@ class Input(BaseWrapper):
         if self.streams is None:
             raise RuntimeError("Streams not initialized")
         for stream in self.streams:
-            if stream.kind == base.VIDEO:
+            if stream.kind == VIDEO:
                 stream.index = video_streams
                 video_streams += 1
-            elif stream.kind == base.AUDIO:
+            elif stream.kind == AUDIO:
                 stream.index = audio_streams
                 audio_streams += 1
             else:
                 raise ValueError(stream.kind)
             stream.source = self
+
+    def get_stream(self, kind: StreamType) -> Stream:
+        """
+        :param kind: desired stream kind
+        :return: first available stream of desired kind
+        :raises KeyError: if no streams of this kind found.
+        """
+        for stream in self.streams:
+            if stream.kind == kind:
+                return stream
+        raise KeyError(kind)
 
 
 def input_file(filename: str, *streams: Stream, **kwargs: Any) -> Input:

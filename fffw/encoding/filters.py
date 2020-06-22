@@ -1,13 +1,12 @@
-from dataclasses import dataclass, replace, asdict, MISSING, field
+from dataclasses import dataclass, replace, asdict, field
 from typing import Union, List, cast
 
 from fffw.graph import base
-from fffw.graph.meta import Meta, VideoMeta, TS, Scene
+from fffw.graph.meta import Meta, VideoMeta, TS, Scene, VIDEO, AUDIO, StreamType
 from fffw.wrapper.params import Params, param
 
 __all__ = [
     'AutoFilter',
-
     'AudioFilter',
     'VideoFilter',
     'Concat',
@@ -104,7 +103,7 @@ class VideoFilter(Filter):
     ...
     >>>
     """
-    kind = base.VIDEO
+    kind = VIDEO
 
 
 class AudioFilter(Filter):
@@ -118,7 +117,7 @@ class AudioFilter(Filter):
     ...
     >>>
     """
-    kind = base.AUDIO
+    kind = AUDIO
 
 
 @dataclass
@@ -127,7 +126,7 @@ class AutoFilter(Filter):
     Base class for stream kind autodetect.
     """
 
-    kind: base.StreamType = field(metadata={'skip': True})
+    kind: StreamType = field(metadata={'skip': True})
     """ 
     Stream kind used to generate filter name. Required. Not used as filter 
     parameter.
@@ -137,14 +136,20 @@ class AutoFilter(Filter):
 
     def __post_init__(self) -> None:
         """ Adds audio prefix to filter name for audio filters."""
-        if self.kind == base.AUDIO:
+        if self.kind == AUDIO:
             self.filter = f'a{self.filter}'
         super().__post_init__()
 
 
 @dataclass
 class Scale(VideoFilter):
-    """ Video scaling filter."""
+    # noinspection PyUnresolvedReferences
+    """
+    Video scaling filter.
+
+    :arg width: resulting video width
+    :arg height: resulting video height
+    """
     filter = "scale"
 
     width: int = param(name='w')
@@ -196,7 +201,7 @@ class Split(AutoFilter):
 class Trim(AutoFilter):
     # noinspection PyUnresolvedReferences
     """
-    Cut the input so that the output contains one continuous subpart
+    Cuts the input so that the output contains one continuous subpart
     of the input.
 
     :arg kind: stream kind (for proper concatenated streams definitions).
@@ -289,7 +294,7 @@ class Concat(Filter):
     """
     filter = 'concat'
 
-    kind: base.StreamType
+    kind: StreamType
     input_count: int = 2
 
     def __post_init__(self) -> None:
@@ -302,7 +307,7 @@ class Concat(Filter):
 
     @property
     def args(self) -> str:
-        if self.kind == base.VIDEO:
+        if self.kind == VIDEO:
             if self.input_count == 2:
                 return ''
             return 'n=%s' % self.input_count
@@ -338,7 +343,7 @@ class Overlay(VideoFilter):
     Combines two video streams one on top of another.
 
     :arg x: horizontal position of top image in bottom one.
-    :arg x: vertical position of top image in bottom one.
+    :arg y: vertical position of top image in bottom one.
     """
     input_count = 2
     filter = "overlay"

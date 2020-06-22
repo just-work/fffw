@@ -1,18 +1,15 @@
 from dataclasses import dataclass
-from typing import List, Optional, Literal, Union
+from typing import List, Optional, Union
 
 from fffw.encoding import inputs
 from fffw.encoding.complex import FilterComplex
 from fffw.encoding.inputs import InputList, Input
 from fffw.encoding.outputs import OutputList, Output, Codec
 from fffw.graph import base
+from fffw.graph.meta import AUDIO, VIDEO, StreamType
 from fffw.wrapper import BaseWrapper, ensure_binary, param
 
 __all__ = ['FFMPEG']
-
-LogLevel = Literal['quiet', 'panic', 'fatal', 'error', 'warning',
-                   'info', 'verbose', 'debug', 'trace']
-""" Allowed values for ffmpeg log level."""
 
 
 @dataclass
@@ -30,12 +27,11 @@ class FFMPEG(BaseWrapper):
     >>> ff.overwrite = True
     >>> ff > output_file('/tmp/output.mp4', c,
     ...                  AudioCodec('libfdk_aac', bitrate=192_000))
-    >>> b' '.join(ff.get_args()).decode('utf-8')
-    'ffmpeg -y -i /tmp/input.mp4
-    -filter_complex [0:v]scale=w=1280:h=720[vout0]
-    -map [vout0] -c:v libx264 -b:v 4000000
-    -map 0:a -c:a libfdk_aac -b:a 192000
-    /tmp/output.mp4'
+    >>> ff.get_cmd()
+    'ffmpeg -y -i /tmp/input.mp4\
+ -filter_complex "[0:v]scale=w=1280:h=720[vout0]"\
+ -map "[vout0]" -c:v libx264 -b:v 4000000 -map 0:a -c:a libfdk_aac -b:a 192000\
+ /tmp/output.mp4'
     >>>
     """
     command = 'ffmpeg'
@@ -43,8 +39,10 @@ class FFMPEG(BaseWrapper):
     input: Union[str, Input] = param(skip=True)
     output: Union[str, Output] = param(skip=True)
 
-    loglevel: LogLevel = param()
+    loglevel: str = param()
+    """ Loglevel: i.e. `level+info`."""
     overwrite: bool = param(name='y')
+    """ Overwrite output files without manual confirmation."""
 
     def __post_init__(self) -> None:
         """
@@ -85,8 +83,10 @@ class FFMPEG(BaseWrapper):
     def __gt__(self, other: Output) -> None:
         """ Adds new output file.
 
-        >>> ff = FFMPEG()
-        >>> ff > Output(output_file='/tmp/output.mp4')
+        >>> from fffw.encoding.inputs import *
+        >>> from fffw.encoding.outputs import *
+        >>> ff = FFMPEG(input=input_file('input.mp4'))
+        >>> ff > output_file('/tmp/output.mp4')
         >>>
         """
         if not isinstance(other, Output):
@@ -101,9 +101,10 @@ class FFMPEG(BaseWrapper):
         >>> from fffw.encoding.filters import Scale
         >>> ff = FFMPEG('/tmp/input.mp4')
         >>> ff.video | Scale(1280, 720)
+        Scale(width=1280, height=720)
         >>>
         """
-        return self._get_free_source(base.VIDEO)
+        return self._get_free_source(VIDEO)
 
     @property
     def audio(self) -> inputs.Stream:
@@ -115,11 +116,12 @@ class FFMPEG(BaseWrapper):
         >>> ff = FFMPEG('/tmp/input.mp4')
         >>> ac = AudioCodec('aac')
         >>> ff.audio > ac
+        AudioCodec(codec='aac', bitrate=0)
         >>>
         """
-        return self._get_free_source(base.AUDIO)
+        return self._get_free_source(AUDIO)
 
-    def _get_free_source(self, kind: base.StreamType) -> inputs.Stream:
+    def _get_free_source(self, kind: StreamType) -> inputs.Stream:
         """
         :param kind: stream type
         :return: first stream of this kind not connected to destination

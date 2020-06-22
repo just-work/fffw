@@ -1,25 +1,9 @@
-__all__ = [
-    'StreamType',
-    'AUDIO',
-    'VIDEO',
-]
-
 import abc
 from collections import Counter
-from enum import Enum
-from typing import Dict, Any, TypeVar, Type, overload, cast
+from typing import Dict, Any, TypeVar, Type, overload
 from typing import Optional, List, Union
 
-from fffw.graph.meta import Meta
-
-
-class StreamType(Enum):
-    VIDEO = 'v'
-    AUDIO = 'a'
-
-
-VIDEO = StreamType.VIDEO
-AUDIO = StreamType.AUDIO
+from fffw.graph.meta import Meta, StreamType
 
 InputType = Union["Source", "Node"]
 OutputType = Union["Dest", "Node"]
@@ -208,6 +192,10 @@ class Edge(Traversable):
             inputs[inputs.index(self)] = None
         self.__output = dest
         dest.connect_edge(self)
+
+
+D = TypeVar('D', bound=Dest)
+N = TypeVar('N', bound="Node")
 
 
 class Node(Traversable, abc.ABC):
@@ -419,7 +407,7 @@ class Source(Traversable, metaclass=abc.ABCMeta):
     def __repr__(self) -> str:
         return f"Source('[{self.name}]')"
 
-    def __or__(self, other: Node) -> Node:
+    def __or__(self, other: N) -> N:
         """
         Connect a filter to a source
         :return: connected filter
@@ -428,7 +416,7 @@ class Source(Traversable, metaclass=abc.ABCMeta):
             return NotImplemented
         return self.connect_dest(other)
 
-    def __gt__(self, other: Dest) -> Dest:
+    def __gt__(self, other: D) -> D:
         """
         Connects a codec to a source
         :param other: codec that will process current source stream
@@ -462,11 +450,11 @@ class Source(Traversable, metaclass=abc.ABCMeta):
         return self._meta
 
     @overload
-    def connect_dest(self, other: Node) -> Node:
+    def connect_dest(self, other: N) -> N:
         ...
 
     @overload
-    def connect_dest(self, other: Dest) -> Dest:
+    def connect_dest(self, other: D) -> D:
         ...
 
     def connect_dest(self, other: OutputType) -> OutputType:

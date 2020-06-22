@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from fffw.graph.base import StreamType
+from fffw.graph import StreamType
 from fffw.encoding import inputs
 
 

@@ -1,5 +1,6 @@
 import collections
 
+from fffw.graph.meta import StreamType
 from fffw.graph import base
 from fffw.encoding import inputs, outputs
 
@@ -21,7 +22,7 @@ class FilterComplex:
         self.__input_list = input_list
         self.__output_list = output_list
 
-    def get_free_source(self, kind: base.StreamType) -> base.Source:
+    def get_free_source(self, kind: StreamType) -> base.Source:
         """
         :param kind: stream type
         :return: first stream of this kind not connected to filter graph
