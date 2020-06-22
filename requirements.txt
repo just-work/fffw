@@ -1,0 +1,1 @@
+pymediainfo==4.2.1
