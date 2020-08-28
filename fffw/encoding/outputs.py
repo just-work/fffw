@@ -110,7 +110,7 @@ class Output(BaseWrapper):
     format: str = param(name="f")
     output_file: str = param(name="", skip=True)
 
-    def __lt__(self, other: base.InputType) -> Codec:
+    def __lt__(self, other: base.InputType) -> "Output":
         """
         Connects a source or a filter to a first free codec.
 
@@ -118,7 +118,7 @@ class Output(BaseWrapper):
         """
         codec = self.get_free_codec(other.kind)
         other.connect_dest(codec)
-        return codec
+        return self
 
     @property
     def video(self) -> Codec:

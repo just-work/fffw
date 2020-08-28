@@ -493,3 +493,19 @@ class FFMPEGTestCase(BaseTestCase):
         ff > output
 
         ff.check_buffering()
+
+    def test_shortcut_outputs_with_codec(self):
+        """ Check ff > output shortcut if codecs list specified."""
+        ff = FFMPEG(input=inputs.input_file("input.mp4"))
+        scaled = ff.video | filters.Scale(width=1280, height=720)
+
+        with self.assertRaises(RuntimeError):
+            codec = codecs.VideoCodec("libx264")
+            out = ff > outputs.output_file("output.mp4", codec)
+            # at this moment codec is connected to ffmpeg input stream directly
+            # so scaled video stream could not be connected to output
+            scaled > out
+
+        codec = codecs.VideoCodec("libx264")
+        out = scaled > outputs.output_file("output.mp4", codec)
+        ff > out
