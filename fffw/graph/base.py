@@ -195,7 +195,6 @@ class Edge(Traversable):
 
 
 D = TypeVar('D', bound=Dest)
-N = TypeVar('N', bound="Node")
 
 
 class Node(Traversable, abc.ABC):
@@ -265,12 +264,9 @@ class Node(Traversable, abc.ABC):
             assert self.output_count == 1
         self.__dict__['enabled'] = value
 
-    # noinspection PyMethodMayBeStatic
-    def transform(self, *metadata: Meta) -> Meta:
-        """ Apply filter changes to stream metadata."""
-        return metadata[0]
-
-    def get_meta_data(self, dst: OutputType) -> Optional[Meta]:
+    @property
+    def metadata(self) -> Optional[Meta]:
+        """ Compute metadata for current node."""
         metadata = []
         for edge in self.inputs:
             if edge is None:
@@ -280,13 +276,20 @@ class Node(Traversable, abc.ABC):
                 return None
             metadata.append(meta)
 
-        meta = self.transform(*metadata)
+        return self.transform(*metadata)
 
+    # noinspection PyMethodMayBeStatic
+    def transform(self, *metadata: Meta) -> Meta:
+        """ Apply filter changes to stream metadata."""
+        return metadata[0]
+
+    def get_meta_data(self, dst: OutputType) -> Optional[Meta]:
+        """ Returns metadata for selected destination."""
         for edge in self.outputs:
             if edge is None:
                 continue
             if edge.output is dst:
-                return meta
+                return self.metadata
         else:
             raise KeyError(dst)
 
@@ -386,6 +389,9 @@ class Node(Traversable, abc.ABC):
         self.outputs[self.outputs.index(None)] = edge
         other.connect_edge(edge)
         return other
+
+
+N = TypeVar('N', bound=Node)
 
 
 class Source(Traversable, metaclass=abc.ABCMeta):
