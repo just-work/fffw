@@ -1,6 +1,6 @@
 from typing import *
 
-from fffw.graph.meta import AUDIO, VIDEO, StreamType
+from fffw.graph.meta import AUDIO, VIDEO, StreamType, Meta
 from fffw.encoding import filters, inputs, outputs, FFMPEG
 
 Group = Dict[int, Set[int]]
@@ -75,6 +75,7 @@ def prepare_dst_clones(destinations: Dict[int, Outgoing],
         dst = destinations[dst_id]
         # Clone destination filter for each source that will be connected
         # to it.
+        # noinspection PyTypeChecker
         clones = cast(List[Outgoing], dst.clone(len(src_set)))
         for src_id, c in zip(src_set, clones):
             dst_clones[dst_id, src_id] = c
@@ -123,10 +124,12 @@ def map_sources_to_destinations(
 
         if key not in links:
             # connect same src to same dst only once
+            # noinspection PyTypeChecker
             links[key] = cast(Outgoing, split.connect_dest(clone))
 
         # add destination node to results
         results.append(links[key])
+    # noinspection PyTypeChecker
     return Vector(cast(Union[List[filters.Filter], List[outputs.Codec]],
                        results))
 
@@ -146,6 +149,7 @@ def init_filter_vector(filter_class: Type[filters.Filter],
         each vector is instance of filter_class.
     """
     vector = []
+    # noinspection PyTypeChecker
     factory = cast(Callable[..., filters.Filter], filter_class)
     seen_filters: Dict[str, filters.Filter] = dict()
     for param in params:
@@ -248,9 +252,21 @@ class Vector(tuple):
     @property
     def kind(self) -> StreamType:
         """
-        :returns a kind of streams in vector.
+        :returns: a kind of streams in vector.
         """
+        kinds = {s.kind for s in self}
+        if len(kinds) != 1:
+            raise RuntimeError("multiple kind of streams in vector")
         return self[0].kind
+
+    @property
+    def metadata(self) -> Meta:
+        """
+        :returns: metadata for a stream in vector.
+        """
+        if len(self) != 1:
+            raise RuntimeError("not a scalar")
+        return self[0].metadata
 
     @overload
     def connect(self, dst: filters.Filter, mask: Optional[List[bool]] = None
@@ -410,6 +426,7 @@ class SIMD:
         elif isinstance(other, inputs.Input):
             self.add_input(other)
         else:
+            # noinspection PyTypeChecker
             return NotImplemented
 
     def __or__(self, other: filters.Filter) -> Vector:
