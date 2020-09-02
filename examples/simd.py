@@ -26,9 +26,7 @@ mi = MediaInfo.parse('logo.png')
 logo_meta, = from_media_info(mi)
 
 # add a logo
-logo = input_file('logo.png', Stream(VIDEO, logo_meta))
-
-simd < logo
+logo = simd < input_file('logo.png', Stream(VIDEO, logo_meta))
 
 trim = [
     {'kind': VIDEO, 'start': 25, 'end': 50},
@@ -70,7 +68,7 @@ cursor = cursor.connect(Scale, params=sizes)
 cursor > simd
 
 # finalize audio processing
-Vector(audio_concat) > simd
+audio_concat > simd
 
 simd.ffmpeg.overwrite = True
 
