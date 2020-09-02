@@ -25,6 +25,7 @@ class AnotherFilter(VideoFilter):
     filter = 'another'
 
 
+# noinspection PyStatementEffect
 class VectorTestCase(BaseTestCase):
     def setUp(self) -> None:
         super().setUp()
@@ -234,8 +235,8 @@ class VectorTestCase(BaseTestCase):
         """
         If necessary, streams may be also split.
         """
-        logo = input_file('logo.png', Stream(VIDEO, video_meta_data()))
-        self.simd < logo
+        video_stream = Stream(VIDEO, video_meta_data())
+        logo = self.simd < input_file('logo.png', video_stream)
         overlay = logo | Overlay(0, 0)
 
         v = self.simd.video.connect(Scale, params=[(1280, 720), (640, 360)])

@@ -282,7 +282,7 @@ class Vector(tuple):
         >>> vector = Vector(inputs.Stream(VIDEO))
         >>> vector.connect(filters.Scale(), mask=[True, False])
         """
-        ...
+        ...  # pragma: no cover
 
     @overload
     def connect(self, dst: Type[filters.Filter],
@@ -298,7 +298,7 @@ class Vector(tuple):
         ... {'width': 640, 'height': 360}])
         >>>
         """
-        ...
+        ...  # pragma: no cover
 
     @overload
     def connect(self, dst: "Vector", mask: Optional[List[bool]] = None
@@ -311,7 +311,7 @@ class Vector(tuple):
         ... outputs.Codec(codec='libx264')])
         >>> vector.connect(out)
         """
-        ...
+        ...  # pragma: no cover
 
     def connect(self, dst: Union[filters.Filter,
                                  Type[filters.Filter],
