@@ -249,6 +249,12 @@ class Vector(tuple):
         """ A shortcut to connect vector to another filter."""
         return self.connect(other)
 
+    def __ror__(self, other: filters.Filter) -> "Vector":
+        """ A shortcut to connect a filter to the vector."""
+        if not isinstance(other, filters.Filter):
+            return NotImplemented
+        return Vector(other) | self
+
     @property
     def kind(self) -> StreamType:
         """
@@ -472,7 +478,8 @@ class SIMD:
         :returns: cached FFMPEG instance.
         """
         if self.__ffmpeg is None:
-            self.__ffmpeg = self.ffmpeg_wrapper(input=self.__source, **self.__kwargs)
+            self.__ffmpeg = self.ffmpeg_wrapper(
+                input=self.__source, **self.__kwargs)
 
             for source in self.__extra:
                 self.__ffmpeg.add_input(source)
