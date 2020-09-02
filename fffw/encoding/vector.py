@@ -419,7 +419,8 @@ class SIMD:
         self.__ffmpeg: Optional[FFMPEG] = None
         self.__kwargs = kwargs
 
-    def __lt__(self, other: Union[Vector, inputs.Input]) -> None:
+    def __lt__(self, other: Union[Vector, inputs.Input]
+               ) -> Union[Vector, inputs.Input]:
         """
         A shortcut to connect additional input file or codec vector.
 
@@ -428,9 +429,9 @@ class SIMD:
         >>> simd | filters.Scale(1280, 720) > simd
         """
         if isinstance(other, Vector):
-            other.connect(self.get_codecs(other.kind))
+            return other.connect(self.get_codecs(other.kind))
         elif isinstance(other, inputs.Input):
-            self.add_input(other)
+            return self.add_input(other)
         else:
             # noinspection PyTypeChecker
             return NotImplemented
@@ -528,10 +529,12 @@ class SIMD:
             result.append(output.get_free_codec(kind, create=False))
         return Vector(result)
 
-    def add_input(self, source: inputs.Input) -> None:
+    def add_input(self, source: inputs.Input) -> inputs.Input:
         """
         Adds additional input file to ffmpeg
         :param source: additional input file
+        :returns: connected input
         """
         self.validate_input_file(source)
         self.__extra.append(source)
+        return source
