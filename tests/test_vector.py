@@ -1,10 +1,10 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import cast, Tuple
 
 from fffw.encoding import *
 from fffw.encoding.vector import SIMD, Vector
 from fffw.graph import *
-from fffw.wrapper import ensure_binary, param
+from fffw.wrapper import param
 from tests.base import BaseTestCase
 from tests.test_ffmpeg import Volume
 
@@ -28,7 +28,7 @@ class AnotherFilter(VideoFilter):
 class VectorTestCase(BaseTestCase):
     def setUp(self) -> None:
         super().setUp()
-        self.video_meta = video_meta_data()
+        self.video_meta = video_meta_data(width=1920, height=1080)
         self.audio_meta = audio_meta_data()
         self.source = input_file('input.mp4',
                                  Stream(VIDEO, self.video_meta),
@@ -47,6 +47,30 @@ class VectorTestCase(BaseTestCase):
     @property
     def ffmpeg(self):
         return self.simd.ffmpeg
+
+    def test_vector_kind(self):
+        """
+        Checks that vector does not return kind if it contains audio and video
+        streams.
+        """
+        v = Vector([VideoFilter(), AudioFilter()])
+        self.assertRaises(RuntimeError, getattr, v, 'kind')
+
+    def test_vector_metadata(self):
+        """
+        Checks that vector outputs metadata for a single stream in it.
+        """
+        v = self.simd.video | Scale(1280, 720)
+        expected = replace(self.video_meta, width=1280, height=720)
+        self.assertEqual(v.metadata, expected)
+
+    def test_vector_metadata_for_multiple_streams(self):
+        """
+        Checks that vector does not return metadata if it contains multiple
+        streams.
+        """
+        v = Vector([VideoFilter(), VideoFilter()])
+        self.assertRaises(RuntimeError, getattr, v, 'metadata')
 
     def test_no_filter_graph(self):
         """ Checks that vector works correctly without filter graph."""
@@ -177,6 +201,7 @@ class VectorTestCase(BaseTestCase):
         all connected inputs.
         """
         v = self.simd.video | Vector((SomeFilter(), AnotherFilter()))
+        # noinspection PyTypeChecker
         some, other = cast(Tuple[VideoFilter, VideoFilter], v)
         v1 = Vector(some).connect(Scale, params=[(1280, 720), (640, 360)])
 
