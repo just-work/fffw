@@ -69,29 +69,29 @@ class FFMPEG(BaseWrapper):
         # calling super() to freeze params.
         super().__post_init__()
 
-    def __lt__(self, other: Input) -> None:
+    def __lt__(self, other: Input) -> Input:
         """ Adds new source file.
 
         >>> ff = FFMPEG()
-        >>> ff < Input(input_file='/tmp/input.mp4')
+        >>> src = ff < Input(input_file='/tmp/input.mp4')
         >>>
         """
         if not isinstance(other, Input):
             return NotImplemented
-        self.add_input(other)
+        return self.add_input(other)
 
-    def __gt__(self, other: Output) -> None:
+    def __gt__(self, other: Output) -> Output:
         """ Adds new output file.
 
         >>> from fffw.encoding.inputs import *
         >>> from fffw.encoding.outputs import *
         >>> ff = FFMPEG(input=input_file('input.mp4'))
-        >>> ff > output_file('/tmp/output.mp4')
+        >>> dest = ff > output_file('/tmp/output.mp4')
         >>>
         """
         if not isinstance(other, Output):
             return NotImplemented
-        self.add_output(other)
+        return self.add_output(other)
 
     @property
     def video(self) -> inputs.Stream:
@@ -169,7 +169,7 @@ class FFMPEG(BaseWrapper):
                     ensure_binary(fc_args) +
                     self.__outputs.get_args())
 
-    def add_input(self, input_file: Input) -> None:
+    def add_input(self, input_file: Input) -> Input:
         """ Adds new source to ffmpeg.
 
         >>> ff = FFMPEG()
@@ -178,8 +178,9 @@ class FFMPEG(BaseWrapper):
         """
         assert isinstance(input_file, Input)
         self.__inputs.append(input_file)
+        return input_file
 
-    def add_output(self, output: Output) -> None:
+    def add_output(self, output: Output) -> Output:
         """
         Adds output file to ffmpeg and connect it's codecs to free sources.
 
@@ -190,6 +191,7 @@ class FFMPEG(BaseWrapper):
         self.__outputs.append(output)
         for codec in output.codecs:
             self._add_codec(codec)
+        return output
 
     def handle_stderr(self, line: str) -> str:
         """

@@ -1,10 +1,10 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import cast, Tuple
 
 from fffw.encoding import *
 from fffw.encoding.vector import SIMD, Vector
 from fffw.graph import *
-from fffw.wrapper import ensure_binary, param
+from fffw.wrapper import param
 from tests.base import BaseTestCase
 from tests.test_ffmpeg import Volume
 
@@ -25,10 +25,11 @@ class AnotherFilter(VideoFilter):
     filter = 'another'
 
 
+# noinspection PyStatementEffect
 class VectorTestCase(BaseTestCase):
     def setUp(self) -> None:
         super().setUp()
-        self.video_meta = video_meta_data()
+        self.video_meta = video_meta_data(width=1920, height=1080)
         self.audio_meta = audio_meta_data()
         self.source = input_file('input.mp4',
                                  Stream(VIDEO, self.video_meta),
@@ -47,6 +48,30 @@ class VectorTestCase(BaseTestCase):
     @property
     def ffmpeg(self):
         return self.simd.ffmpeg
+
+    def test_vector_kind(self):
+        """
+        Checks that vector does not return kind if it contains audio and video
+        streams.
+        """
+        v = Vector([VideoFilter(), AudioFilter()])
+        self.assertRaises(RuntimeError, getattr, v, 'kind')
+
+    def test_vector_metadata(self):
+        """
+        Checks that vector outputs metadata for a single stream in it.
+        """
+        v = self.simd.video | Scale(1280, 720)
+        expected = replace(self.video_meta, width=1280, height=720)
+        self.assertEqual(v.metadata, expected)
+
+    def test_vector_metadata_for_multiple_streams(self):
+        """
+        Checks that vector does not return metadata if it contains multiple
+        streams.
+        """
+        v = Vector([VideoFilter(), VideoFilter()])
+        self.assertRaises(RuntimeError, getattr, v, 'metadata')
 
     def test_no_filter_graph(self):
         """ Checks that vector works correctly without filter graph."""
@@ -129,7 +154,7 @@ class VectorTestCase(BaseTestCase):
             '-map', '0:v', '-c:v', 'libx265',
             '-map', '[aout1]', '-c:a', 'libfdk_aac',
             'output2.mp5')
-        
+
     def test_apply_filter_with_equal_params(self):
         cursor = self.simd.audio.connect(Volume, params=[30, 30])
         cursor > self.simd
@@ -177,6 +202,7 @@ class VectorTestCase(BaseTestCase):
         all connected inputs.
         """
         v = self.simd.video | Vector((SomeFilter(), AnotherFilter()))
+        # noinspection PyTypeChecker
         some, other = cast(Tuple[VideoFilter, VideoFilter], v)
         v1 = Vector(some).connect(Scale, params=[(1280, 720), (640, 360)])
 
@@ -209,8 +235,8 @@ class VectorTestCase(BaseTestCase):
         """
         If necessary, streams may be also split.
         """
-        logo = input_file('logo.png', Stream(VIDEO, video_meta_data()))
-        self.simd < logo
+        video_stream = Stream(VIDEO, video_meta_data())
+        logo = self.simd < input_file('logo.png', video_stream)
         overlay = logo | Overlay(0, 0)
 
         v = self.simd.video.connect(Scale, params=[(1280, 720), (640, 360)])
@@ -290,3 +316,62 @@ class VectorTestCase(BaseTestCase):
             '-map', '[vout0]', '-c:v', 'libx265',
             '-map', '[aout0]', '-c:a', 'libfdk_aac',
             'output2.mp5')
+
+    def test_connect_filter_to_a_vector(self):
+        """ Plain filter can be connected to a stream vector."""
+        logo = input_file('logo.png', Stream(VIDEO, video_meta_data()))
+        self.simd < logo
+        overlay = self.simd.video | Overlay(0, 0)
+        # checking that Vector.__ror__ works
+        logo | Scale(120, 120) | overlay > self.simd
+
+        self.assert_simd_args(
+            'ffmpeg',
+            '-i', 'input.mp4',
+            '-i', 'logo.png',
+            '-filter_complex',
+            '[v:overlay0]split[vout0][vout1];'
+            '[1:v]scale=w=120:h=120[v:scale0];'
+            '[0:v][v:scale0]overlay[v:overlay0]',
+            '-map', '[vout0]', '-c:v', 'libx264',
+            '-map', '0:a', '-c:a', 'aac',
+            'output1.mp4',
+            '-map', '[vout1]', '-c:v', 'libx265',
+            '-map', '0:a', '-c:a', 'libfdk_aac',
+            'output2.mp5'
+        )
+
+    def test_connect_stream_to_simd(self):
+        """ Plain input stream can be connected to a SIMD instance."""
+        vstream = Stream(VIDEO, video_meta_data())
+        astream = Stream(AUDIO, audio_meta_data())
+        preroll = self.simd < input_file('preroll.mp4', vstream, astream)
+
+        vconcat = vstream | Concat(VIDEO, input_count=2)
+        aconcat = astream | Concat(AUDIO, input_count=2)
+        preroll.video | vconcat | Scale(1820, 720) > self.simd
+        preroll.audio | aconcat > self.simd
+
+        self.assert_simd_args(
+            'ffmpeg',
+            '-i',
+            'input.mp4',
+            '-i',
+            'preroll.mp4',
+            '-filter_complex',
+            '[v:scale0]split[vout0][vout1];'
+            '[1:a][1:a]concat=v=0:a=1:n=2[a:concat0];'
+            '[a:concat0]asplit[aout0][aout1];'
+            '[v:concat0]scale=w=1820:h=720[v:scale0];'
+            '[1:v][1:v]concat[v:concat0]',
+            '-map', '[vout0]',
+            '-c:v', 'libx264',
+            '-map', '[aout0]',
+            '-c:a', 'aac',
+            'output1.mp4',
+            '-map', '[vout1]',
+            '-c:v', 'libx265',
+            '-map', '[aout1]',
+            '-c:a', 'libfdk_aac',
+            'output2.mp5'
+        )

@@ -1,6 +1,6 @@
 from typing import *
 
-from fffw.graph.meta import AUDIO, VIDEO, StreamType
+from fffw.graph.meta import AUDIO, VIDEO, StreamType, Meta
 from fffw.encoding import filters, inputs, outputs, FFMPEG
 
 Group = Dict[int, Set[int]]
@@ -75,6 +75,7 @@ def prepare_dst_clones(destinations: Dict[int, Outgoing],
         dst = destinations[dst_id]
         # Clone destination filter for each source that will be connected
         # to it.
+        # noinspection PyTypeChecker
         clones = cast(List[Outgoing], dst.clone(len(src_set)))
         for src_id, c in zip(src_set, clones):
             dst_clones[dst_id, src_id] = c
@@ -123,10 +124,12 @@ def map_sources_to_destinations(
 
         if key not in links:
             # connect same src to same dst only once
+            # noinspection PyTypeChecker
             links[key] = cast(Outgoing, split.connect_dest(clone))
 
         # add destination node to results
         results.append(links[key])
+    # noinspection PyTypeChecker
     return Vector(cast(Union[List[filters.Filter], List[outputs.Codec]],
                        results))
 
@@ -146,6 +149,7 @@ def init_filter_vector(filter_class: Type[filters.Filter],
         each vector is instance of filter_class.
     """
     vector = []
+    # noinspection PyTypeChecker
     factory = cast(Callable[..., filters.Filter], filter_class)
     seen_filters: Dict[str, filters.Filter] = dict()
     for param in params:
@@ -245,12 +249,36 @@ class Vector(tuple):
         """ A shortcut to connect vector to another filter."""
         return self.connect(other)
 
+    def __ror__(self, other: filters.Filter) -> "Vector":
+        # noinspection PyUnresolvedReferences
+        """ A shortcut to connect a filter to the vector.
+
+        >>> overlay: Vector = simd | Overlay(1100, 100)
+        >>> scaled_logo: Filter = logo.video | Scale(120, 120)
+        >>> scaled_logo | overlay
+        """
+        if not isinstance(other, filters.Filter):
+            return NotImplemented
+        return Vector(other) | self
+
     @property
     def kind(self) -> StreamType:
         """
-        :returns a kind of streams in vector.
+        :returns: a kind of streams in vector.
         """
+        kinds = {s.kind for s in self}
+        if len(kinds) != 1:
+            raise RuntimeError("multiple kind of streams in vector")
         return self[0].kind
+
+    @property
+    def metadata(self) -> Meta:
+        """
+        :returns: metadata for a stream in vector.
+        """
+        if len(self) != 1:
+            raise RuntimeError("not a scalar")
+        return self[0].metadata
 
     @overload
     def connect(self, dst: filters.Filter, mask: Optional[List[bool]] = None
@@ -260,7 +288,7 @@ class Vector(tuple):
         >>> vector = Vector(inputs.Stream(VIDEO))
         >>> vector.connect(filters.Scale(), mask=[True, False])
         """
-        ...
+        ...  # pragma: no cover
 
     @overload
     def connect(self, dst: Type[filters.Filter],
@@ -276,7 +304,7 @@ class Vector(tuple):
         ... {'width': 640, 'height': 360}])
         >>>
         """
-        ...
+        ...  # pragma: no cover
 
     @overload
     def connect(self, dst: "Vector", mask: Optional[List[bool]] = None
@@ -289,7 +317,7 @@ class Vector(tuple):
         ... outputs.Codec(codec='libx264')])
         >>> vector.connect(out)
         """
-        ...
+        ...  # pragma: no cover
 
     def connect(self, dst: Union[filters.Filter,
                                  Type[filters.Filter],
@@ -397,19 +425,43 @@ class SIMD:
         self.__ffmpeg: Optional[FFMPEG] = None
         self.__kwargs = kwargs
 
-    def __lt__(self, other: Union[Vector, inputs.Input]) -> None:
+    @overload
+    def __lt__(self, other: Union[inputs.Stream, filters.Filter, Vector]
+               ) -> Vector:
+        ...
+
+    @overload
+    def __lt__(self, other: inputs.Input) -> inputs.Input:
+        ...
+
+    def __lt__(self, other: Union[Vector, inputs.Input, inputs.Stream,
+                                  filters.Filter]
+               ) -> Union[Vector, inputs.Input]:
+        # noinspection PyUnresolvedReferences
         """
         A shortcut to connect additional input file or codec vector.
 
         >>> simd = SIMD(inputs.input_file('input.mp4'))
-        >>> simd < inputs.input_file('logo.png')
+        >>> # Adding extra input file
+        >>> logo = simd < inputs.input_file('logo.png')
+        >>> # Finalizing filter to simd with single stream
         >>> simd | filters.Scale(1280, 720) > simd
+        >>> # Finalizing input stream excluded from filter graph
+        >>> preroll.audio > simd
+        >>> # Finalizing stream vector
+        >>> scaled_vector = simd.video.connect(Scale, params=[size1, size2])
+        >>> scaled_vector > simd
         """
+        if isinstance(other, (inputs.Stream, filters.Filter)):
+            # finalizing stream excluded from filter graph or single filtered
+            # stream
+            other = Vector(other)
         if isinstance(other, Vector):
-            other.connect(self.get_codecs(other.kind))
+            return other.connect(self.get_codecs(other.kind))
         elif isinstance(other, inputs.Input):
-            self.add_input(other)
+            return self.add_input(other)
         else:
+            # noinspection PyTypeChecker
             return NotImplemented
 
     def __or__(self, other: filters.Filter) -> Vector:
@@ -455,7 +507,8 @@ class SIMD:
         :returns: cached FFMPEG instance.
         """
         if self.__ffmpeg is None:
-            self.__ffmpeg = self.ffmpeg_wrapper(input=self.__source, **self.__kwargs)
+            self.__ffmpeg = self.ffmpeg_wrapper(
+                input=self.__source, **self.__kwargs)
 
             for source in self.__extra:
                 self.__ffmpeg.add_input(source)
@@ -504,10 +557,12 @@ class SIMD:
             result.append(output.get_free_codec(kind, create=False))
         return Vector(result)
 
-    def add_input(self, source: inputs.Input) -> None:
+    def add_input(self, source: inputs.Input) -> inputs.Input:
         """
         Adds additional input file to ffmpeg
         :param source: additional input file
+        :returns: connected input
         """
         self.validate_input_file(source)
         self.__extra.append(source)
+        return source

@@ -42,6 +42,7 @@ class Volume(filters.AudioFilter):
         return "%.2f" % self.volume
 
 
+# noinspection PyStatementEffect
 class FFMPEGTestCase(BaseTestCase):
     def setUp(self) -> None:
         super().setUp()
@@ -86,9 +87,9 @@ class FFMPEGTestCase(BaseTestCase):
         ca0 = self.audio_codec
         ca1 = codecs.AudioCodec('libmp3lame', bitrate=394000)
 
-        asplit = ff.audio | filters.Split(AUDIO)
+        asplit = self.source.audio | filters.Split(AUDIO)
 
-        ff.video | filters.Scale(640, 360) > cv0
+        self.source.video | filters.Scale(640, 360) > cv0
 
         asplit.connect_dest(ca0)
         asplit.connect_dest(ca1)
@@ -302,6 +303,7 @@ class FFMPEGTestCase(BaseTestCase):
         )
 
     # TODO #19 reimplement TeeMuxer
+    # noinspection PyUnresolvedReferences,PyArgumentList
     @expectedFailure
     def test_tee_muxer(self):
         """ tee muxer args."""
@@ -462,7 +464,7 @@ class FFMPEGTestCase(BaseTestCase):
 
     def test_fix_preroll_buffering_with_trim(self):
         """
-        We can fix buffering occured from preroll by using trim filter.
+        We can fix buffering occurred from preroll by using trim filter.
         """
         ff = self.ffmpeg
         ff < self.preroll
@@ -493,3 +495,19 @@ class FFMPEGTestCase(BaseTestCase):
         ff > output
 
         ff.check_buffering()
+
+    def test_shortcut_outputs_with_codec(self):
+        """ Check ff > output shortcut if codecs list specified."""
+        ff = FFMPEG(input=inputs.input_file("input.mp4"))
+        scaled = ff.video | filters.Scale(width=1280, height=720)
+
+        with self.assertRaises(RuntimeError):
+            codec = codecs.VideoCodec("libx264")
+            out = ff > outputs.output_file("output.mp4", codec)
+            # at this moment codec is connected to ffmpeg input stream directly
+            # so scaled video stream could not be connected to output
+            scaled > out
+
+        codec = codecs.VideoCodec("libx264")
+        out = scaled > outputs.output_file("output.mp4", codec)
+        ff > out
