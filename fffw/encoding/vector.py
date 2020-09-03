@@ -250,7 +250,13 @@ class Vector(tuple):
         return self.connect(other)
 
     def __ror__(self, other: filters.Filter) -> "Vector":
-        """ A shortcut to connect a filter to the vector."""
+        # noinspection PyUnresolvedReferences
+        """ A shortcut to connect a filter to the vector.
+
+        >>> overlay: Vector = simd | Overlay(1100, 100)
+        >>> scaled_logo: Filter = logo.video | Scale(120, 120)
+        >>> scaled_logo | overlay
+        """
         if not isinstance(other, filters.Filter):
             return NotImplemented
         return Vector(other) | self
@@ -431,12 +437,20 @@ class SIMD:
     def __lt__(self, other: Union[Vector, inputs.Input, inputs.Stream,
                                   filters.Filter]
                ) -> Union[Vector, inputs.Input]:
+        # noinspection PyUnresolvedReferences
         """
         A shortcut to connect additional input file or codec vector.
 
         >>> simd = SIMD(inputs.input_file('input.mp4'))
-        >>> simd < inputs.input_file('logo.png')
+        >>> # Adding extra input file
+        >>> logo = simd < inputs.input_file('logo.png')
+        >>> # Finalizing filter to simd with single stream
         >>> simd | filters.Scale(1280, 720) > simd
+        >>> # Finalizing input stream excluded from filter graph
+        >>> preroll.audio > simd
+        >>> # Finalizing stream vector
+        >>> scaled_vector = simd.video.connect(Scale, params=[size1, size2])
+        >>> scaled_vector > simd
         """
         if isinstance(other, (inputs.Stream, filters.Filter)):
             # finalizing stream excluded from filter graph or single filtered
