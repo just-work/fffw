@@ -137,6 +137,14 @@ class Input(BaseWrapper):
                 raise ValueError(stream.kind)
             stream.source = self
 
+    @property
+    def audio(self) -> Stream:
+        return self.get_stream(AUDIO)
+
+    @property
+    def video(self) -> Stream:
+        return self.get_stream(VIDEO)
+
     def get_stream(self, kind: StreamType) -> Stream:
         """
         :param kind: desired stream kind

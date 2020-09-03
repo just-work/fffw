@@ -25,6 +25,7 @@ class AnotherFilter(VideoFilter):
     filter = 'another'
 
 
+# noinspection PyStatementEffect
 class VectorTestCase(BaseTestCase):
     def setUp(self) -> None:
         super().setUp()
@@ -153,7 +154,7 @@ class VectorTestCase(BaseTestCase):
             '-map', '0:v', '-c:v', 'libx265',
             '-map', '[aout1]', '-c:a', 'libfdk_aac',
             'output2.mp5')
-        
+
     def test_apply_filter_with_equal_params(self):
         cursor = self.simd.audio.connect(Volume, params=[30, 30])
         cursor > self.simd
@@ -234,8 +235,8 @@ class VectorTestCase(BaseTestCase):
         """
         If necessary, streams may be also split.
         """
-        logo = input_file('logo.png', Stream(VIDEO, video_meta_data()))
-        self.simd < logo
+        video_stream = Stream(VIDEO, video_meta_data())
+        logo = self.simd < input_file('logo.png', video_stream)
         overlay = logo | Overlay(0, 0)
 
         v = self.simd.video.connect(Scale, params=[(1280, 720), (640, 360)])
@@ -315,3 +316,62 @@ class VectorTestCase(BaseTestCase):
             '-map', '[vout0]', '-c:v', 'libx265',
             '-map', '[aout0]', '-c:a', 'libfdk_aac',
             'output2.mp5')
+
+    def test_connect_filter_to_a_vector(self):
+        """ Plain filter can be connected to a stream vector."""
+        logo = input_file('logo.png', Stream(VIDEO, video_meta_data()))
+        self.simd < logo
+        overlay = self.simd.video | Overlay(0, 0)
+        # checking that Vector.__ror__ works
+        logo | Scale(120, 120) | overlay > self.simd
+
+        self.assert_simd_args(
+            'ffmpeg',
+            '-i', 'input.mp4',
+            '-i', 'logo.png',
+            '-filter_complex',
+            '[v:overlay0]split[vout0][vout1];'
+            '[1:v]scale=w=120:h=120[v:scale0];'
+            '[0:v][v:scale0]overlay[v:overlay0]',
+            '-map', '[vout0]', '-c:v', 'libx264',
+            '-map', '0:a', '-c:a', 'aac',
+            'output1.mp4',
+            '-map', '[vout1]', '-c:v', 'libx265',
+            '-map', '0:a', '-c:a', 'libfdk_aac',
+            'output2.mp5'
+        )
+
+    def test_connect_stream_to_simd(self):
+        """ Plain input stream can be connected to a SIMD instance."""
+        vstream = Stream(VIDEO, video_meta_data())
+        astream = Stream(AUDIO, audio_meta_data())
+        preroll = self.simd < input_file('preroll.mp4', vstream, astream)
+
+        vconcat = vstream | Concat(VIDEO, input_count=2)
+        aconcat = astream | Concat(AUDIO, input_count=2)
+        preroll.video | vconcat | Scale(1820, 720) > self.simd
+        preroll.audio | aconcat > self.simd
+
+        self.assert_simd_args(
+            'ffmpeg',
+            '-i',
+            'input.mp4',
+            '-i',
+            'preroll.mp4',
+            '-filter_complex',
+            '[v:scale0]split[vout0][vout1];'
+            '[1:a][1:a]concat=v=0:a=1:n=2[a:concat0];'
+            '[a:concat0]asplit[aout0][aout1];'
+            '[v:concat0]scale=w=1820:h=720[v:scale0];'
+            '[1:v][1:v]concat[v:concat0]',
+            '-map', '[vout0]',
+            '-c:v', 'libx264',
+            '-map', '[aout0]',
+            '-c:a', 'aac',
+            'output1.mp4',
+            '-map', '[vout1]',
+            '-c:v', 'libx265',
+            '-map', '[aout1]',
+            '-c:a', 'libfdk_aac',
+            'output2.mp5'
+        )

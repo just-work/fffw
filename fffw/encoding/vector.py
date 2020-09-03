@@ -249,6 +249,18 @@ class Vector(tuple):
         """ A shortcut to connect vector to another filter."""
         return self.connect(other)
 
+    def __ror__(self, other: filters.Filter) -> "Vector":
+        # noinspection PyUnresolvedReferences
+        """ A shortcut to connect a filter to the vector.
+
+        >>> overlay: Vector = simd | Overlay(1100, 100)
+        >>> scaled_logo: Filter = logo.video | Scale(120, 120)
+        >>> scaled_logo | overlay
+        """
+        if not isinstance(other, filters.Filter):
+            return NotImplemented
+        return Vector(other) | self
+
     @property
     def kind(self) -> StreamType:
         """
@@ -276,7 +288,7 @@ class Vector(tuple):
         >>> vector = Vector(inputs.Stream(VIDEO))
         >>> vector.connect(filters.Scale(), mask=[True, False])
         """
-        ...
+        ...  # pragma: no cover
 
     @overload
     def connect(self, dst: Type[filters.Filter],
@@ -292,7 +304,7 @@ class Vector(tuple):
         ... {'width': 640, 'height': 360}])
         >>>
         """
-        ...
+        ...  # pragma: no cover
 
     @overload
     def connect(self, dst: "Vector", mask: Optional[List[bool]] = None
@@ -305,7 +317,7 @@ class Vector(tuple):
         ... outputs.Codec(codec='libx264')])
         >>> vector.connect(out)
         """
-        ...
+        ...  # pragma: no cover
 
     def connect(self, dst: Union[filters.Filter,
                                  Type[filters.Filter],
@@ -413,18 +425,41 @@ class SIMD:
         self.__ffmpeg: Optional[FFMPEG] = None
         self.__kwargs = kwargs
 
-    def __lt__(self, other: Union[Vector, inputs.Input]) -> None:
+    @overload
+    def __lt__(self, other: Union[inputs.Stream, filters.Filter, Vector]
+               ) -> Vector:
+        ...
+
+    @overload
+    def __lt__(self, other: inputs.Input) -> inputs.Input:
+        ...
+
+    def __lt__(self, other: Union[Vector, inputs.Input, inputs.Stream,
+                                  filters.Filter]
+               ) -> Union[Vector, inputs.Input]:
+        # noinspection PyUnresolvedReferences
         """
         A shortcut to connect additional input file or codec vector.
 
         >>> simd = SIMD(inputs.input_file('input.mp4'))
-        >>> simd < inputs.input_file('logo.png')
+        >>> # Adding extra input file
+        >>> logo = simd < inputs.input_file('logo.png')
+        >>> # Finalizing filter to simd with single stream
         >>> simd | filters.Scale(1280, 720) > simd
+        >>> # Finalizing input stream excluded from filter graph
+        >>> preroll.audio > simd
+        >>> # Finalizing stream vector
+        >>> scaled_vector = simd.video.connect(Scale, params=[size1, size2])
+        >>> scaled_vector > simd
         """
+        if isinstance(other, (inputs.Stream, filters.Filter)):
+            # finalizing stream excluded from filter graph or single filtered
+            # stream
+            other = Vector(other)
         if isinstance(other, Vector):
-            other.connect(self.get_codecs(other.kind))
+            return other.connect(self.get_codecs(other.kind))
         elif isinstance(other, inputs.Input):
-            self.add_input(other)
+            return self.add_input(other)
         else:
             # noinspection PyTypeChecker
             return NotImplemented
@@ -472,7 +507,8 @@ class SIMD:
         :returns: cached FFMPEG instance.
         """
         if self.__ffmpeg is None:
-            self.__ffmpeg = self.ffmpeg_wrapper(input=self.__source, **self.__kwargs)
+            self.__ffmpeg = self.ffmpeg_wrapper(
+                input=self.__source, **self.__kwargs)
 
             for source in self.__extra:
                 self.__ffmpeg.add_input(source)
@@ -521,10 +557,12 @@ class SIMD:
             result.append(output.get_free_codec(kind, create=False))
         return Vector(result)
 
-    def add_input(self, source: inputs.Input) -> None:
+    def add_input(self, source: inputs.Input) -> inputs.Input:
         """
         Adds additional input file to ffmpeg
         :param source: additional input file
+        :returns: connected input
         """
         self.validate_input_file(source)
         self.__extra.append(source)
+        return source
