@@ -419,6 +419,15 @@ class SIMD:
         self.__ffmpeg: Optional[FFMPEG] = None
         self.__kwargs = kwargs
 
+    @overload
+    def __lt__(self, other: Union[inputs.Stream, filters.Filter, Vector]
+               ) -> Vector:
+        ...
+
+    @overload
+    def __lt__(self, other: inputs.Input) -> inputs.Input:
+        ...
+
     def __lt__(self, other: Union[Vector, inputs.Input, inputs.Stream,
                                   filters.Filter]
                ) -> Union[Vector, inputs.Input]:
@@ -430,6 +439,8 @@ class SIMD:
         >>> simd | filters.Scale(1280, 720) > simd
         """
         if isinstance(other, (inputs.Stream, filters.Filter)):
+            # finalizing stream excluded from filter graph or single filtered
+            # stream
             other = Vector(other)
         if isinstance(other, Vector):
             return other.connect(self.get_codecs(other.kind))
