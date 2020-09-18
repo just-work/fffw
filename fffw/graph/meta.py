@@ -38,12 +38,17 @@ class TS(timedelta):
     Integer values are parsed as milliseconds.
     """
 
-    def __new__(cls, value: Union[int, float, str]) -> "TS":
+    def __new__(cls, value: Union[int, float, str], *args: int) -> "TS":
         """
         :param value: integer duration in milliseconds, float duration in
             seconds or string ffmpeg interval definition (123:59:59.999).
         :returns new timestamp from value.
         """
+        if args:
+            # from deconstruction
+            if not isinstance(value, int):
+                raise ValueError(value)
+            value = timedelta(value, *args).total_seconds()
         if isinstance(value, int):
             value = value / 1000.0
         elif isinstance(value, str):
@@ -58,6 +63,12 @@ class TS(timedelta):
                 seconds += part
             value = seconds + fractional
         return super().__new__(cls, seconds=value)  # type: ignore
+
+    def __float__(self) -> float:
+        """
+        :returns: duration in seconds.
+        """
+        return self.total_seconds()
 
     def __str__(self) -> str:
         """
