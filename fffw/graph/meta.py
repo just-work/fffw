@@ -46,6 +46,8 @@ class TS(timedelta):
         """
         if args:
             # from deconstruction
+            if not isinstance(value, int):
+                raise ValueError(value)
             value = timedelta(value, *args).total_seconds()
         if isinstance(value, int):
             value = value / 1000.0

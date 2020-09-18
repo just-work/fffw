@@ -207,8 +207,17 @@ class MetaDataTestCase(TestCase):
         self.media_info = MediaInfo(SAMPLE)
 
     def test_ts_deconstruction(self):
-        ts = meta.TS(3600*24 * 2 + 3600 * 4 + 0.123)
+        ts = meta.TS(3600 * 24 * 2 + 3600 * 4 + 0.123)
         self.assertEqual(ts, deepcopy(ts))
+
+    def test_ts_init(self):
+        self.assertEqual(float(meta.TS(1.23)), 1.23)
+        self.assertEqual(float(meta.TS(1)), 0.001)
+        self.assertEqual(float(meta.TS('01:02:03.04')),
+                         1 * 3600 + 2 * 60 + 3 + 0.04)
+        self.assertEqual(float(meta.TS(1, 2, 3)),
+                         1 * 24 * 3600 + 2 + 0.000003)
+        self.assertRaises(ValueError, meta.TS, 1.1, 2, 3)
 
     def test_ts_float(self):
         ts = meta.TS(3600 * 24 * 2 + 3600 * 4 + 0.123)
