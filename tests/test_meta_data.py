@@ -1,3 +1,4 @@
+from copy import deepcopy
 from unittest import TestCase
 
 from pymediainfo import MediaInfo  # type: ignore
@@ -204,6 +205,14 @@ SAMPLE = '''<?xml version="1.0" encoding="UTF-8"?>
 class MetaDataTestCase(TestCase):
     def setUp(self) -> None:
         self.media_info = MediaInfo(SAMPLE)
+
+    def test_ts_deconstruction(self):
+        ts = meta.TS(3600*24 * 2 + 3600 * 4 + 0.123)
+        self.assertEqual(ts, deepcopy(ts))
+
+    def test_ts_float(self):
+        ts = meta.TS(3600 * 24 * 2 + 3600 * 4 + 0.123)
+        self.assertEqual(float(ts), ts.total_seconds())
 
     def test_parse_streams(self):
         streams = meta.from_media_info(self.media_info)
