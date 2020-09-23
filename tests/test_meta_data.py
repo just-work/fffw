@@ -385,6 +385,11 @@ class TimeStampTestCase(TestCase):
                 self.assertTrue(v != self.ts)
                 self.assertTrue(self.ts != v)
 
+        self.assertFalse(self.ts == None)  # noqa
+        self.assertTrue(self.ts != None)  # noqa
+        self.assertFalse(self.ts is None)
+        self.assertTrue(self.ts is not None)
+
     def test_total_seconds(self):
         self.assertEqual(self.ts.total_seconds(), self.td.total_seconds())
 
@@ -396,3 +401,9 @@ class TimeStampTestCase(TestCase):
     def test_json_serializable(self):
         self.assertEqual(json.dumps(self.ts),
                          json.dumps(self.td.total_seconds()))
+
+    def test_str(self):
+        self.assertEqual(str(self.ts), str(self.td.total_seconds()))
+
+    def test_repr(self):
+        self.assertEqual(repr(self.ts), f'TS({repr(self.td.total_seconds())})')

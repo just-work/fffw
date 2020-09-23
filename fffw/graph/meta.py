@@ -42,11 +42,16 @@ def ts(func, arg=True, res=True, noarg=False):
         else:
             @wraps(func)
             def wrapper(self, value):
-                res = func(self, TS(value))
+                if value is None:
+                    res = func(self, value)
+                else:
+                    res = func(self, TS(value))
                 return TS(res)
     elif arg:
         @wraps(func)
         def wrapper(self, value):
+            if value is None:
+                return func(self, value)
             return func(self, TS(value))
     elif res:
         @wraps(func)
@@ -150,7 +155,7 @@ class TS(float):
 
         :returns: ffmpeg seconds definition (123456.999).
         """
-        v = super().__str__()
+        v = super().__repr__()
         if '.' in v:
             v = v.rstrip('0')
             if v.endswith('.'):
