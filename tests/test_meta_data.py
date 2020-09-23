@@ -1,3 +1,4 @@
+import json
 from copy import deepcopy
 from datetime import timedelta
 from unittest import TestCase
@@ -274,7 +275,7 @@ class TimeStampTestCase(TestCase):
 
     def assert_ts_equal(self, ts: meta.TS, expected: float):
         self.assertIsInstance(ts, meta.TS)
-        self.assertEqual(ts.total_seconds(), expected)
+        self.assertAlmostEqual(ts.total_seconds(), expected, places=4)
 
     def test_ts_float(self):
         self.assertEqual(float(self.ts), self.td.total_seconds())
@@ -297,10 +298,6 @@ class TimeStampTestCase(TestCase):
         for v in cases:
             with self.subTest(v):
                 self.assertEqual(self.ts, meta.TS(v))
-
-    def test_timedelta_parts_validation(self):
-        # from timedelta behavior
-        self.assertRaises(ValueError, meta.TS, 1.1, 2, 3)
 
     def test_addition(self):
         for case in self.binary_cases:
@@ -331,6 +328,7 @@ class TimeStampTestCase(TestCase):
                 self.assert_ts_equal(ts, 2 * self.td.total_seconds())
 
     def test_divmod(self):
+        """ Test timedelta.__divmod__ behavior."""
         # noinspection PyTypeChecker
         div, mod = divmod(self.ts, self.ts)
         self.assert_ts_equal(mod, 0.0)
@@ -338,6 +336,7 @@ class TimeStampTestCase(TestCase):
         self.assertEqual(div, 1)
 
     def test_floordiv(self):
+        """ Test timedelta.__floordiv__ behavior."""
         ts = (self.ts + 0.000001) // 2
         expected = int(self.td.total_seconds() * 1000000) / 2000000.0
         self.assert_ts_equal(ts, expected)
@@ -393,3 +392,7 @@ class TimeStampTestCase(TestCase):
         self.assertEqual(self.ts.days, self.td.days)
         self.assertEqual(self.ts.seconds, self.td.seconds)
         self.assertEqual(self.ts.microseconds, self.td.microseconds)
+
+    def test_json_serializable(self):
+        self.assertEqual(json.dumps(self.ts),
+                         json.dumps(self.td.total_seconds()))

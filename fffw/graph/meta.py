@@ -58,7 +58,7 @@ def ts(func, arg=True, res=True, noarg=False):
     return wrapper
 
 
-class TS(timedelta):
+class TS(float):
     """
     Timestamp data type.
 
@@ -66,18 +66,12 @@ class TS(timedelta):
     Integer values are parsed as milliseconds.
     """
 
-    def __new__(cls, value: Union[int, float, str, timedelta],
-                *args: int) -> "TS":
+    def __new__(cls, value: Union[int, float, str, timedelta]) -> "TS":
         """
         :param value: integer duration in milliseconds, float duration in
             seconds or string ffmpeg interval definition (123:59:59.999).
         :returns new timestamp from value.
         """
-        if args:
-            # from deconstruction
-            if not isinstance(value, int):
-                raise ValueError(value)
-            value = timedelta(value, *args).total_seconds()
         if isinstance(value, timedelta):
             value = value.total_seconds()
         elif isinstance(value, int):
@@ -93,50 +87,62 @@ class TS(timedelta):
                 seconds *= 60
                 seconds += part
             value = seconds + fractional
-        return super().__new__(cls, seconds=value)  # type: ignore
+        return super().__new__(cls, value)  # type: ignore
 
-    __add__ = ts(timedelta.__add__)
-    __radd__ = ts(timedelta.__radd__)
-    __sub__ = ts(timedelta.__sub__)
-    __rsub__ = ts(timedelta.__rsub__)
-    __mul__ = ts(timedelta.__mul__, arg=False)
-    __rmul__ = ts(timedelta.__rmul__, arg=False)
-    __neg__ = ts(timedelta.__neg__, noarg=True)
-    __abs__ = ts(timedelta.__abs__, noarg=True)
-    __eq__ = ts(timedelta.__eq__, res=False)
-    __ne__ = ts(timedelta.__ne__, res=False)
-    __gt__ = ts(timedelta.__gt__, res=False)
-    __ge__ = ts(timedelta.__ge__, res=False)
-    __lt__ = ts(timedelta.__lt__, res=False)
-    __le__ = ts(timedelta.__le__, res=False)
+    __add__ = ts(float.__add__)
+    __radd__ = ts(float.__radd__)
+    __sub__ = ts(float.__sub__)
+    __rsub__ = ts(float.__rsub__)
+    __mul__ = ts(float.__mul__, arg=False)
+    __rmul__ = ts(float.__rmul__, arg=False)
+    __neg__ = ts(float.__neg__, noarg=True)
+    __abs__ = ts(float.__abs__, noarg=True)
+    __eq__ = ts(float.__eq__, res=False)
+    __ne__ = ts(float.__ne__, res=False)
+    __gt__ = ts(float.__gt__, res=False)
+    __ge__ = ts(float.__ge__, res=False)
+    __lt__ = ts(float.__lt__, res=False)
+    __le__ = ts(float.__le__, res=False)
 
     def __floordiv__(self, other):
-        value = super().__floordiv__(other)
-        if isinstance(value, int):
-            return value
+        """
+        Division behavior from timedelta
+
+        >>> TS(10.0) // TS(3.0)
+        3
+        >>> TS(10.0) // 3
+        TS(3.333333)
+        """
+        value = (float(self * 1000000.0) // other) / 1000000.0
+        if isinstance(other, TS):
+            return int(value)
         return TS(value)
 
     def __truediv__(self, other):
+        """
+        Division behavior from timedelta
+
+        >>> TS(10.0) / TS(2.125)
+        4.705882352941177
+        >>> TS(10.0) / 2.125
+        TS(4.705882352941177)
+        >>> TS(10.0) / 2
+        TS(5.0)
+        """
         value = super().__truediv__(other)
-        if isinstance(value, float):
+        if isinstance(other, TS):
             return value
         return TS(value)
 
     def __divmod__(self, other):
         div, mod = super().__divmod__(other)
-        return div, TS(mod)
-
-    def __float__(self) -> float:
-        """
-        :returns: duration in seconds.
-        """
-        return self.total_seconds()
+        return int(div), TS(mod)
 
     def __int__(self) -> int:
         """
         :return: duration in milliseconds.
         """
-        return int(self.total_seconds() * 1000)
+        return int(float(self * 1000))
 
     def __str__(self) -> str:
         """
@@ -144,10 +150,30 @@ class TS(timedelta):
 
         :returns: ffmpeg seconds definition (123456.999).
         """
-        v = str(self.total_seconds())
+        v = super().__str__()
         if '.' in v:
             v = v.rstrip('0')
+            if v.endswith('.'):
+                v += '0'
         return v
+
+    def __repr__(self) -> str:
+        return f'TS({super().__repr__()})'
+
+    def total_seconds(self) -> float:
+        return float(self)
+
+    @property
+    def days(self) -> int:
+        return int(float(self / (24 * 3600)))
+
+    @property
+    def seconds(self) -> int:
+        return int(float(self) % (24 * 3600))
+
+    @property
+    def microseconds(self) -> int:
+        return int(float(self * 1000000) % 1000000)
 
 
 @dataclass
