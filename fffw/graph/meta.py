@@ -132,6 +132,12 @@ class TS(timedelta):
         """
         return self.total_seconds()
 
+    def __int__(self) -> int:
+        """
+        :return: duration in milliseconds.
+        """
+        return int(self.total_seconds() * 1000)
+
     def __str__(self) -> str:
         """
         Removes non-valuable zeros from fractional part.

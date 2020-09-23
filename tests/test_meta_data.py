@@ -279,6 +279,9 @@ class TimeStampTestCase(TestCase):
     def test_ts_float(self):
         self.assertEqual(float(self.ts), self.td.total_seconds())
 
+    def test_ts_int(self):
+        self.assertEqual(int(self.ts), int(self.td.total_seconds() * 1000))
+
     def test_ts_deconstruction(self):
         self.assertEqual(self.ts, deepcopy(self.ts))
 
