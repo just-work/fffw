@@ -2,7 +2,12 @@ from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum
 from functools import wraps
-from typing import List, Union, Any, Optional
+from typing import List, Union, Any, Optional, Callable, overload, Tuple, cast
+
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal  # type: ignore
 
 from pymediainfo import MediaInfo  # type: ignore
 
@@ -29,34 +34,81 @@ class StreamType(Enum):
 VIDEO = StreamType.VIDEO
 AUDIO = StreamType.AUDIO
 
+BinaryOp = Callable[[Any, Any], Any]
+BinaryTS = Callable[[Any, Any], "TS"]
+UnaryOp = Callable[[Any], Any]
+UnaryTS = Callable[[Any], "TS"]
 
-def ts(func, arg=True, res=True, noarg=False):
+
+@overload
+def ts(func: BinaryOp,
+       *,
+       arg: bool = True,
+       res: Literal[True] = True,
+       noarg: Literal[False] = False
+       ) -> BinaryTS:
+    ...
+
+
+@overload
+def ts(func: BinaryOp,
+       *,
+       arg: bool = True,
+       res: Literal[False],
+       noarg: Literal[False] = False
+       ) -> BinaryOp:
+    ...
+
+
+@overload
+def ts(func: UnaryOp,
+       *,
+       arg: bool = True,
+       res: Literal[True] = True,
+       noarg: Literal[True]
+       ) -> UnaryTS:
+    ...
+
+
+@overload
+def ts(func: UnaryOp,
+       *,
+       arg: bool = True,
+       res: Literal[False],
+       noarg: Literal[True]
+       ) -> UnaryOp:
+    ...
+
+
+def ts(func: Union[BinaryOp, UnaryOp], *,
+       arg: bool = True, res: bool = True, noarg: bool = False
+       ) -> Union[BinaryOp, UnaryOp]:
     """
     Decorates functions to automatically cast first argument and result to TS.
     """
     if arg and res:
         if noarg:
             @wraps(func)
-            def wrapper(self):
-                return TS(func(self))
+            def wrapper(self: "TS") -> "TS":
+                return TS(cast(UnaryOp, func)(self))  # noqa
         else:
             @wraps(func)
-            def wrapper(self, value):
+            def wrapper(self: "TS", value: Any) -> "TS":
                 if value is None:
-                    res = func(self, value)
+                    res = cast(BinaryOp, func)(self, value)  # noqa
                 else:
-                    res = func(self, TS(value))
+                    res = cast(BinaryOp, func)(self, TS(value))  # noqa
                 return TS(res)
     elif arg:
         @wraps(func)
-        def wrapper(self, value):
+        def wrapper(self: "TS", value: Any) -> Any:
             if value is None:
-                return func(self, value)
-            return func(self, TS(value))
+                return cast(BinaryOp, func)(self, value)  # noqa
+            return cast(BinaryOp, func)(self, TS(value))  # noqa
     elif res:
         @wraps(func)
-        def wrapper(self, value):
-            return TS(func(self, value))
+        def wrapper(self: "TS", value: Any) -> "TS":
+            return TS(cast(BinaryOp, func)(self, value))  # noqa
     else:
         return func
 
@@ -109,13 +161,23 @@ class TS(float):
     __lt__ = ts(float.__lt__, res=False)
     __le__ = ts(float.__le__, res=False)
 
-    def __floordiv__(self, other):
+    @overload  # type: ignore
+    def __floordiv__(self, other: "TS") -> int:
+        ...
+
+    @overload  # type: ignore
+    def __floordiv__(self, other: int) -> "TS":
+        ...
+
+    def __floordiv__(self, other: Union["TS", float, int]) -> Union[int, "TS"]:
         """
-        Division behavior from timedelta
+        Division behavior from timedelta (rounds to microseconds)
 
         >>> TS(10.0) // TS(3.0)
         3
         >>> TS(10.0) // 3
+        TS(3.333333)
+        >>> TS(10.0) // 3.0
         TS(3.333333)
         """
         value = (float(self * 1000000.0) // other) / 1000000.0
@@ -123,7 +185,15 @@ class TS(float):
             return int(value)
         return TS(value)
 
-    def __truediv__(self, other):
+    @overload
+    def __truediv__(self, other: "TS") -> float:  # type: ignore
+        ...
+
+    @overload
+    def __truediv__(self, other: Union[float, int]) -> "TS":  # type: ignore
+        ...
+
+    def __truediv__(self, other: Union["TS", float, int]) -> Union[float, "TS"]:
         """
         Division behavior from timedelta
 
@@ -139,7 +209,13 @@ class TS(float):
             return value
         return TS(value)
 
-    def __divmod__(self, other):
+    def __divmod__(self, other: float) -> Tuple[int, "TS"]:
+        """
+        Div/mod behavior from timedelta
+
+        >>> divmod(TS(10.0), TS(2.125))
+        (4, TS(1.5))
+        """
         div, mod = super().__divmod__(other)
         return int(div), TS(mod)
 

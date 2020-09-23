@@ -1,6 +1,7 @@
 import json
 from copy import deepcopy
 from datetime import timedelta
+from typing import Iterable, Tuple, Any
 from unittest import TestCase
 from itertools import product
 from pymediainfo import MediaInfo  # type: ignore
@@ -248,6 +249,10 @@ class MetaDataTestCase(TestCase):
 
 
 class TimeStampTestCase(TestCase):
+    td: timedelta
+    ts: meta.TS
+    binary_cases: Iterable[Tuple[Any, Any]]
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.td = timedelta(
