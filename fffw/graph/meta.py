@@ -6,7 +6,7 @@ from typing import List, Union, Any, Optional, Callable, overload, Tuple, cast
 
 try:
     from typing import Literal
-except ImportError:
+except ImportError:  # pragma: no cover
     from typing_extensions import Literal  # type: ignore
 
 from pymediainfo import MediaInfo  # type: ignore
