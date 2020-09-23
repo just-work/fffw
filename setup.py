@@ -16,12 +16,12 @@ package_name = 'fffw'
 backports = []
 try:
     # Since python3.7
-    __import__('dataclasses')
+    import dataclasses
 except ImportError:
     backports.append('dataclasses')
 try:
     # Since python3.8
-    __import__('typing', fromlist=('Literal',))
+    from typing import Literal
 except ImportError:
     backports.append('typing_extensions')
 
