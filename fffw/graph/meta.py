@@ -1,7 +1,7 @@
-import abc
 from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum
+from functools import wraps
 from typing import List, Union, Any, Optional
 
 from pymediainfo import MediaInfo  # type: ignore
@@ -30,6 +30,34 @@ VIDEO = StreamType.VIDEO
 AUDIO = StreamType.AUDIO
 
 
+def ts(func, arg=True, res=True, noarg=False):
+    """
+    Decorates functions to automatically cast first argument and result to TS.
+    """
+    if arg and res:
+        if noarg:
+            @wraps(func)
+            def wrapper(self):
+                return TS(func(self))
+        else:
+            @wraps(func)
+            def wrapper(self, value):
+                res = func(self, TS(value))
+                return TS(res)
+    elif arg:
+        @wraps(func)
+        def wrapper(self, value):
+            return func(self, TS(value))
+    elif res:
+        @wraps(func)
+        def wrapper(self, value):
+            return TS(func(self, value))
+    else:
+        return func
+
+    return wrapper
+
+
 class TS(timedelta):
     """
     Timestamp data type.
@@ -38,7 +66,8 @@ class TS(timedelta):
     Integer values are parsed as milliseconds.
     """
 
-    def __new__(cls, value: Union[int, float, str], *args: int) -> "TS":
+    def __new__(cls, value: Union[int, float, str, timedelta],
+                *args: int) -> "TS":
         """
         :param value: integer duration in milliseconds, float duration in
             seconds or string ffmpeg interval definition (123:59:59.999).
@@ -49,7 +78,9 @@ class TS(timedelta):
             if not isinstance(value, int):
                 raise ValueError(value)
             value = timedelta(value, *args).total_seconds()
-        if isinstance(value, int):
+        if isinstance(value, timedelta):
+            value = value.total_seconds()
+        elif isinstance(value, int):
             value = value / 1000.0
         elif isinstance(value, str):
             if '.' in value:
@@ -63,6 +94,37 @@ class TS(timedelta):
                 seconds += part
             value = seconds + fractional
         return super().__new__(cls, seconds=value)  # type: ignore
+
+    __add__ = ts(timedelta.__add__)
+    __radd__ = ts(timedelta.__radd__)
+    __sub__ = ts(timedelta.__sub__)
+    __rsub__ = ts(timedelta.__rsub__)
+    __mul__ = ts(timedelta.__mul__, arg=False)
+    __rmul__ = ts(timedelta.__rmul__, arg=False)
+    __neg__ = ts(timedelta.__neg__, noarg=True)
+    __abs__ = ts(timedelta.__abs__, noarg=True)
+    __eq__ = ts(timedelta.__eq__, res=False)
+    __ne__ = ts(timedelta.__ne__, res=False)
+    __gt__ = ts(timedelta.__gt__, res=False)
+    __ge__ = ts(timedelta.__ge__, res=False)
+    __lt__ = ts(timedelta.__lt__, res=False)
+    __le__ = ts(timedelta.__le__, res=False)
+
+    def __floordiv__(self, other):
+        value = super().__floordiv__(other)
+        if isinstance(value, int):
+            return value
+        return TS(value)
+
+    def __truediv__(self, other):
+        value = super().__truediv__(other)
+        if isinstance(value, float):
+            return value
+        return TS(value)
+
+    def __divmod__(self, other):
+        div, mod = super().__divmod__(other)
+        return div, TS(mod)
 
     def __float__(self) -> float:
         """
@@ -80,21 +142,6 @@ class TS(timedelta):
         if '.' in v:
             v = v.rstrip('0')
         return v
-
-    def __add__(self, other: timedelta) -> "TS":
-        if not isinstance(other, timedelta):
-            return NotImplemented
-        return TS(self.total_seconds() + other.total_seconds())
-
-    def __sub__(self, other: timedelta) -> "TS":
-        if not isinstance(other, timedelta):
-            return NotImplemented
-        return TS(self.total_seconds() - other.total_seconds())
-
-    def __lt__(self, other: Union[int, float, str, timedelta, "TS"]) -> bool:
-        if not isinstance(other, timedelta):
-            other = TS(other)
-        return self.total_seconds() < other.total_seconds()
 
 
 @dataclass

@@ -1,6 +1,7 @@
 from copy import deepcopy
+from datetime import timedelta
 from unittest import TestCase
-
+from itertools import product
 from pymediainfo import MediaInfo  # type: ignore
 
 from fffw.graph import meta
@@ -206,23 +207,6 @@ class MetaDataTestCase(TestCase):
     def setUp(self) -> None:
         self.media_info = MediaInfo(SAMPLE)
 
-    def test_ts_deconstruction(self):
-        ts = meta.TS(3600 * 24 * 2 + 3600 * 4 + 0.123)
-        self.assertEqual(ts, deepcopy(ts))
-
-    def test_ts_init(self):
-        self.assertEqual(float(meta.TS(1.23)), 1.23)
-        self.assertEqual(float(meta.TS(1)), 0.001)
-        self.assertEqual(float(meta.TS('01:02:03.04')),
-                         1 * 3600 + 2 * 60 + 3 + 0.04)
-        self.assertEqual(float(meta.TS(1, 2, 3)),
-                         1 * 24 * 3600 + 2 + 0.000003)
-        self.assertRaises(ValueError, meta.TS, 1.1, 2, 3)
-
-    def test_ts_float(self):
-        ts = meta.TS(3600 * 24 * 2 + 3600 * 4 + 0.123)
-        self.assertEqual(float(ts), ts.total_seconds())
-
     def test_parse_streams(self):
         streams = meta.from_media_info(self.media_info)
         self.assertEqual(len(streams), 2)
@@ -260,3 +244,149 @@ class MetaDataTestCase(TestCase):
             samples=323616,
         )
         self.assertEqual(expected, audio)
+
+
+class TimeStampTestCase(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.td = timedelta(
+            days=10,
+            hours=12,
+            minutes=34,
+            seconds=56,
+            microseconds=789000)
+        cls.ts = meta.TS(cls.td.total_seconds())
+
+        ms = int(cls.td.total_seconds() * 1000)
+        seconds = cls.td.total_seconds()
+        string = '252:34:56.789000'
+        cls.binary_cases = (
+            (cls.ts, cls.ts),
+            (cls.ts, cls.td),
+            (cls.ts, ms),
+            (cls.ts, seconds),
+            (cls.ts, string),
+            (cls.td, cls.ts),
+            (ms, cls.ts),
+            (seconds, cls.ts),
+            (string, cls.ts),
+        )
+
+    def assert_ts_equal(self, ts: meta.TS, expected: float):
+        self.assertIsInstance(ts, meta.TS)
+        self.assertEqual(ts.total_seconds(), expected)
+
+    def test_ts_float(self):
+        self.assertEqual(float(self.ts), self.td.total_seconds())
+
+    def test_ts_deconstruction(self):
+        self.assertEqual(self.ts, deepcopy(self.ts))
+
+    def test_ts_init(self):
+        cases = (
+            # from float seconds
+            self.td.total_seconds(),
+            # from in milliseconds
+            int(self.td.total_seconds() * 1000),
+            # from string
+            '252:34:56.789000',
+        )
+        for v in cases:
+            with self.subTest(v):
+                self.assertEqual(self.ts, meta.TS(v))
+
+    def test_timedelta_parts_validation(self):
+        # from timedelta behavior
+        self.assertRaises(ValueError, meta.TS, 1.1, 2, 3)
+
+    def test_addition(self):
+        for case in self.binary_cases:
+            with self.subTest(case):
+                first, second = case
+                ts = first + second
+                self.assert_ts_equal(ts, 2 * self.td.total_seconds())
+
+    def test_substraction(self):
+        for case in self.binary_cases:
+            with self.subTest(case):
+                first, second = case
+                ts = first - second
+                self.assert_ts_equal(ts, 0.0)
+
+    def test_multiplication(self):
+        cases = (
+            2.0,
+            2,
+        )
+        for case in product(cases, (True, False)):
+            with self.subTest(case):
+                v, rev = case
+                if rev:
+                    ts = v * self.ts
+                else:
+                    ts = self.ts * v
+                self.assert_ts_equal(ts, 2 * self.td.total_seconds())
+
+    def test_divmod(self):
+        # noinspection PyTypeChecker
+        div, mod = divmod(self.ts, self.ts)
+        self.assert_ts_equal(mod, 0.0)
+        self.assertIsInstance(div, int)
+        self.assertEqual(div, 1)
+
+    def test_floordiv(self):
+        ts = (self.ts + 0.000001) // 2
+        expected = int(self.td.total_seconds() * 1000000) / 2000000.0
+        self.assert_ts_equal(ts, expected)
+
+        ts = (self.ts + 0.000001) // meta.TS(2.0)
+        expected = int(self.td.total_seconds() * 1000000) // 2000000
+        self.assertIsInstance(ts, int)
+        self.assertEqual(ts, expected)
+
+    def test_truediv(self):
+        ts = (self.ts + 0.000001) / 2
+        expected = int(self.td.total_seconds() * 1000000) / 2000000.0
+        self.assert_ts_equal(ts, expected)
+
+        ts = (self.ts + 0.000001) / 2.0
+        expected = int(self.td.total_seconds() * 1000000) / 2000000.0
+        self.assert_ts_equal(ts, expected)
+
+        ts = (self.ts + 0.000001) / meta.TS(2.0)
+        expected = int(self.td.total_seconds() * 1000000) / 2000000.0
+        self.assertIsInstance(ts, float)
+        self.assertAlmostEqual(ts, expected, places=5)
+
+    def test_negate_abs(self):
+        ts = -self.ts
+        self.assert_ts_equal(ts, -self.td.total_seconds())
+        self.assert_ts_equal(abs(ts), self.td.total_seconds())
+
+    def test_compare(self):
+        v = self.ts + 0.001
+        cases = (
+            v,
+            v.total_seconds(),
+            int(v.total_seconds() * 1000),
+        )
+        for v in cases:
+            with self.subTest(v):
+                self.assertTrue(v > self.ts)
+                self.assertTrue(v >= self.ts)
+                self.assertFalse(v < self.ts)
+                self.assertTrue(self.ts < v)
+                self.assertTrue(self.ts <= v)
+                self.assertFalse(self.ts > v)
+                self.assertFalse(self.ts == v)
+                self.assertFalse(v == self.ts)
+                self.assertTrue(v != self.ts)
+                self.assertTrue(self.ts != v)
+
+    def test_total_seconds(self):
+        self.assertEqual(self.ts.total_seconds(), self.td.total_seconds())
+
+    def test_fields(self):
+        self.assertEqual(self.ts.days, self.td.days)
+        self.assertEqual(self.ts.seconds, self.td.seconds)
+        self.assertEqual(self.ts.microseconds, self.td.microseconds)
