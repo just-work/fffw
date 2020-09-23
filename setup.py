@@ -13,19 +13,6 @@ version_re = re.compile('^Version: (.+)$', re.M)
 package_name = 'fffw'
 
 
-backports = []
-try:
-    # Since python3.7
-    import dataclasses
-except ImportError:
-    backports.append('dataclasses')
-try:
-    # Since python3.8
-    from typing import Literal
-except ImportError:
-    backports.append('typing_extensions')
-
-
 def get_version() -> Optional[str]:
     """
     Reads version from git status or PKG-INFO
@@ -88,7 +75,9 @@ setup(
     test_suite="tests",
     install_requires=[
         'pymediainfo',
-    ] + backports,
+        'dataclasses; python_version < "3.7.0"',
+        'typing_extensions; python_version < "3.8.0"',
+    ],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
