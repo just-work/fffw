@@ -1,8 +1,13 @@
-import abc
 from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum
-from typing import List, Union, Any, Optional
+from functools import wraps
+from typing import List, Union, Any, Optional, Callable, overload, Tuple, cast
+
+try:
+    from typing import Literal
+except ImportError:  # pragma: no cover
+    from typing_extensions import Literal  # type: ignore
 
 from pymediainfo import MediaInfo  # type: ignore
 
@@ -29,8 +34,88 @@ class StreamType(Enum):
 VIDEO = StreamType.VIDEO
 AUDIO = StreamType.AUDIO
 
+BinaryOp = Callable[[Any, Any], Any]
+BinaryTS = Callable[[Any, Any], "TS"]
+UnaryOp = Callable[[Any], Any]
+UnaryTS = Callable[[Any], "TS"]
 
-class TS(timedelta):
+
+@overload
+def ts(func: BinaryOp,
+       *,
+       arg: bool = True,
+       res: Literal[True] = True,
+       noarg: Literal[False] = False
+       ) -> BinaryTS:
+    ...
+
+
+@overload
+def ts(func: BinaryOp,
+       *,
+       arg: bool = True,
+       res: Literal[False],
+       noarg: Literal[False] = False
+       ) -> BinaryOp:
+    ...
+
+
+@overload
+def ts(func: UnaryOp,
+       *,
+       arg: bool = True,
+       res: Literal[True] = True,
+       noarg: Literal[True]
+       ) -> UnaryTS:
+    ...
+
+
+@overload
+def ts(func: UnaryOp,
+       *,
+       arg: bool = True,
+       res: Literal[False],
+       noarg: Literal[True]
+       ) -> UnaryOp:
+    ...
+
+
+def ts(func: Union[BinaryOp, UnaryOp], *,
+       arg: bool = True, res: bool = True, noarg: bool = False
+       ) -> Union[BinaryOp, UnaryOp]:
+    """
+    Decorates functions to automatically cast first argument and result to TS.
+    """
+    if arg and res:
+        if noarg:
+            @wraps(func)
+            def wrapper(self: "TS") -> "TS":
+                return TS(cast(UnaryOp, func)(self))  # noqa
+        else:
+            @wraps(func)
+            def wrapper(self: "TS", value: Any) -> "TS":
+                if value is None:
+                    res = cast(BinaryOp, func)(self, value)  # noqa
+                else:
+                    res = cast(BinaryOp, func)(self, TS(value))  # noqa
+                return TS(res)
+    elif arg:
+        @wraps(func)
+        def wrapper(self: "TS", value: Any) -> Any:
+            if value is None:
+                return cast(BinaryOp, func)(self, value)  # noqa
+            return cast(BinaryOp, func)(self, TS(value))  # noqa
+    elif res:
+        @wraps(func)
+        def wrapper(self: "TS", value: Any) -> "TS":
+            return TS(cast(BinaryOp, func)(self, value))  # noqa
+    else:
+        return func
+
+    return wrapper
+
+
+class TS(float):
     """
     Timestamp data type.
 
@@ -38,18 +123,15 @@ class TS(timedelta):
     Integer values are parsed as milliseconds.
     """
 
-    def __new__(cls, value: Union[int, float, str], *args: int) -> "TS":
+    def __new__(cls, value: Union[int, float, str, timedelta]) -> "TS":
         """
         :param value: integer duration in milliseconds, float duration in
             seconds or string ffmpeg interval definition (123:59:59.999).
         :returns new timestamp from value.
         """
-        if args:
-            # from deconstruction
-            if not isinstance(value, int):
-                raise ValueError(value)
-            value = timedelta(value, *args).total_seconds()
-        if isinstance(value, int):
+        if isinstance(value, timedelta):
+            value = value.total_seconds()
+        elif isinstance(value, int):
             value = value / 1000.0
         elif isinstance(value, str):
             if '.' in value:
@@ -62,13 +144,86 @@ class TS(timedelta):
                 seconds *= 60
                 seconds += part
             value = seconds + fractional
-        return super().__new__(cls, seconds=value)  # type: ignore
+        return super().__new__(cls, value)  # type: ignore
 
-    def __float__(self) -> float:
+    __add__ = ts(float.__add__)
+    __radd__ = ts(float.__radd__)
+    __sub__ = ts(float.__sub__)
+    __rsub__ = ts(float.__rsub__)
+    __mul__ = ts(float.__mul__, arg=False)
+    __rmul__ = ts(float.__rmul__, arg=False)
+    __neg__ = ts(float.__neg__, noarg=True)
+    __abs__ = ts(float.__abs__, noarg=True)
+    __eq__ = ts(float.__eq__, res=False)
+    __ne__ = ts(float.__ne__, res=False)
+    __gt__ = ts(float.__gt__, res=False)
+    __ge__ = ts(float.__ge__, res=False)
+    __lt__ = ts(float.__lt__, res=False)
+    __le__ = ts(float.__le__, res=False)
+
+    @overload  # type: ignore
+    def __floordiv__(self, other: "TS") -> int:
+        ...
+
+    @overload  # type: ignore
+    def __floordiv__(self, other: int) -> "TS":
+        ...
+
+    def __floordiv__(self, other: Union["TS", float, int]) -> Union[int, "TS"]:
         """
-        :returns: duration in seconds.
+        Division behavior from timedelta (rounds to microseconds)
+
+        >>> TS(10.0) // TS(3.0)
+        3
+        >>> TS(10.0) // 3
+        TS(3.333333)
+        >>> TS(10.0) // 3.0
+        TS(3.333333)
         """
-        return self.total_seconds()
+        value = (float(self * 1000000.0) // other) / 1000000.0
+        if isinstance(other, TS):
+            return int(value)
+        return TS(value)
+
+    @overload
+    def __truediv__(self, other: "TS") -> float:  # type: ignore
+        ...
+
+    @overload
+    def __truediv__(self, other: Union[float, int]) -> "TS":  # type: ignore
+        ...
+
+    def __truediv__(self, other: Union["TS", float, int]) -> Union[float, "TS"]:
+        """
+        Division behavior from timedelta
+
+        >>> TS(10.0) / TS(2.125)
+        4.705882352941177
+        >>> TS(10.0) / 2.125
+        TS(4.705882352941177)
+        >>> TS(10.0) / 2
+        TS(5.0)
+        """
+        value = super().__truediv__(other)
+        if isinstance(other, TS):
+            return value
+        return TS(value)
+
+    def __divmod__(self, other: float) -> Tuple[int, "TS"]:
+        """
+        Div/mod behavior from timedelta
+
+        >>> divmod(TS(10.0), TS(2.125))
+        (4, TS(1.5))
+        """
+        div, mod = super().__divmod__(other)
+        return int(div), TS(mod)
+
+    def __int__(self) -> int:
+        """
+        :return: duration in milliseconds.
+        """
+        return int(float(self * 1000))
 
     def __str__(self) -> str:
         """
@@ -76,25 +231,30 @@ class TS(timedelta):
 
         :returns: ffmpeg seconds definition (123456.999).
         """
-        v = str(self.total_seconds())
+        v = super().__repr__()
         if '.' in v:
             v = v.rstrip('0')
+            if v.endswith('.'):
+                v += '0'
         return v
 
-    def __add__(self, other: timedelta) -> "TS":
-        if not isinstance(other, timedelta):
-            return NotImplemented
-        return TS(self.total_seconds() + other.total_seconds())
+    def __repr__(self) -> str:
+        return f'TS({super().__repr__()})'
 
-    def __sub__(self, other: timedelta) -> "TS":
-        if not isinstance(other, timedelta):
-            return NotImplemented
-        return TS(self.total_seconds() - other.total_seconds())
+    def total_seconds(self) -> float:
+        return float(self)
 
-    def __lt__(self, other: Union[int, float, str, timedelta, "TS"]) -> bool:
-        if not isinstance(other, timedelta):
-            other = TS(other)
-        return self.total_seconds() < other.total_seconds()
+    @property
+    def days(self) -> int:
+        return int(float(self / (24 * 3600)))
+
+    @property
+    def seconds(self) -> int:
+        return int(float(self) % (24 * 3600))
+
+    @property
+    def microseconds(self) -> int:
+        return int(float(self * 1000000) % 1000000)
 
 
 @dataclass
