@@ -4,20 +4,18 @@ import subprocess
 import time
 from dataclasses import dataclass
 from logging import getLogger
-from typing import Tuple, List, Any, Optional, cast
+from typing import Tuple, List, Any, Optional
 
-from fffw.types import Literal
 from fffw.wrapper.helpers import quote, ensure_binary, ensure_text
 from fffw.wrapper.params import Params
-
-# Optional subprocess PIPE, STDOUT and DEVNULL constants
-Stream = Optional[Literal[-1, -2, -3]]
-
-Streams = Tuple[Stream, Stream, Stream]
 
 
 class CommandMixin:
     command: str
+    key_prefix: str = '-'
+    stdin = subprocess.PIPE
+    stdout = subprocess.PIPE
+    stderr = subprocess.PIPE
 
 
 @dataclass
@@ -42,7 +40,7 @@ class BaseWrapper(CommandMixin, Params):
         args: List[str] = []
         for key, value in self.as_pairs():
             if key:
-                args.append(f'-{key}')
+                args.append(f'{self.key_prefix}{key}')
             if value:
                 args.append(value)
         return args
@@ -52,80 +50,88 @@ class BaseWrapper(CommandMixin, Params):
         return ' '.join(map(quote, command_line))
 
     def handle_stderr(self, line: str) -> str:
-        self.logger.debug(line.strip())
-        return ''
+        if line != '':
+            self.logger.debug(line.strip())
+        return line
 
     def handle_stdout(self, line: str) -> str:
-        self.logger.debug(line.strip())
-        return ''
-
-    # noinspection PyMethodMayBeStatic
-    def init_streams(self) -> Streams:
-        stdin = None
-        stdout = cast(Literal[-1], subprocess.PIPE)
-        stderr = cast(Literal[-1], subprocess.PIPE)
-        return stdin, stdout, stderr
+        if line != '':
+            self.logger.debug(line.strip())
+        return line
 
     def start_process(self) -> subprocess.Popen:
         self.logger.info(self.get_cmd())
         args = [self.command] + self.get_args()
-        stdin, stdout, stderr = self.init_streams()
         return subprocess.Popen(args,
-                                stdin=stdin,
-                                stderr=stdout,
-                                stdout=stderr)
+                                stdin=self.stdin,
+                                stderr=self.stdout,
+                                stdout=self.stderr)
 
     def handle_stdout_event(self):
         line = self._proc.stdout.readline()
         self._output.write(self.handle_stdout(ensure_text(line)))
+        return bool(line)
 
     def handle_stderr_event(self):
         line = self._proc.stderr.readline()
         self._errors.write(self.handle_stderr(ensure_text(line)))
+        return bool(line)
 
     # noinspection PyAttributeOutsideInit
     def run(self, timeout: Optional[float] = None) -> Tuple[int, str, str]:
-        self.logger.info(self.get_cmd())
-        args = self.get_args()
-
         self._proc = self.start_process()
         self._output = io.StringIO()
         self._errors = io.StringIO()
-        ts = timeout and time.time() + timeout
-        cmd = ensure_text(args[0])
+        self._timeout = timeout
+        self._deadline = timeout and time.time() + timeout
         try:
             with self._proc:
-                poll = select.poll()
-                handlers = {}
-                if self._proc.stdout is not None:
-                    fd = self._proc.stdout.fileno()
-                    handlers[fd] = self.handle_stdout_event
-                    poll.register(fd, select.POLLIN)
-                if self._proc.stderr is not None:
-                    fd = self._proc.stderr.fileno()
-                    handlers[fd] = self.handle_stderr_event
-                    poll.register(fd, select.POLLIN)
+                handlers, poll = self.init_stream_handers()
                 spin = 1024  # ms
                 while self._proc.poll() is None:
-                    for fd, event in poll.poll(spin):
-                        handlers[fd]()
-                        # speedup stdout/stderr reading if present
-                        spin = max(1, spin // 2)
-                    else:
-                        # slow down if no output is read
-                        spin = min(1024, spin * 2)
-                        if ts and ts < time.time():
-                            self.logger.error("Process %s timeouted", cmd)
-                            self._proc.kill()
+                    spin = self.poll_process(handlers, poll, spin)
+                for handler in handlers.values():
+                    # read data from buffered streams
+                    while handler():
+                        pass
 
-        except Exception:
-            self._proc.kill()
-            raise
         finally:
+            if self._proc.returncode is None:
+                self.logger.warning("killing %s", self.command)
+                self._proc.kill()
             return_code = self._proc.returncode
             output = self._output.getvalue()
             errors = self._errors.getvalue()
             self._proc = self._output = self._errors = None
+            self._timeout = self._deadline = None
 
-        self.logger.info("%s return code is %s", cmd, return_code)
+        self.logger.info("%s return code is %s", self.command, return_code)
         return return_code, output, errors
+
+    def poll_process(self, handlers, poll, spin):
+        for fd, event in poll.poll(spin):
+            handlers[fd]()
+            # speedup stdout/stderr reading if present
+            spin = max(1, spin // 2)
+        else:
+            # slow down if no output is read
+            spin = min(1024, spin * 2)
+            if self._deadline and self._deadline < time.time():
+                self.logger.error("Process %s timeouted",
+                                  self.command)
+                raise subprocess.TimeoutExpired(self._proc.args,
+                                                self._timeout)
+        return spin
+
+    def init_stream_handers(self):
+        poll = select.poll()
+        handlers = {}
+        if self._proc.stdout is not None:
+            fd = self._proc.stdout.fileno()
+            handlers[fd] = self.handle_stdout_event
+            poll.register(fd, select.POLLIN)
+        if self._proc.stderr is not None:
+            fd = self._proc.stderr.fileno()
+            handlers[fd] = self.handle_stderr_event
+            poll.register(fd, select.POLLIN)
+        return handlers, poll
