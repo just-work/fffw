@@ -13,6 +13,7 @@ from fffw.wrapper.params import Params
 class CommandMixin:
     command: str
     key_prefix: str = '-'
+    key_suffix: str = ' '
     stdin = subprocess.PIPE
     stdout = subprocess.PIPE
     stderr = subprocess.PIPE
@@ -39,10 +40,16 @@ class BaseWrapper(CommandMixin, Params):
     def get_args(self) -> List[Any]:
         args: List[str] = []
         for key, value in self.as_pairs():
+            tokens = []
             if key:
-                args.append(f'{self.key_prefix}{key}')
+                tokens.append(f'{self.key_prefix}{key}')
             if value:
-                args.append(value)
+                tokens.append(value)
+            if tokens:
+                if self.key_suffix == ' ':
+                    args.extend(tokens)
+                else:
+                    args.append(self.key_suffix.join(tokens))
         return args
 
     def get_cmd(self) -> str:
