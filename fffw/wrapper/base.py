@@ -11,9 +11,11 @@ from fffw.wrapper.params import Params
 from fffw.types import Literal, Protocol
 
 StreamFlag = Optional[Literal[-1, -2, -3]]
+""" Alias for subprocess.PIPE/STDOUT/DEVNULL flags."""
 
 
 class PollProtocol(Protocol):
+    """ Describes select.poll() object."""
     def poll(self, timeout: int) -> List[Tuple[int, int]]: ...
 
 
