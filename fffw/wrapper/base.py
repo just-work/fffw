@@ -83,11 +83,15 @@ class BaseWrapper(CommandMixin, Params):
                                 stdout=self.stderr)
 
     def handle_stdout_event(self) -> bool:
+        if not self._proc.stdout:
+            return False
         line = self._proc.stdout.readline()
         self._output.write(self.handle_stdout(ensure_text(line)))
         return bool(line)
 
     def handle_stderr_event(self) -> bool:
+        if not self._proc.stderr:
+            return False
         line = self._proc.stderr.readline()
         self._errors.write(self.handle_stderr(ensure_text(line)))
         return bool(line)
