@@ -24,6 +24,6 @@ ff > output
 print(ff.get_cmd())
 
 # run it
-return_code, output = ff.run()
+return_code, output, errors = ff.run()
 if return_code != 0:
-    print(output)
+    print(output, errors)
