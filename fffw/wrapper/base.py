@@ -68,7 +68,7 @@ class BaseWrapper(CommandMixin, Params):
 
     def start_process(self) -> subprocess.Popen:
         self.logger.info(self.get_cmd())
-        args = [self.command] + self.get_args()
+        args = [ensure_binary(self.command)] + self.get_args()
         return subprocess.Popen(args,
                                 stdin=self.stdin,
                                 stderr=self.stdout,
