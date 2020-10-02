@@ -14,7 +14,7 @@ class CommandMixin:
     command: str
     key_prefix: str = '-'
     key_suffix: str = ' '
-    stdin = subprocess.PIPE
+    stdin = None
     stdout = subprocess.PIPE
     stderr = subprocess.PIPE
 
