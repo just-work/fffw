@@ -4,19 +4,27 @@ import subprocess
 import time
 from dataclasses import dataclass
 from logging import getLogger
-from typing import Tuple, List, Any, Optional
+from typing import Tuple, List, Any, Optional, cast, Dict, Callable
 
 from fffw.wrapper.helpers import quote, ensure_binary, ensure_text
 from fffw.wrapper.params import Params
+from fffw.types import Literal, Protocol
+
+StreamFlag = Optional[Literal[-1, -2, -3]]
 
 
+class PollProtocol(Protocol):
+    def poll(self, timeout: int) -> List[Tuple[int, int]]: ...
+
+
+# noinspection PyTypeChecker
 class CommandMixin:
     command: str
     key_prefix: str = '-'
     key_suffix: str = ' '
-    stdin = None
-    stdout = subprocess.PIPE
-    stderr = subprocess.PIPE
+    stdin = cast(StreamFlag, None)
+    stdout = cast(StreamFlag, subprocess.PIPE)
+    stderr = cast(StreamFlag, subprocess.PIPE)
 
 
 @dataclass
@@ -74,12 +82,12 @@ class BaseWrapper(CommandMixin, Params):
                                 stderr=self.stdout,
                                 stdout=self.stderr)
 
-    def handle_stdout_event(self):
+    def handle_stdout_event(self) -> bool:
         line = self._proc.stdout.readline()
         self._output.write(self.handle_stdout(ensure_text(line)))
         return bool(line)
 
-    def handle_stderr_event(self):
+    def handle_stderr_event(self) -> bool:
         line = self._proc.stderr.readline()
         self._errors.write(self.handle_stderr(ensure_text(line)))
         return bool(line)
@@ -109,13 +117,17 @@ class BaseWrapper(CommandMixin, Params):
             return_code = self._proc.returncode
             output = self._output.getvalue()
             errors = self._errors.getvalue()
-            self._proc = self._output = self._errors = None
-            self._timeout = self._deadline = None
+            del self._proc
+            del self._output
+            del self._errors
+            del self._timeout
+            del self._deadline
 
         self.logger.info("%s return code is %s", self.command, return_code)
         return return_code, output, errors
 
-    def poll_process(self, handlers, poll, spin):
+    def poll_process(self, handlers: Dict[int, Callable[[], bool]],
+                     poll: PollProtocol, spin: int) -> int:
         for fd, event in poll.poll(spin):
             handlers[fd]()
             # speedup stdout/stderr reading if present
@@ -123,14 +135,16 @@ class BaseWrapper(CommandMixin, Params):
         else:
             # slow down if no output is read
             spin = min(1024, spin * 2)
-            if self._deadline and self._deadline < time.time():
+            if (self._timeout and self._deadline and
+                    self._deadline < time.time()):
                 self.logger.error("Process %s timeouted",
                                   self.command)
                 raise subprocess.TimeoutExpired(self._proc.args,
                                                 self._timeout)
         return spin
 
-    def init_stream_handers(self):
+    def init_stream_handers(self) -> Tuple[Dict[int, Callable[[], bool]],
+                                           PollProtocol]:
         poll = select.poll()
         handlers = {}
         if self._proc.stdout is not None:
