@@ -1,6 +1,6 @@
 try:
-    from typing import Literal, Protocol
+    from typing import Literal
 except ImportError:  # pragma: no cover
-    from typing_extensions import Literal, Protocol  # type: ignore
+    from typing_extensions import Literal  # type: ignore
 
-__all__ = ['Literal', 'Protocol']
+__all__ = ['Literal']

@@ -81,7 +81,9 @@ class Runner:
         while True:
             line = await reader.readline()
             if line:
-                output.write(cb(line.decode()))
+                data = cb(line.decode())
+                if data:
+                    output.write(data)
             else:
                 break
 
