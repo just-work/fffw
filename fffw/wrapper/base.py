@@ -63,7 +63,7 @@ class Runner:
         return asyncio.run(self.run())
 
     @staticmethod
-    async def read(reader: asyncio.StreamReader,
+    async def read(reader: Optional[asyncio.StreamReader],
                    cb: Optional[Callable[[str], str]],
                    output: io.StringIO) -> None:
         """
@@ -76,7 +76,7 @@ class Runner:
         :param cb: callback for handling read lines
         :param output: output biffer
         """
-        if cb is None:
+        if cb is None or reader is None:
             return
         while True:
             line = await reader.readline()
@@ -88,7 +88,7 @@ class Runner:
                 break
 
     @staticmethod
-    async def write(writer: asyncio.StreamWriter,
+    async def write(writer: Optional[asyncio.StreamWriter],
                     stream: Optional[TextIO]) -> None:
         """
         Handle write to stdin.
@@ -96,7 +96,7 @@ class Runner:
         :param writer: Process.stdin instance
         :param stream: stream to read lines from
         """
-        if stream is None:
+        if stream is None or writer is None:
             return
         while True:
             line = stream.readline()
