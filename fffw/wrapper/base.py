@@ -195,7 +195,7 @@ class BaseWrapper(CommandMixin, Params):
         runner = Runner(
             self.command, *args,
             stdin=stdin,
-            stdout=self.stdout and self.handle_stdout or None,
-            stderr=self.stderr and self.handle_stderr or None,
+            stdout=self.handle_stdout if self.stdout else None,
+            stderr=self.handle_stderr if self.stderr else None,
         )
         return runner()
