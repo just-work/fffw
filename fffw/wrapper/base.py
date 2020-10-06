@@ -191,7 +191,9 @@ class BaseWrapper(CommandMixin, Params):
             self.logger.debug(line.strip())
         return line
 
-    def run(self, stdin: Union[None, str, TextIO]) -> Tuple[int, str, str]:
+    def run(self,
+            stdin: Union[None, str, TextIO] = None,
+            timeout: Optional[float] = None) -> Tuple[int, str, str]:
         args = self.get_args()
         self.logger.debug(self.get_cmd())
         runner = self.runner(
@@ -199,6 +201,7 @@ class BaseWrapper(CommandMixin, Params):
             stdin=stdin,
             stdout=self.handle_stdout if self.stdout else None,
             stderr=self.handle_stderr if self.stderr else None,
+            timeout=timeout
         )
         return runner()
 
