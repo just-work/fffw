@@ -60,7 +60,7 @@ class Runner:
         await self.proc.wait()
 
     def __call__(self) -> Tuple[int, str, str]:
-        return asyncio.run(self.run())
+        return asyncio.get_event_loop().run_until_complete(self.run())
 
     @staticmethod
     async def read(reader: Optional[asyncio.StreamReader],
