@@ -64,7 +64,7 @@ class Runner:
 
     @staticmethod
     async def read(reader: Optional[asyncio.StreamReader],
-                   cb: Optional[Callable[[str], str]],
+                   callback: Optional[Callable[[str], str]],
                    output: io.StringIO) -> None:
         """
         Handles read from stdout/stderr.
@@ -73,15 +73,15 @@ class Runner:
         callback, are written to output buffer.
 
         :param reader: Process.stdout or Process.stderr instance
-        :param cb: callback for handling read lines
+        :param callback: callback for handling read lines
         :param output: output biffer
         """
-        if cb is None or reader is None:
+        if callback is None or reader is None:
             return
         while True:
             line = await reader.readline()
             if line:
-                data = cb(line.decode())
+                data = callback(line.decode())
                 if data:
                     output.write(data)
             else:
@@ -108,7 +108,6 @@ class Runner:
             except (ConnectionResetError, BrokenPipeError):
                 # inspired by Process.communicate
                 return
-        writer.write_eof()
         writer.close()
 
     async def run(self) -> Tuple[int, str, str]:
