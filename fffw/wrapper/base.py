@@ -19,7 +19,7 @@ class Runner:
                  stdin: Union[None, str, TextIO] = None,
                  stdout: Optional[Callable[[str], str]] = None,
                  stderr: Optional[Callable[[str], str]] = None,
-                 timeout: Union[int, float, None] = None):
+                 timeout: Union[int, float, None] = None) -> None:
         """
         :param command: executable file name
         :param args: executable arguments
@@ -140,6 +140,8 @@ class CommandMixin:
     key_suffix: str = ' '
     stdout: bool = True
     stderr: bool = True
+    timeout: Optional[float] = None
+    runner_class = Runner
 
 
 @dataclass
@@ -192,10 +194,20 @@ class BaseWrapper(CommandMixin, Params):
     def run(self, stdin: Union[None, str, TextIO]) -> Tuple[int, str, str]:
         args = self.get_args()
         self.logger.debug(self.get_cmd())
-        runner = Runner(
+        runner = self.runner(
             self.command, *args,
             stdin=stdin,
             stdout=self.handle_stdout if self.stdout else None,
             stderr=self.handle_stderr if self.stderr else None,
         )
         return runner()
+
+    def runner(self,
+               command: Union[str, bytes],
+               *args: Any,
+               stdin: Union[None, str, TextIO] = None,
+               stdout: Optional[Callable[[str], str]] = None,
+               stderr: Optional[Callable[[str], str]] = None,
+               timeout: Union[int, float, None] = None) -> Runner:
+        """ Initializer runner instance."""
+        return self.runner_class(command, *args, stdin, stdout, stderr, timeout)
