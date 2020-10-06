@@ -76,7 +76,6 @@ class VectorTestCase(BaseTestCase):
     def test_no_filter_graph(self):
         """ Checks that vector works correctly without filter graph."""
         self.assert_simd_args(
-            'ffmpeg',
             '-i', 'input.mp4',
             '-map', '0:v', '-c:v', 'libx264',
             '-map', '0:a', '-c:a', 'aac',
@@ -90,7 +89,6 @@ class VectorTestCase(BaseTestCase):
         cursor = self.simd | Volume(30)
         cursor > self.simd
         self.assert_simd_args(
-            'ffmpeg',
             '-i',
             'input.mp4',
             '-filter_complex',
@@ -108,7 +106,6 @@ class VectorTestCase(BaseTestCase):
         cursor = self.simd.audio.connect(Volume(30), mask=[False, True])
         cursor > self.simd
         self.assert_simd_args(
-            'ffmpeg',
             '-i',
             'input.mp4',
             '-filter_complex',
@@ -125,7 +122,6 @@ class VectorTestCase(BaseTestCase):
         cursor = self.simd.audio.connect(Volume(30), mask=[False, False])
         cursor > self.simd
         self.assert_simd_args(
-            'ffmpeg',
             '-i',
             'input.mp4',
             '-filter_complex',
@@ -141,7 +137,6 @@ class VectorTestCase(BaseTestCase):
         cursor = self.simd.audio.connect(Volume, params=[20, 30])
         cursor > self.simd
         self.assert_simd_args(
-            'ffmpeg',
             '-i',
             'input.mp4',
             '-filter_complex',
@@ -159,7 +154,6 @@ class VectorTestCase(BaseTestCase):
         cursor = self.simd.audio.connect(Volume, params=[30, 30])
         cursor > self.simd
         self.assert_simd_args(
-            'ffmpeg',
             '-i',
             'input.mp4',
             '-filter_complex',
@@ -180,7 +174,6 @@ class VectorTestCase(BaseTestCase):
         cursor = cursor | StubFilter(p=0)
         cursor > self.simd
         self.assert_simd_args(
-            'ffmpeg',
             '-i',
             'input.mp4',
             '-filter_complex',
@@ -212,7 +205,6 @@ class VectorTestCase(BaseTestCase):
 
         v2 > self.simd
         self.assert_simd_args(
-            'ffmpeg',
             '-i', 'input.mp4',
             '-filter_complex',
             '[0:v]split[v:split0][v:split1];'
@@ -243,7 +235,6 @@ class VectorTestCase(BaseTestCase):
         v.connect(overlay) > self.simd
 
         self.assert_simd_args(
-            'ffmpeg',
             '-i', 'input.mp4',
             '-i', 'logo.png',
             '-filter_complex',
@@ -272,7 +263,6 @@ class VectorTestCase(BaseTestCase):
         self.simd.video.connect(overlay, mask=[True, False]) > self.simd
 
         self.assert_simd_args(
-            'ffmpeg',
             '-i', 'input.mp4',
             '-i', 'logo.png',
             '-filter_complex',
@@ -302,7 +292,6 @@ class VectorTestCase(BaseTestCase):
         self.simd.audio.connect(aconcat, mask=[True, False]) > self.simd
 
         self.assert_simd_args(
-            'ffmpeg',
             '-i', 'input.mp4',
             '-i', 'preroll.mp4',
             '-filter_complex',
@@ -326,7 +315,6 @@ class VectorTestCase(BaseTestCase):
         logo | Scale(120, 120) | overlay > self.simd
 
         self.assert_simd_args(
-            'ffmpeg',
             '-i', 'input.mp4',
             '-i', 'logo.png',
             '-filter_complex',
@@ -353,7 +341,6 @@ class VectorTestCase(BaseTestCase):
         preroll.audio | aconcat > self.simd
 
         self.assert_simd_args(
-            'ffmpeg',
             '-i',
             'input.mp4',
             '-i',

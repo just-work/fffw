@@ -163,8 +163,7 @@ class FFMPEG(BaseWrapper):
             fc_args = ['-filter_complex', fc] if fc else []
 
             # Namer context is used to generate unique output stream names
-            return (ensure_binary([self.command]) +
-                    super().get_args() +
+            return (super().get_args() +
                     self.__inputs.get_args() +
                     ensure_binary(fc_args) +
                     self.__outputs.get_args())

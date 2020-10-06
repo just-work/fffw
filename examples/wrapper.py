@@ -14,12 +14,9 @@ class MediaInfo(BaseWrapper):
             raise RuntimeError(f"Mediainfo error: {line}")
         return super().handle_stderr(line)
 
-    def get_args(self) -> List[bytes]:
-        return ensure_binary([self.command] + super().get_args())
-
 
 mi = MediaInfo(input_file='input.mp4')
 
-return_code, output = mi.run()
+return_code, output, errors = mi.run()
 if return_code != 0:
-    raise RuntimeError(output)
+    raise RuntimeError(output, errors)

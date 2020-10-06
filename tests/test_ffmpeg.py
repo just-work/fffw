@@ -101,7 +101,6 @@ class FFMPEGTestCase(BaseTestCase):
         ff > out1
 
         self.assert_ffmpeg_args(
-            'ffmpeg',
             '-loglevel', 'info',
             '-re',
             '-ss', '123.2',
@@ -130,7 +129,6 @@ class FFMPEGTestCase(BaseTestCase):
         ff > self.output
 
         self.assert_ffmpeg_args(
-            'ffmpeg',
             '-i', 'source.mp4',
             '-filter_complex',
             '[0:v]scale=w=640:h=360[vout0]',
@@ -149,7 +147,6 @@ class FFMPEGTestCase(BaseTestCase):
         ff > output
 
         self.assert_ffmpeg_args(
-            'ffmpeg',
             '-i', 'source.mp4',
             '-filter_complex',
             '[0:v]scale=w=640:h=360[vout0]',
@@ -165,7 +162,6 @@ class FFMPEGTestCase(BaseTestCase):
         ff > self.output
 
         self.assert_ffmpeg_args(
-            'ffmpeg',
             '-i', 'source.mp4',
             '-map', '0:v', '-c:v', 'libx264', '-b:v', '3600000',
             '-map', '0:a', '-c:a', 'aac', '-b:a', '192000',
@@ -191,7 +187,6 @@ class FFMPEGTestCase(BaseTestCase):
         ff > self.output
 
         self.assert_ffmpeg_args(
-            'ffmpeg',
             '-i', 'logo.png',
             '-i', 'source.mp4',
             '-filter_complex',
@@ -216,7 +211,6 @@ class FFMPEGTestCase(BaseTestCase):
 
         ff > outputs.output_file('/tmp/out.flv', cv0, ca0)
         self.assert_ffmpeg_args(
-            'ffmpeg',
             '-i', 'source.mp4',
             '-filter_complex',
             '[0:a]volume=20.00[aout0]',
@@ -243,7 +237,6 @@ class FFMPEGTestCase(BaseTestCase):
         a > ca1
         ff > out1
         self.assert_ffmpeg_args(
-            'ffmpeg',
             '-i', 'source.mp4',
             '-map', '0:v',
             '-c:v', 'libx264', '-b:v', '3600000',
@@ -274,7 +267,6 @@ class FFMPEGTestCase(BaseTestCase):
         ff > outputs.output_file('/tmp/out.flv', cv1, ca1)
 
         self.assert_ffmpeg_args(
-            'ffmpeg',
             '-i', 'source.mp4',
             '-filter_complex',
             '[0:v]scale=w=640:h=360[vout0]',
@@ -295,7 +287,6 @@ class FFMPEGTestCase(BaseTestCase):
         ff < self.source
         ff > outputs.output_file('/dev/null', format='null')
         self.assert_ffmpeg_args(
-            'ffmpeg',
             '-i', 'source.mp4',
             '-vn', '-an',
             '-f', 'null',
@@ -350,7 +341,6 @@ class FFMPEGTestCase(BaseTestCase):
         ff > self.output
 
         self.assert_ffmpeg_args(
-            'ffmpeg',
             '-i', 'preroll.mp4',
             '-i', 'source.mp4',
             '-filter_complex',

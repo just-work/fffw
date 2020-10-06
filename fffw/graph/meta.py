@@ -3,11 +3,8 @@ from datetime import timedelta
 from enum import Enum
 from functools import wraps
 from typing import List, Union, Any, Optional, Callable, overload, Tuple, cast
+from fffw.types import Literal
 
-try:
-    from typing import Literal
-except ImportError:  # pragma: no cover
-    from typing_extensions import Literal  # type: ignore
 
 from pymediainfo import MediaInfo  # type: ignore
 
@@ -132,7 +129,7 @@ class TS(float):
         if isinstance(value, timedelta):
             value = value.total_seconds()
         elif isinstance(value, int):
-            value = value / 1000.0
+            value /= 1000.0
         elif isinstance(value, str):
             if '.' in value:
                 value, rest = value.split('.')
