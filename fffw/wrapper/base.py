@@ -213,4 +213,10 @@ class BaseWrapper(CommandMixin, Params):
                stderr: Optional[Callable[[str], str]] = None,
                timeout: Union[int, float, None] = None) -> Runner:
         """ Initializer runner instance."""
-        return self.runner_class(command, *args, stdin, stdout, stderr, timeout)
+        return self.runner_class(
+            command,
+            *args,
+            stdin=stdin,
+            stdout=stdout,
+            stderr=stderr,
+            timeout=timeout)
