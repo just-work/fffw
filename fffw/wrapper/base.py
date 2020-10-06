@@ -1,22 +1,134 @@
+import asyncio
 import io
-import select
 import subprocess
-import time
+from asyncio.subprocess import Process
 from dataclasses import dataclass
 from logging import getLogger
-from typing import Tuple, List, Any, Optional, cast, Dict, Callable
+from types import TracebackType
+from typing import Tuple, List, Any, Optional, cast, Callable, Union, TextIO, \
+    Type
 
 from fffw.wrapper.helpers import quote, ensure_binary, ensure_text
 from fffw.wrapper.params import Params
-from fffw.types import Literal, Protocol
-
-StreamFlag = Optional[Literal[-1, -2, -3]]
-""" Alias for subprocess.PIPE/STDOUT/DEVNULL flags."""
 
 
-class PollProtocol(Protocol):
-    """ Describes select.poll() object."""
-    def poll(self, timeout: int) -> List[Tuple[int, int]]: ...
+class Runner:
+    """ Wrapper for Popen process for non-blocking streams handling."""
+
+    def __init__(self, command: Union[str, bytes], *args: Any,
+                 stdin: Union[None, str, TextIO] = None,
+                 stdout: Optional[Callable[[str], str]] = None,
+                 stderr: Optional[Callable[[str], str]] = None,
+                 timeout: Union[int, float, None] = None):
+        """
+        :param command: executable file name
+        :param args: executable arguments
+        :param stdin: input stream or content
+        :param stdout: output stream line handler
+        :param stderr: error stream line handler
+        :param timeout: process execution timeout
+        """
+        self.command = ensure_binary(command)
+        self.args = ensure_binary(list(args))
+        if isinstance(stdin, str):
+            stdin = io.StringIO(stdin)
+        self.stdin = stdin
+        self.stdout = stdout
+        self.stderr = stderr
+        self.timeout = timeout
+        self.output = io.StringIO()
+        self.errors = io.StringIO()
+
+    async def start_process(self) -> Process:
+        """ Starts child process."""
+        return await asyncio.create_subprocess_exec(
+            self.command, *self.args,
+            stdin=self.stdin and subprocess.PIPE,
+            stdout=self.stdout and subprocess.PIPE,
+            stderr=self.stderr and subprocess.PIPE,
+        )
+
+    async def __aenter__(self) -> Process:
+        """ Starts child process and initialize I/O handling."""
+        self.proc = await self.start_process()
+        return self.proc
+
+    async def __aexit__(self,
+                        exc_type: Optional[Type[BaseException]],
+                        exc_val: Optional[BaseException],
+                        exc_tb: TracebackType) -> None:
+        await self.proc.wait()
+
+    def __call__(self) -> Tuple[int, str, str]:
+        return asyncio.run(self.run())
+
+    @staticmethod
+    async def read(reader: asyncio.StreamReader,
+                   cb: Optional[Callable[[str], str]],
+                   output: io.StringIO) -> None:
+        """
+        Handles read from stdout/stderr.
+
+        Reads lines from reader and feeds it to callback. Values, filtered by
+        callback, are written to output buffer.
+
+        :param reader: Process.stdout or Process.stderr instance
+        :param cb: callback for handling read lines
+        :param output: output biffer
+        """
+        if cb is None:
+            return
+        while True:
+            line = await reader.readline()
+            if line:
+                output.write(cb(line.decode()))
+            else:
+                break
+
+    @staticmethod
+    async def write(writer: asyncio.StreamWriter,
+                    stream: Optional[TextIO]) -> None:
+        """
+        Handle write to stdin.
+
+        :param writer: Process.stdin instance
+        :param stream: stream to read lines from
+        """
+        if stream is None:
+            return
+        while True:
+            line = stream.readline()
+            if not line:
+                break
+            writer.write(line.encode())
+            try:
+                await writer.drain()
+            except (ConnectionResetError, BrokenPipeError):
+                # inspired by Process.communicate
+                return
+        writer.write_eof()
+        writer.close()
+
+    async def run(self) -> Tuple[int, str, str]:
+        async with self as p:
+            try:
+                await asyncio.wait_for(
+                    asyncio.shield(asyncio.gather(
+                        # write input data to stdin
+                        self.write(p.stdin, self.stdin),
+                        # read output from stdout
+                        self.read(p.stdout, self.stdout, self.output),
+                        # read output from stderr
+                        self.read(p.stderr, self.stderr, self.errors),
+                        # wait for process termination
+                        p.wait(),
+                    )),
+                    timeout=self.timeout)
+            except asyncio.TimeoutError:
+                self.proc.kill()
+        return (cast(int, self.proc.returncode),
+                self.output.getvalue(),
+                self.errors.getvalue())
 
 
 # noinspection PyTypeChecker
@@ -24,9 +136,8 @@ class CommandMixin:
     command: str
     key_prefix: str = '-'
     key_suffix: str = ' '
-    stdin = cast(StreamFlag, None)
-    stdout = cast(StreamFlag, subprocess.PIPE)
-    stderr = cast(StreamFlag, subprocess.PIPE)
+    stdout: bool = True
+    stderr: bool = True
 
 
 @dataclass
@@ -76,89 +187,13 @@ class BaseWrapper(CommandMixin, Params):
             self.logger.debug(line.strip())
         return line
 
-    def start_process(self) -> subprocess.Popen:
-        self.logger.info(self.get_cmd())
-        args = [ensure_binary(self.command)] + self.get_args()
-        return subprocess.Popen(args,
-                                stdin=self.stdin,
-                                stderr=self.stdout,
-                                stdout=self.stderr)
-
-    def handle_stdout_event(self) -> bool:
-        if not self._proc.stdout:
-            return False
-        line = self._proc.stdout.readline()
-        self._output.write(self.handle_stdout(ensure_text(line)))
-        return bool(line)
-
-    def handle_stderr_event(self) -> bool:
-        if not self._proc.stderr:
-            return False
-        line = self._proc.stderr.readline()
-        self._errors.write(self.handle_stderr(ensure_text(line)))
-        return bool(line)
-
-    # noinspection PyAttributeOutsideInit
-    def run(self, timeout: Optional[float] = None) -> Tuple[int, str, str]:
-        self._proc = self.start_process()
-        self._output = io.StringIO()
-        self._errors = io.StringIO()
-        self._timeout = timeout
-        self._deadline = timeout and time.time() + timeout
-        try:
-            with self._proc:
-                handlers, poll = self.init_stream_handers()
-                spin = 1024  # ms
-                while self._proc.poll() is None:
-                    spin = self.poll_process(handlers, poll, spin)
-                for handler in handlers.values():
-                    # read data from buffered streams
-                    while handler():
-                        pass
-
-        finally:
-            if self._proc.returncode is None:
-                self.logger.warning("killing %s", self.command)
-                self._proc.kill()
-            return_code = self._proc.returncode
-            output = self._output.getvalue()
-            errors = self._errors.getvalue()
-            del self._proc
-            del self._output
-            del self._errors
-            del self._timeout
-            del self._deadline
-
-        self.logger.info("%s return code is %s", self.command, return_code)
-        return return_code, output, errors
-
-    def poll_process(self, handlers: Dict[int, Callable[[], bool]],
-                     poll: PollProtocol, spin: int) -> int:
-        for fd, event in poll.poll(spin):
-            handlers[fd]()
-            # speedup stdout/stderr reading if present
-            spin = max(1, spin // 2)
-        else:
-            # slow down if no output is read
-            spin = min(1024, spin * 2)
-            if (self._timeout and self._deadline and
-                    self._deadline < time.time()):
-                self.logger.error("Process %s timeouted",
-                                  self.command)
-                raise subprocess.TimeoutExpired(self._proc.args,
-                                                self._timeout)
-        return spin
-
-    def init_stream_handers(self) -> Tuple[Dict[int, Callable[[], bool]],
-                                           PollProtocol]:
-        poll = select.poll()
-        handlers = {}
-        if self._proc.stdout is not None:
-            fd = self._proc.stdout.fileno()
-            handlers[fd] = self.handle_stdout_event
-            poll.register(fd, select.POLLIN)
-        if self._proc.stderr is not None:
-            fd = self._proc.stderr.fileno()
-            handlers[fd] = self.handle_stderr_event
-            poll.register(fd, select.POLLIN)
-        return handlers, poll
+    def run(self, stdin: Union[None, str, TextIO]) -> Tuple[int, str, str]:
+        args = self.get_args()
+        self.logger.debug(self.get_cmd())
+        runner = Runner(
+            self.command, *args,
+            stdin=stdin,
+            stdout=self.stdout and self.handle_stdout or None,
+            stderr=self.stderr and self.handle_stderr or None,
+        )
+        return runner()
