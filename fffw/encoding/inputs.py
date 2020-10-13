@@ -3,7 +3,8 @@ from typing import Optional, List, Tuple, cast, Iterable, Union, Any
 
 from fffw.encoding import filters, outputs
 from fffw.graph import base
-from fffw.graph.meta import Meta, TS, StreamType, AUDIO, VIDEO
+from fffw.graph.meta import Meta, TS, StreamType, AUDIO, VIDEO, VideoMeta, \
+    Device
 from fffw.wrapper import BaseWrapper, param
 
 __all__ = [
@@ -89,6 +90,8 @@ class Input(BaseWrapper):
     streams: Tuple[Stream, ...] = param(default=default_streams, skip=True)
     """ List of audio and video streams for input file."""
 
+    hardware: str = param(name='hwaccel')
+    device: str = param(name='hwaccel_device')
     fast_seek: Union[TS, float, int] = param(name='ss')
     duration: Union[TS, float, int] = param(name='t')
     input_file: str = param(name='i')
@@ -128,6 +131,11 @@ class Input(BaseWrapper):
             raise RuntimeError("Streams not initialized")
         for stream in self.streams:
             if stream.kind == VIDEO:
+                if hasattr(stream, 'meta'):
+                    meta: VideoMeta = getattr(stream, 'meta')
+                    if self.hardware and self.device:
+                        meta.device = Device(hardware=self.hardware,
+                                             name=self.device)
                 stream.index = video_streams
                 video_streams += 1
             elif stream.kind == AUDIO:
@@ -155,6 +163,9 @@ class Input(BaseWrapper):
             if stream.kind == kind:
                 return stream
         raise KeyError(kind)
+
+    def get_args(self) -> List[Any]:
+        return super().get_args()
 
 
 def input_file(filename: str, *streams: Stream, **kwargs: Any) -> Input:

@@ -1,4 +1,7 @@
+from dataclasses import dataclass
+
 from fffw.encoding import *
+from fffw.wrapper import param
 
 
 class ScaleVAAPI(Scale):
@@ -15,7 +18,10 @@ ff = FFMPEG(overwrite=True, loglevel='level+info',
 vaapi = ff.filter_device
 
 # add an input file
-ff < input_file('input.mp4', duration=5.0)
+ff < input_file('input.mp4',
+                hardware='vaapi',
+                device='foo',
+                duration=5.0)
 
 # change video pixel format and upload it to Intel GPU
 hw_stream = ff.video | Format('nv12') | Upload(device=vaapi)

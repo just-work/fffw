@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from fffw.graph import base, VIDEO, VideoMeta
+from fffw.graph import base, VIDEO
 
 if TYPE_CHECKING:
     StreamValidationTarget = base.Dest
@@ -27,10 +27,8 @@ class StreamValidationMixin(StreamValidationTarget):
         if edge.kind != VIDEO:
             return
         meta = edge.get_meta_data(self)
-        if not isinstance(meta, VideoMeta):
-            return
         filter_hardware = getattr(self, 'hardware', None)
-        device = meta.device
+        device = getattr(meta, 'device', None)
         edge_hardware = None if device is None else device.hardware
         if filter_hardware != edge_hardware:
             # A stream uploaded to a video card could not be processed with CPU

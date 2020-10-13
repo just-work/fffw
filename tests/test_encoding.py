@@ -1,12 +1,17 @@
 from unittest import TestCase
 
-from fffw.graph import StreamType, VIDEO, AUDIO
+from fffw.graph import StreamType, VIDEO, AUDIO, video_meta_data
 from fffw.graph import meta
-from fffw.encoding import inputs, outputs, codecs, Upload
+from fffw.encoding import inputs, outputs, codecs, Upload, VideoCodec, filters
 
 
 class H264Cuda(codecs.VideoCodec):
     codec = 'h264_nvenc'
+    hardware = 'cuda'
+
+
+class ScaleNPP(filters.Scale):
+    filter = 'scale_npp'
     hardware = 'cuda'
 
 
@@ -65,6 +70,24 @@ class InputsTestCase(TestCase):
         self.assertRaises(ValueError, inputs.Input,
                           streams=(inputs.Stream(kind=None),),
                           input_file='input.mp4')
+
+    def test_validate_input_hardware(self):
+        """
+        Hardware-decoded input could not be passed to CPU codec and so on.
+        """
+        vs = inputs.Stream(StreamType.VIDEO,
+                           meta=video_meta_data(width=640, height=360))
+        src = inputs.Input(streams=(vs,),
+                           hardware='cuda',
+                           device='foo')
+
+        with self.assertRaises(ValueError):
+            src.video > VideoCodec('libx264')
+
+        with self.assertRaises(ValueError):
+            src.video | filters.Scale(640, 360)
+
+        src.video | ScaleNPP(640, 360) > H264Cuda()
 
 
 class OutputsTestCase(TestCase):
