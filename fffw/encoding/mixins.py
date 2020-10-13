@@ -28,6 +28,8 @@ class StreamValidationMixin(StreamValidationTarget):
         if edge.kind != VIDEO:
             return
         meta = edge.get_meta_data(self)
+        if meta is None:
+            return
         filter_hardware = getattr(self, 'hardware', None)
         device = getattr(meta, 'device', None)
         edge_hardware = None if device is None else device.hardware

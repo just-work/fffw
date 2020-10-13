@@ -1,7 +1,4 @@
-from pymediainfo import MediaInfo
-
 from fffw.encoding import *
-from fffw.graph import from_media_info
 
 
 class ScaleVAAPI(Scale):
@@ -22,12 +19,8 @@ ff = FFMPEG(overwrite=True, loglevel='level+info',
 
 vaapi = ff.filter_device
 
-# detect information about input file
-mi = MediaInfo.parse('input.mp4')
-streams = [Stream(m.kind, m) for m in from_media_info(mi)]
-
 # add an input file (video is decoded by VAAPI and placed on Intel GPU)
-ff < input_file('input.mp4', *streams,
+ff < input_file('input.mp4',
                 hardware='vaapi',
                 device='foo',
                 output_format='vaapi',
