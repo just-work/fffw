@@ -410,13 +410,13 @@ class FFMPEGTestCase(BaseTestCase):
                 v1 = inputs.Stream(VIDEO, self.preroll.streams[0].meta)
                 a1 = inputs.Stream(AUDIO, self.preroll.streams[1].meta)
                 v2 = inputs.Stream(VIDEO, self.source.streams[0].meta)
-                a2 = inputs.Stream(VIDEO, self.source.streams[1].meta)
+                a2 = inputs.Stream(AUDIO, self.source.streams[1].meta)
                 ff < inputs.input_file('preroll.mp4', v1, a1)
                 ff < inputs.input_file('source.mp4', v2, a2)
                 vf1 = v1 | filters.Split(VIDEO, output_count=int(split_pre) + 1)
                 vf2 = v2 | filters.Split(VIDEO, output_count=int(split_src) + 1)
-                af1 = v1 | filters.Split(AUDIO, output_count=int(split_pre) + 1)
-                af2 = v2 | filters.Split(AUDIO, output_count=int(split_src) + 1)
+                af1 = a1 | filters.Split(AUDIO, output_count=int(split_pre) + 1)
+                af2 = a2 | filters.Split(AUDIO, output_count=int(split_src) + 1)
 
                 vc1 = vf1 | filters.Concat(VIDEO, input_count=2)
                 vf2 | vc1

@@ -43,6 +43,10 @@ class FFMPEG(BaseWrapper):
     """ Loglevel: i.e. `level+info`."""
     overwrite: bool = param(name='y')
     """ Overwrite output files without manual confirmation."""
+    init_hardware: str = param(name='init_hw_device')
+    """ Initializes hardware acceleration device."""
+    filter_hardware: str = param(name='filter_hw_device')
+    """ Pass device name set with `init_hardware` to filter graph."""
 
     def __post_init__(self) -> None:
         """

@@ -28,6 +28,18 @@ class Filter(base.Node, Params):
     ALLOWED = ('enabled',)
     """ fields that are allowed to be modified after filter initialization."""
 
+    def connect_edge(self, edge: base.Edge) -> base.Edge:
+        self.validate_edge_kind(edge)
+        return super().connect_edge(edge)
+
+    def validate_edge_kind(self, edge: base.Edge) -> None:
+        kind = getattr(self, 'kind', None)
+        if kind is None:
+            return
+        if edge.kind != kind:
+            # Audio filter can't handle video stream and so on
+            raise ValueError(edge.kind)
+
     @property
     def args(self) -> str:
         """ Formats filter args as k=v pairs separated by colon."""
