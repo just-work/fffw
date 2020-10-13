@@ -119,6 +119,21 @@ class FFMPEGTestCase(BaseTestCase):
             '/tmp/out.mp3'
         )
 
+    def test_filter_device_helper(self):
+        """
+        filter_device correcly parses init_hardware and filter_hardware flags.
+        """
+        ff = self.ffmpeg
+        ff.init_hardware = 'vaapi=foo'
+        with self.assertRaises(ValueError):
+            # filter_hardware must be set to use filter_device
+            ff.filter_device
+        ff.filter_hardware = 'foo'
+        self.assertEqual(ff.filter_device, Device('vaapi', 'foo'))
+        self.assert_ffmpeg_args(
+            '-init_hw_device', 'vaapi=foo',
+            '-filter_hw_device', 'foo')
+
     def test_bypass_with_filter_complex(self):
         """ Audio stream bypass mode."""
         ff = self.ffmpeg

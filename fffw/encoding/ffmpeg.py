@@ -102,6 +102,8 @@ class FFMPEG(BaseWrapper):
         """ Returns filter hardware device metadata."""
         hardware, init = self.init_hardware.split("=")
         name = init.split(':', 1)[0]
+        if self.filter_hardware != name:
+            raise ValueError(self.filter_hardware)
         return meta.Device(hardware, name)
 
     @property
