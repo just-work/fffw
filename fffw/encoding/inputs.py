@@ -3,8 +3,7 @@ from typing import Optional, List, Tuple, cast, Iterable, Union, Any
 
 from fffw.encoding import filters, outputs
 from fffw.graph import base
-from fffw.graph.meta import Meta, TS, StreamType, AUDIO, VIDEO, VideoMeta, \
-    Device
+from fffw.graph.meta import *
 from fffw.wrapper import BaseWrapper, param
 
 __all__ = [
@@ -163,9 +162,6 @@ class Input(BaseWrapper):
             if stream.kind == kind:
                 return stream
         raise KeyError(kind)
-
-    def get_args(self) -> List[Any]:
-        return super().get_args()
 
 
 def input_file(filename: str, *streams: Stream, **kwargs: Any) -> Input:
