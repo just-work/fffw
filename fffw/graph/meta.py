@@ -14,6 +14,7 @@ __all__ = [
     'StreamType',
     'AUDIO',
     'VIDEO',
+    'Device',
     'Meta',
     'Scene',
     'TS',

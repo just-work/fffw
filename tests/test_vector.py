@@ -308,7 +308,8 @@ class VectorTestCase(BaseTestCase):
 
     def test_connect_filter_to_a_vector(self):
         """ Plain filter can be connected to a stream vector."""
-        logo = input_file('logo.png', Stream(VIDEO, video_meta_data()))
+        logo = input_file('logo.png',
+                          Stream(VIDEO, video_meta_data(width=64, height=64)))
         self.simd < logo
         overlay = self.simd.video | Overlay(0, 0)
         # checking that Vector.__ror__ works
@@ -331,7 +332,7 @@ class VectorTestCase(BaseTestCase):
 
     def test_connect_stream_to_simd(self):
         """ Plain input stream can be connected to a SIMD instance."""
-        vstream = Stream(VIDEO, video_meta_data())
+        vstream = Stream(VIDEO, video_meta_data(width=640, height=360))
         astream = Stream(AUDIO, audio_meta_data())
         preroll = self.simd < input_file('preroll.mp4', vstream, astream)
 

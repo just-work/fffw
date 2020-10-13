@@ -5,7 +5,7 @@ from typing import List, cast, Optional, Iterable, Any
 from fffw.graph.meta import AUDIO, VIDEO, StreamType
 from fffw.graph import base
 from fffw.wrapper import BaseWrapper, ensure_binary, param
-
+from fffw.encoding import mixins
 __all__ = [
     'Codec',
     'Output',
@@ -15,7 +15,7 @@ __all__ = [
 
 
 @dataclass
-class Codec(base.Dest, BaseWrapper):
+class Codec(mixins.StreamValidationMixin, base.Dest, BaseWrapper):
     # noinspection PyUnresolvedReferences
     """
     Base class for output codecs.
@@ -92,6 +92,19 @@ class Codec(base.Dest, BaseWrapper):
                 raise BufferError(prev, scene)
             prev = scene
         return meta.streams
+
+    def connect_edge(self, edge: base.Edge) -> base.Edge:
+        self.validate_edge_kind(edge)
+        self.validate_edge_device(edge)
+        return super().connect_edge(edge)
+
+    def validate_edge_kind(self, edge: base.Edge) -> None:
+        kind = getattr(self, 'kind', None)
+        if kind is None:
+            return
+        if edge.kind != kind:
+            # Audio filter can't handle video stream and so on
+            raise ValueError(edge.kind)
 
 
 @dataclass

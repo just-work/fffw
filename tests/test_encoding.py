@@ -1,7 +1,13 @@
 from unittest import TestCase
 
-from fffw.graph import StreamType
-from fffw.encoding import inputs
+from fffw.graph import StreamType, VIDEO, AUDIO
+from fffw.graph import meta
+from fffw.encoding import inputs, outputs, codecs, Upload
+
+
+class H264Cuda(codecs.VideoCodec):
+    codec = 'h264_nvenc'
+    hardware = 'cuda'
 
 
 class InputsTestCase(TestCase):
@@ -59,3 +65,45 @@ class InputsTestCase(TestCase):
         self.assertRaises(ValueError, inputs.Input,
                           streams=(inputs.Stream(kind=None),),
                           input_file='input.mp4')
+
+
+class OutputsTestCase(TestCase):
+    def setUp(self) -> None:
+        self.video_metadata = meta.video_meta_data(
+            width=1920,
+            height=1080,
+            dar=1.777777778,
+            par=1.0,
+            duration=300.0,
+        )
+        self.audio_metadata = meta.audio_meta_data()
+
+        self.source = inputs.Input(
+            input_file='input.mp4',
+            streams=(inputs.Stream(VIDEO, meta=self.video_metadata),
+                     inputs.Stream(AUDIO, meta=self.audio_metadata)))
+        self.output = outputs.Output(
+            output_file='output.mp4',
+            codecs=[H264Cuda(), codecs.AudioCodec('aac')]
+        )
+
+    def test_codec_validates_stream_kind(self):
+        """
+        Video codec raises ValueError if connected to an audio stream.
+        """
+        with self.assertRaises(ValueError):
+            self.source.video > self.output.audio
+
+        self.source.audio > self.output.audio
+
+    def test_codec_validates_hardware_device(self):
+        """
+        When using hardware-accelerated codec, it accepts only streams uploaded
+        to a corresponding hardware.
+        """
+        with self.assertRaises(ValueError):
+            self.source.video > self.output.video
+
+        cuda = meta.Device(hardware='cuda', name='foo')
+        hw_stream = self.source.video | Upload(device=cuda)
+        hw_stream > self.output.video

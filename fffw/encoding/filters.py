@@ -1,8 +1,10 @@
 from dataclasses import dataclass, replace, asdict, field
 from typing import Union, List, cast
 
-from fffw.graph import base, meta
-from fffw.graph.meta import Meta, VideoMeta, TS, Scene, VIDEO, AUDIO, StreamType
+from fffw.graph import base
+from fffw.encoding import mixins
+from fffw.graph.meta import Meta, VideoMeta, TS, Scene, VIDEO, AUDIO
+from fffw.graph.meta import StreamType, Device
 from fffw.wrapper.params import Params, param
 
 __all__ = [
@@ -21,7 +23,7 @@ __all__ = [
 
 
 @dataclass
-class Filter(base.Node, Params):
+class Filter(mixins.StreamValidationMixin, base.Node, Params):
     """
     Base class for ffmpeg filter definitions.
 
@@ -29,33 +31,6 @@ class Filter(base.Node, Params):
     """
     ALLOWED = ('enabled',)
     """ fields that are allowed to be modified after filter initialization."""
-
-    def connect_edge(self, edge: base.Edge) -> base.Edge:
-        self.validate_edge_kind(edge)
-        self.validate_edge_device(edge)
-        return super().connect_edge(edge)
-
-    def validate_edge_kind(self, edge: base.Edge) -> None:
-        kind = getattr(self, 'kind', None)
-        if kind is None:
-            return
-        if edge.kind != kind:
-            # Audio filter can't handle video stream and so on
-            raise ValueError(edge.kind)
-
-    def validate_edge_device(self, edge: base.Edge) -> None:
-        if edge.kind != VIDEO:
-            return
-        meta = edge.get_meta_data(self)
-        if not isinstance(meta, VideoMeta):
-            return
-        filter_hardware = getattr(self, 'hardware', None)
-        device = meta.device
-        edge_hardware = None if device is None else device.hardware
-        if filter_hardware != edge_hardware:
-            # A stream uploaded to a video card could not be processed with CPU
-            # filter.
-            raise ValueError(device.hardware)
 
     @property
     def args(self) -> str:
@@ -398,4 +373,9 @@ class Upload(VideoFilter):
     """
     filter = 'hwupload'
     extra_hw_frames: int = param(default=64, init=False)
-    device: meta.Device = param(skip=True)
+    device: Device = param(skip=True)
+
+    def transform(self, *metadata: VideoMeta) -> VideoMeta:
+        """ Marks a stream as uploaded to a device."""
+        meta = cast(VideoMeta, super().transform(*metadata))
+        return replace(meta, device=self.device)

@@ -46,7 +46,7 @@ class Volume(filters.AudioFilter):
 class FFMPEGTestCase(BaseTestCase):
     def setUp(self) -> None:
         super().setUp()
-        vm = video_meta_data(duration=3600.0)
+        vm = video_meta_data(duration=3600.0, width=640, height=360)
         am = audio_meta_data(duration=3600.0)
         self.source = inputs.input_file(
             'source.mp4',
@@ -55,9 +55,9 @@ class FFMPEGTestCase(BaseTestCase):
 
         self.logo = inputs.input_file(
             'logo.png',
-            inputs.Stream(VIDEO, video_meta_data()))
+            inputs.Stream(VIDEO, video_meta_data(width=64, height=64)))
 
-        vm = video_meta_data(duration=10.0)
+        vm = video_meta_data(duration=10.0, width=640, height=360)
         am = audio_meta_data(duration=10.0)
         self.preroll = inputs.input_file(
             'preroll.mp4',

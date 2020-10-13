@@ -18,6 +18,12 @@ class Deint(VideoFilter):
         return "%s" % self.mode
 
 
+@dataclass
+class ScaleCuda(Scale):
+    filter = 'scale_cuda'
+    hardware = 'cuda'
+
+
 class FilterGraphTestCase(TestCase):
 
     def setUp(self) -> None:
@@ -266,3 +272,14 @@ class FilterGraphTestCase(TestCase):
         self.source.video | Trim(VIDEO, start=3.0, end=4.0)
         with self.assertRaises(ValueError):
             self.source.audio | Trim(VIDEO, start=3.0, end=4.0)
+
+    def test_filter_validates_hardware_device(self):
+        """
+        When using hardware-accelerated filter, it accepts only streams uploaded
+        to a corresponding hardware.
+        """
+        with self.assertRaises(ValueError):
+            self.source.video | ScaleCuda(640, 360)
+
+        cuda = meta.Device(hardware='cuda', name='foo')
+        self.source.video | Upload(device=cuda) | ScaleCuda(640, 360)
