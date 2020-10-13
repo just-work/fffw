@@ -114,3 +114,24 @@ Example
 .. code-block:: python
 
   cut = source | Trim(AUDIO, start=60.0, end=120.0) | SetPTS(AUDIO)
+
+Format
+------
+
+``Format`` filter changes video stream pixel format.
+
+.. autoclass:: fffw.encoding.filters.Format
+   :noindex:
+
+Example
+^^^^^^^
+.. code-block:: python
+  hw = source | Format('nv12') | Upload(Device(hardware='cuda', name='foo'))
+
+Upload
+------
+
+``Upload`` send video frames from host memory to gpu card.
+
+.. autoclass:: fffw.encoding.filters.Upload
+   :noindex:
