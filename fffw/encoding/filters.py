@@ -375,7 +375,9 @@ class Upload(VideoFilter):
     extra_hw_frames: int = param(default=64, init=False)
     device: Device = param(skip=True)
 
-    def transform(self, *metadata: VideoMeta) -> VideoMeta:
+    def transform(self, *metadata: Meta) -> VideoMeta:
         """ Marks a stream as uploaded to a device."""
-        meta = cast(VideoMeta, super().transform(*metadata))
+        meta = super().transform(*metadata)
+        if not isinstance(meta, VideoMeta):
+            raise ValueError(meta)
         return replace(meta, device=self.device)
