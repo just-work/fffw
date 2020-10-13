@@ -258,3 +258,11 @@ class FilterGraphTestCase(TestCase):
         vm = cast(VideoMeta, self.output.codecs[0].get_meta_data())
         self.assertEqual(vm.start, TS(0))
         self.assertEqual(vm.duration, TS(1.0))
+
+    def test_filter_validates_stream_kind(self):
+        """
+        Stream kind is validated for filter.
+        """
+        self.source.video | Trim(VIDEO, start=3.0, end=4.0)
+        with self.assertRaises(ValueError):
+            self.source.audio | Trim(VIDEO, start=3.0, end=4.0)

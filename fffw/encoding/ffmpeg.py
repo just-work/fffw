@@ -5,7 +5,7 @@ from fffw.encoding import inputs
 from fffw.encoding.complex import FilterComplex
 from fffw.encoding.inputs import InputList, Input
 from fffw.encoding.outputs import OutputList, Output, Codec
-from fffw.graph import base
+from fffw.graph import base, meta
 from fffw.graph.meta import AUDIO, VIDEO, StreamType
 from fffw.wrapper import BaseWrapper, ensure_binary, param
 
@@ -46,7 +46,7 @@ class FFMPEG(BaseWrapper):
     init_hardware: str = param(name='init_hw_device')
     """ Initializes hardware acceleration device."""
     filter_hardware: str = param(name='filter_hw_device')
-    """ Pass device name set with `init_hardware` to filter graph."""
+    """ Sets a device for filter graph by it's name set with `init_hardware`."""
 
     def __post_init__(self) -> None:
         """
@@ -96,6 +96,13 @@ class FFMPEG(BaseWrapper):
         if not isinstance(other, Output):
             return NotImplemented
         return self.add_output(other)
+
+    @property
+    def filter_device(self) -> meta.Device:
+        """ Returns filter hardware device metadata."""
+        hardware, init = self.init_hardware.split("=")
+        name = init.split(':', 1)[0]
+        return meta.Device(hardware, name)
 
     @property
     def video(self) -> inputs.Stream:

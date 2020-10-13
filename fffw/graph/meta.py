@@ -307,6 +307,15 @@ class Meta:
 
 
 @dataclass
+class Device:
+    """
+    Describes hardware device used for video acceleration
+    """
+    hardware: str
+    name: str
+
+
+@dataclass
 class VideoMeta(Meta):
     """
     Video stream metadata.
@@ -321,6 +330,8 @@ class VideoMeta(Meta):
     """ Display aspect ratio."""
     frame_rate: float
     """ Frames per second."""
+    device: Optional[Device] = None
+    """ Hardware device asociated with current stream."""
 
     def __post_init__(self) -> None:
         self.validate()

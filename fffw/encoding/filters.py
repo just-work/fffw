@@ -1,7 +1,7 @@
 from dataclasses import dataclass, replace, asdict, field
 from typing import Union, List, cast
 
-from fffw.graph import base
+from fffw.graph import base, meta
 from fffw.graph.meta import Meta, VideoMeta, TS, Scene, VIDEO, AUDIO, StreamType
 from fffw.wrapper.params import Params, param
 
@@ -10,11 +10,13 @@ __all__ = [
     'AudioFilter',
     'VideoFilter',
     'Concat',
+    'Format',
     'Overlay',
     'Scale',
     'SetPTS',
     'Split',
     'Trim',
+    'Upload',
 ]
 
 
@@ -30,6 +32,7 @@ class Filter(base.Node, Params):
 
     def connect_edge(self, edge: base.Edge) -> base.Edge:
         self.validate_edge_kind(edge)
+        self.validate_edge_device(edge)
         return super().connect_edge(edge)
 
     def validate_edge_kind(self, edge: base.Edge) -> None:
@@ -39,6 +42,20 @@ class Filter(base.Node, Params):
         if edge.kind != kind:
             # Audio filter can't handle video stream and so on
             raise ValueError(edge.kind)
+
+    def validate_edge_device(self, edge: base.Edge) -> None:
+        if edge.kind != VIDEO:
+            return
+        meta = edge.get_meta_data(self)
+        if not isinstance(meta, VideoMeta):
+            return
+        filter_hardware = getattr(self, 'hardware', None)
+        device = meta.device
+        edge_hardware = None if device is None else device.hardware
+        if filter_hardware != edge_hardware:
+            # A stream uploaded to a video card could not be processed with CPU
+            # filter.
+            raise ValueError(device.hardware)
 
     @property
     def args(self) -> str:
@@ -143,6 +160,7 @@ class AutoFilter(Filter):
     Stream kind used to generate filter name. Required. Not used as filter 
     parameter.
     """
+
     # `field` is used here to tell MyPy that there is no default for `kind`
     # because `default=MISSING` is valuable for MyPY.
 
@@ -362,3 +380,22 @@ class Overlay(VideoFilter):
 
     x: int
     y: int
+
+
+@dataclass
+class Format(VideoFilter):
+    """
+    Converts pixel format of video stream
+    """
+    filter = 'format'
+    format: str = param(name='pix_fmts')
+
+
+@dataclass
+class Upload(VideoFilter):
+    """
+    Uploads a stream to a hardware device
+    """
+    filter = 'hwupload'
+    extra_hw_frames: int = param(default=64, init=False)
+    device: meta.Device = param(skip=True)
