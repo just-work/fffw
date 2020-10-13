@@ -9,6 +9,7 @@ else:
 
 
 class StreamValidationMixin(StreamValidationTarget):
+    hardware: str
 
     def connect_edge(self, edge: base.Edge) -> base.Edge:
         self.validate_edge_kind(edge)

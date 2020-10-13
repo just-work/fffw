@@ -92,6 +92,7 @@ class Input(BaseWrapper):
 
     hardware: str = param(name='hwaccel')
     device: str = param(name='hwaccel_device')
+    output_format: str = param(name='hwaccel_output_format')
     fast_seek: Union[TS, float, int] = param(name='ss')
     duration: Union[TS, float, int] = param(name='t')
     input_file: str = param(name='i')
@@ -131,11 +132,10 @@ class Input(BaseWrapper):
             raise RuntimeError("Streams not initialized")
         for stream in self.streams:
             if stream.kind == VIDEO:
-                if hasattr(stream, 'meta'):
-                    meta: VideoMeta = getattr(stream, 'meta')
-                    if self.hardware and self.device:
-                        meta.device = Device(hardware=self.hardware,
-                                             name=self.device)
+                meta: Optional[VideoMeta] = getattr(stream, 'meta', None)
+                if self.hardware and self.device and meta:
+                    meta.device = Device(hardware=self.hardware,
+                                         name=self.device)
                 stream.index = video_streams
                 video_streams += 1
             elif stream.kind == AUDIO:

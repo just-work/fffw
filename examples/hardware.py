@@ -1,12 +1,17 @@
-from dataclasses import dataclass
+from pymediainfo import MediaInfo
 
 from fffw.encoding import *
-from fffw.wrapper import param
+from fffw.graph import from_media_info
 
 
 class ScaleVAAPI(Scale):
     filter = "scale_vaapi"
-    hardware = "vaapi"
+    hardware = 'vaapi'
+
+
+class H264Vaapi(VideoCodec):
+    codec = 'h264_vaapi'
+    hardware = 'vaapi'
 
 
 # initialize ffmpeg wrapper with common flags and VAAPI device (works on
@@ -17,21 +22,24 @@ ff = FFMPEG(overwrite=True, loglevel='level+info',
 
 vaapi = ff.filter_device
 
-# add an input file
-ff < input_file('input.mp4',
+# detect information about input file
+mi = MediaInfo.parse('input.mp4')
+streams = [Stream(m.kind, m) for m in from_media_info(mi)]
+
+# add an input file (video is decoded by VAAPI and placed on Intel GPU)
+ff < input_file('input.mp4', *streams,
                 hardware='vaapi',
                 device='foo',
+                output_format='vaapi',
                 duration=5.0)
 
-# change video pixel format and upload it to Intel GPU
-hw_stream = ff.video | Format('nv12') | Upload(device=vaapi)
 # scale video stream
-scale = hw_stream | ScaleVAAPI(width=1280, height=720)
+scale = ff.video | ScaleVAAPI(width=1280, height=720)
 
 # initialize an output file
 output = output_file('output.mp4',
                      # Use HW-accelerated video codec
-                     VideoCodec('h264_vaapi'),
+                     H264Vaapi(),
                      AudioCodec('aac'))
 
 # point scaled video stream to output file
