@@ -272,13 +272,13 @@ class Vector(tuple):
         return self[0].kind
 
     @property
-    def metadata(self) -> Meta:
+    def meta(self) -> Meta:
         """
         :returns: metadata for a stream in vector.
         """
         if len(self) != 1:
             raise RuntimeError("not a scalar")
-        return self[0].metadata
+        return self[0].meta
 
     @overload
     def connect(self, dst: filters.Filter, mask: Optional[List[bool]] = None

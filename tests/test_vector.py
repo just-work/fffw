@@ -61,9 +61,19 @@ class VectorTestCase(BaseTestCase):
         """
         Checks that vector outputs metadata for a single stream in it.
         """
-        v = self.simd.video | Scale(1280, 720)
-        expected = replace(self.video_meta, width=1280, height=720)
-        self.assertEqual(v.metadata, expected)
+        with self.subTest("input meta"):
+            v = self.simd.video
+            self.assertEqual(v.meta, self.video_meta)
+
+        with self.subTest("filter meta"):
+            v = v | Scale(1280, 720)
+            expected = replace(self.video_meta, width=1280, height=720)
+            self.assertEqual(v.meta, expected)
+
+        with self.subTest("codec meta"):
+            simd = SIMD(self.source, self.output1)
+            x = v > simd
+            self.assertEqual(x.meta, expected)
 
     def test_vector_metadata_for_multiple_streams(self):
         """
@@ -71,7 +81,7 @@ class VectorTestCase(BaseTestCase):
         streams.
         """
         v = Vector([VideoFilter(), VideoFilter()])
-        self.assertRaises(RuntimeError, getattr, v, 'metadata')
+        self.assertRaises(RuntimeError, getattr, v, 'meta')
 
     def test_no_filter_graph(self):
         """ Checks that vector works correctly without filter graph."""
