@@ -1,5 +1,6 @@
 import json
 from copy import deepcopy
+from dataclasses import dataclass, fields
 from datetime import timedelta
 from typing import Iterable, Tuple, Any
 from unittest import TestCase
@@ -228,6 +229,7 @@ class MetaDataTestCase(TestCase):
             par=1.0,
             dar=1.778,
             frame_rate=50.0,
+            device=None,
         )
         self.assertEqual(expected, video)
         audio = streams[1]
@@ -246,6 +248,23 @@ class MetaDataTestCase(TestCase):
             samples=323616,
         )
         self.assertEqual(expected, audio)
+
+    def test_subclassing_video_meta(self):
+        """ VideoMeta must be extensible."""
+        @dataclass
+        class ExtendedVideoMeta(meta.VideoMeta):
+            my_custom_metadata: str
+
+        self.assertTrue(fields(ExtendedVideoMeta))
+
+    def test_subclassing_audio_meta(self):
+        """ VideoMeta must be extensible."""
+        @dataclass
+        class ExtendedVideoMeta(meta.AudioMeta):
+            my_custom_metadata: str
+
+        self.assertTrue(fields(ExtendedVideoMeta))
+
 
 
 class TimeStampTestCase(TestCase):
