@@ -3,7 +3,7 @@ from typing import Optional, List, Tuple, cast, Iterable, Union, Any
 
 from fffw.encoding import filters, outputs
 from fffw.graph import base
-from fffw.graph.meta import Meta, TS, StreamType, AUDIO, VIDEO
+from fffw.graph.meta import *
 from fffw.wrapper import BaseWrapper, param
 
 __all__ = [
@@ -89,6 +89,9 @@ class Input(BaseWrapper):
     streams: Tuple[Stream, ...] = param(default=default_streams, skip=True)
     """ List of audio and video streams for input file."""
 
+    hardware: str = param(name='hwaccel')
+    device: str = param(name='hwaccel_device')
+    output_format: str = param(name='hwaccel_output_format')
     fast_seek: Union[TS, float, int] = param(name='ss')
     duration: Union[TS, float, int] = param(name='t')
     input_file: str = param(name='i')
@@ -128,6 +131,10 @@ class Input(BaseWrapper):
             raise RuntimeError("Streams not initialized")
         for stream in self.streams:
             if stream.kind == VIDEO:
+                meta: Optional[VideoMeta] = getattr(stream, 'meta', None)
+                if self.hardware and self.device and meta:
+                    meta.device = Device(hardware=self.hardware,
+                                         name=self.device)
                 stream.index = video_streams
                 video_streams += 1
             elif stream.kind == AUDIO:

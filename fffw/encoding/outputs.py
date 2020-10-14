@@ -5,7 +5,7 @@ from typing import List, cast, Optional, Iterable, Any
 from fffw.graph.meta import AUDIO, VIDEO, StreamType
 from fffw.graph import base
 from fffw.wrapper import BaseWrapper, ensure_binary, param
-
+from fffw.encoding import mixins
 __all__ = [
     'Codec',
     'Output',
@@ -15,7 +15,7 @@ __all__ = [
 
 
 @dataclass
-class Codec(base.Dest, BaseWrapper):
+class Codec(mixins.StreamValidationMixin, base.Dest, BaseWrapper):
     # noinspection PyUnresolvedReferences
     """
     Base class for output codecs.
@@ -80,7 +80,7 @@ class Codec(base.Dest, BaseWrapper):
         :returns: A list of streams needed for this codec or None if metadata
             for codec can't be computed.
         """
-        meta = self.get_meta_data(None)
+        meta = self.get_meta_data()
         if not meta:
             return None
         prev = meta.scenes[0]
@@ -105,8 +105,8 @@ class Output(BaseWrapper):
     :arg output_file: output file name.
     """
     codecs: List[Codec] = param(default=list, skip=True)
-    no_video: Optional[bool] = param(default=None, name='vn')
-    no_audio: Optional[bool] = param(default=None, name='an')
+    no_video: Optional[bool] = param(name='vn')
+    no_audio: Optional[bool] = param(name='an')
     format: str = param(name="f")
     output_file: str = param(name="", skip=True)
 

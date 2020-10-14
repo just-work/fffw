@@ -17,6 +17,7 @@ executes it and checks program output for errors.
    running
    simd
    buffering
+   hardware
    modules
 
 Indices and tables

@@ -5,7 +5,6 @@ from functools import wraps
 from typing import List, Union, Any, Optional, Callable, overload, Tuple, cast
 from fffw.types import Literal
 
-
 from pymediainfo import MediaInfo  # type: ignore
 
 __all__ = [
@@ -14,6 +13,7 @@ __all__ = [
     'StreamType',
     'AUDIO',
     'VIDEO',
+    'Device',
     'Meta',
     'Scene',
     'TS',
@@ -307,6 +307,15 @@ class Meta:
 
 
 @dataclass
+class Device:
+    """
+    Describes hardware device used for video acceleration
+    """
+    hardware: str
+    name: str
+
+
+@dataclass
 class VideoMeta(Meta):
     """
     Video stream metadata.
@@ -321,6 +330,8 @@ class VideoMeta(Meta):
     """ Display aspect ratio."""
     frame_rate: float
     """ Frames per second."""
+    device: Optional[Device]
+    """ Hardware device asociated with current stream."""
 
     def __post_init__(self) -> None:
         self.validate()
@@ -425,7 +436,9 @@ def video_meta_data(**kwargs: Any) -> VideoMeta:
         height=height,
         par=par,
         dar=dar,
-        frame_rate=frame_rate)
+        frame_rate=frame_rate,
+        device=None,
+    )
 
 
 def from_media_info(mi: MediaInfo) -> List[Meta]:

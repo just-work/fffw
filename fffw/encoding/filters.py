@@ -2,7 +2,9 @@ from dataclasses import dataclass, replace, asdict, field
 from typing import Union, List, cast
 
 from fffw.graph import base
-from fffw.graph.meta import Meta, VideoMeta, TS, Scene, VIDEO, AUDIO, StreamType
+from fffw.encoding import mixins
+from fffw.graph.meta import Meta, VideoMeta, TS, Scene, VIDEO, AUDIO
+from fffw.graph.meta import StreamType, Device
 from fffw.wrapper.params import Params, param
 
 __all__ = [
@@ -10,16 +12,18 @@ __all__ = [
     'AudioFilter',
     'VideoFilter',
     'Concat',
+    'Format',
     'Overlay',
     'Scale',
     'SetPTS',
     'Split',
     'Trim',
+    'Upload',
 ]
 
 
 @dataclass
-class Filter(base.Node, Params):
+class Filter(mixins.StreamValidationMixin, base.Node, Params):
     """
     Base class for ffmpeg filter definitions.
 
@@ -131,6 +135,7 @@ class AutoFilter(Filter):
     Stream kind used to generate filter name. Required. Not used as filter 
     parameter.
     """
+
     # `field` is used here to tell MyPy that there is no default for `kind`
     # because `default=MISSING` is valuable for MyPY.
 
@@ -350,3 +355,29 @@ class Overlay(VideoFilter):
 
     x: int
     y: int
+
+
+@dataclass
+class Format(VideoFilter):
+    """
+    Converts pixel format of video stream
+    """
+    filter = 'format'
+    format: str = param(name='pix_fmts')
+
+
+@dataclass
+class Upload(VideoFilter):
+    """
+    Uploads a stream to a hardware device
+    """
+    filter = 'hwupload'
+    extra_hw_frames: int = param(default=64, init=False)
+    device: Device = param(skip=True)
+
+    def transform(self, *metadata: Meta) -> VideoMeta:
+        """ Marks a stream as uploaded to a device."""
+        meta = super().transform(*metadata)
+        if not isinstance(meta, VideoMeta):
+            raise ValueError(meta)
+        return replace(meta, device=self.device)

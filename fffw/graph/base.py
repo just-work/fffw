@@ -265,7 +265,7 @@ class Node(Traversable, abc.ABC):
         self.__dict__['enabled'] = value
 
     @property
-    def metadata(self) -> Optional[Meta]:
+    def meta(self) -> Optional[Meta]:
         """ Compute metadata for current node."""
         metadata = []
         for edge in self.inputs:
@@ -289,7 +289,7 @@ class Node(Traversable, abc.ABC):
             if edge is None:
                 continue
             if edge.output is dst:
-                return self.metadata
+                return self.meta
         else:
             raise KeyError(dst)
 

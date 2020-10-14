@@ -61,9 +61,19 @@ class VectorTestCase(BaseTestCase):
         """
         Checks that vector outputs metadata for a single stream in it.
         """
-        v = self.simd.video | Scale(1280, 720)
-        expected = replace(self.video_meta, width=1280, height=720)
-        self.assertEqual(v.metadata, expected)
+        with self.subTest("input meta"):
+            v = self.simd.video
+            self.assertEqual(v.meta, self.video_meta)
+
+        with self.subTest("filter meta"):
+            v = v | Scale(1280, 720)
+            expected = replace(self.video_meta, width=1280, height=720)
+            self.assertEqual(v.meta, expected)
+
+        with self.subTest("codec meta"):
+            simd = SIMD(self.source, self.output1)
+            x = v > simd
+            self.assertEqual(x.meta, expected)
 
     def test_vector_metadata_for_multiple_streams(self):
         """
@@ -71,7 +81,7 @@ class VectorTestCase(BaseTestCase):
         streams.
         """
         v = Vector([VideoFilter(), VideoFilter()])
-        self.assertRaises(RuntimeError, getattr, v, 'metadata')
+        self.assertRaises(RuntimeError, getattr, v, 'meta')
 
     def test_no_filter_graph(self):
         """ Checks that vector works correctly without filter graph."""
@@ -308,7 +318,8 @@ class VectorTestCase(BaseTestCase):
 
     def test_connect_filter_to_a_vector(self):
         """ Plain filter can be connected to a stream vector."""
-        logo = input_file('logo.png', Stream(VIDEO, video_meta_data()))
+        logo = input_file('logo.png',
+                          Stream(VIDEO, video_meta_data(width=64, height=64)))
         self.simd < logo
         overlay = self.simd.video | Overlay(0, 0)
         # checking that Vector.__ror__ works
@@ -331,7 +342,7 @@ class VectorTestCase(BaseTestCase):
 
     def test_connect_stream_to_simd(self):
         """ Plain input stream can be connected to a SIMD instance."""
-        vstream = Stream(VIDEO, video_meta_data())
+        vstream = Stream(VIDEO, video_meta_data(width=640, height=360))
         astream = Stream(AUDIO, audio_meta_data())
         preroll = self.simd < input_file('preroll.mp4', vstream, astream)
 

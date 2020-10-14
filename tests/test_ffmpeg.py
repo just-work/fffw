@@ -46,7 +46,7 @@ class Volume(filters.AudioFilter):
 class FFMPEGTestCase(BaseTestCase):
     def setUp(self) -> None:
         super().setUp()
-        vm = video_meta_data(duration=3600.0)
+        vm = video_meta_data(duration=3600.0, width=640, height=360)
         am = audio_meta_data(duration=3600.0)
         self.source = inputs.input_file(
             'source.mp4',
@@ -55,9 +55,9 @@ class FFMPEGTestCase(BaseTestCase):
 
         self.logo = inputs.input_file(
             'logo.png',
-            inputs.Stream(VIDEO, video_meta_data()))
+            inputs.Stream(VIDEO, video_meta_data(width=64, height=64)))
 
-        vm = video_meta_data(duration=10.0)
+        vm = video_meta_data(duration=10.0, width=640, height=360)
         am = audio_meta_data(duration=10.0)
         self.preroll = inputs.input_file(
             'preroll.mp4',
@@ -118,6 +118,21 @@ class FFMPEGTestCase(BaseTestCase):
             '-vn',
             '/tmp/out.mp3'
         )
+
+    def test_filter_device_helper(self):
+        """
+        filter_device correcly parses init_hardware and filter_hardware flags.
+        """
+        ff = self.ffmpeg
+        ff.init_hardware = 'vaapi=foo'
+        with self.assertRaises(ValueError):
+            # filter_hardware must be set to use filter_device
+            ff.filter_device
+        ff.filter_hardware = 'foo'
+        self.assertEqual(ff.filter_device, Device('vaapi', 'foo'))
+        self.assert_ffmpeg_args(
+            '-init_hw_device', 'vaapi=foo',
+            '-filter_hw_device', 'foo')
 
     def test_bypass_with_filter_complex(self):
         """ Audio stream bypass mode."""
@@ -410,13 +425,13 @@ class FFMPEGTestCase(BaseTestCase):
                 v1 = inputs.Stream(VIDEO, self.preroll.streams[0].meta)
                 a1 = inputs.Stream(AUDIO, self.preroll.streams[1].meta)
                 v2 = inputs.Stream(VIDEO, self.source.streams[0].meta)
-                a2 = inputs.Stream(VIDEO, self.source.streams[1].meta)
+                a2 = inputs.Stream(AUDIO, self.source.streams[1].meta)
                 ff < inputs.input_file('preroll.mp4', v1, a1)
                 ff < inputs.input_file('source.mp4', v2, a2)
                 vf1 = v1 | filters.Split(VIDEO, output_count=int(split_pre) + 1)
                 vf2 = v2 | filters.Split(VIDEO, output_count=int(split_src) + 1)
-                af1 = v1 | filters.Split(AUDIO, output_count=int(split_pre) + 1)
-                af2 = v2 | filters.Split(AUDIO, output_count=int(split_src) + 1)
+                af1 = a1 | filters.Split(AUDIO, output_count=int(split_pre) + 1)
+                af2 = a2 | filters.Split(AUDIO, output_count=int(split_src) + 1)
 
                 vc1 = vf1 | filters.Concat(VIDEO, input_count=2)
                 vf2 | vc1

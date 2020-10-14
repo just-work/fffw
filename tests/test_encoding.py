@@ -1,7 +1,18 @@
 from unittest import TestCase
 
-from fffw.graph import StreamType
-from fffw.encoding import inputs
+from fffw.graph import StreamType, VIDEO, AUDIO, video_meta_data
+from fffw.graph import meta
+from fffw.encoding import inputs, outputs, codecs, Upload, VideoCodec, filters
+
+
+class H264Cuda(codecs.VideoCodec):
+    codec = 'h264_nvenc'
+    hardware = 'cuda'
+
+
+class ScaleNPP(filters.Scale):
+    filter = 'scale_npp'
+    hardware = 'cuda'
 
 
 class InputsTestCase(TestCase):
@@ -59,3 +70,63 @@ class InputsTestCase(TestCase):
         self.assertRaises(ValueError, inputs.Input,
                           streams=(inputs.Stream(kind=None),),
                           input_file='input.mp4')
+
+    def test_validate_input_hardware(self):
+        """
+        Hardware-decoded input could not be passed to CPU codec and so on.
+        """
+        vs = inputs.Stream(StreamType.VIDEO,
+                           meta=video_meta_data(width=640, height=360))
+        src = inputs.Input(streams=(vs,),
+                           hardware='cuda',
+                           device='foo')
+
+        with self.assertRaises(ValueError):
+            src.video > VideoCodec('libx264')
+
+        with self.assertRaises(ValueError):
+            src.video | filters.Scale(640, 360)
+
+        src.video | ScaleNPP(640, 360) > H264Cuda()
+
+
+class OutputsTestCase(TestCase):
+    def setUp(self) -> None:
+        self.video_metadata = meta.video_meta_data(
+            width=1920,
+            height=1080,
+            dar=1.777777778,
+            par=1.0,
+            duration=300.0,
+        )
+        self.audio_metadata = meta.audio_meta_data()
+
+        self.source = inputs.Input(
+            input_file='input.mp4',
+            streams=(inputs.Stream(VIDEO, meta=self.video_metadata),
+                     inputs.Stream(AUDIO, meta=self.audio_metadata)))
+        self.output = outputs.Output(
+            output_file='output.mp4',
+            codecs=[H264Cuda(), codecs.AudioCodec('aac')]
+        )
+
+    def test_codec_validates_stream_kind(self):
+        """
+        Video codec raises ValueError if connected to an audio stream.
+        """
+        with self.assertRaises(ValueError):
+            self.source.video > self.output.audio
+
+        self.source.audio > self.output.audio
+
+    def test_codec_validates_hardware_device(self):
+        """
+        When using hardware-accelerated codec, it accepts only streams uploaded
+        to a corresponding hardware.
+        """
+        with self.assertRaises(ValueError):
+            self.source.video > self.output.video
+
+        cuda = meta.Device(hardware='cuda', name='foo')
+        hw_stream = self.source.video | Upload(device=cuda)
+        hw_stream > self.output.video
