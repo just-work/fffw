@@ -1,7 +1,6 @@
 from dataclasses import dataclass
-from typing import List
 
-from fffw.wrapper import BaseWrapper, param, ensure_binary
+from fffw.wrapper import BaseWrapper, param
 
 
 @dataclass
