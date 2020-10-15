@@ -3,7 +3,7 @@ from typing import Union, List, cast
 
 from fffw.graph import base
 from fffw.encoding import mixins
-from fffw.graph.meta import Meta, VideoMeta, TS, Scene, VIDEO, AUDIO
+from fffw.graph.meta import Meta, VideoMeta, TS, Scene, VIDEO, AUDIO, AudioMeta
 from fffw.graph.meta import StreamType, Device
 from fffw.wrapper.params import Params, param
 
@@ -330,16 +330,26 @@ class Concat(Filter):
         duration = TS(0)
         scenes = []
         streams: List[str] = []
+        samples = 0
+        sampling_rate = None
         for meta in metadata:
             duration += meta.duration
+            if isinstance(meta, AudioMeta):
+                samples += meta.samples
+                if sampling_rate is None:
+                    sampling_rate = meta.sampling_rate
+                else:
+                    assert sampling_rate == meta.sampling_rate
             scenes.extend(meta.scenes)
             for stream in meta.streams:
                 if not streams or streams[-1] != stream:
                     # Add all streams for each concatenated metadata and remove
                     # contiguous duplicates.
                     streams.append(stream)
-        return replace(metadata[0], duration=duration,
-                       scenes=scenes, streams=streams)
+        kwargs = dict(duration=duration, scenes=scenes, streams=streams)
+        if samples != 0:
+            kwargs['samples'] = samples
+        return replace(metadata[0], **kwargs)
 
 
 @dataclass

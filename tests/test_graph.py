@@ -35,7 +35,10 @@ class FilterGraphTestCase(TestCase):
             par=1.0,
             duration=300.0,
         )
-        self.audio_metadata = audio_meta_data()
+        self.audio_metadata = audio_meta_data(
+            duration=200.0,
+            sampling_rate=48000,
+            samples_count=200*48000)
 
         self.source = inputs.Input(
             input_file='input.mp4',
@@ -238,6 +241,25 @@ class FilterGraphTestCase(TestCase):
         vm = cast(VideoMeta, self.output.codecs[0].get_meta_data())
         self.assertEqual(self.video_metadata.duration + vs.meta.duration,
                          vm.duration)
+
+    def test_concat_audio_metadata(self):
+        """
+        Concat filter sums samples count for audio streams.
+        """
+        audio_meta = audio_meta_data(duration=1000.0, sampling_rate=48000,
+                                     samples_count=48000 * 1000)
+        a = inputs.Stream(AUDIO, meta=audio_meta)
+        self.input_list.append(inputs.input_file('second.mp4', a))
+        concat = a | Concat(AUDIO)
+        self.source | concat
+
+        concat > self.output
+
+        am = cast(AudioMeta, self.output.codecs[-1].get_meta_data())
+        self.assertEqual(self.audio_metadata.duration + audio_meta.duration,
+                         am.duration)
+        self.assertEqual(self.audio_metadata.samples + audio_meta.samples,
+                         am.samples)
 
     def test_trim_metadata(self):
         """
