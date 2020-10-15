@@ -1,4 +1,4 @@
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, replace, asdict
 from typing import cast, Tuple
 
 from fffw.encoding import *
@@ -373,3 +373,17 @@ class VectorTestCase(BaseTestCase):
             '-c:a', 'libfdk_aac',
             'output2.mp5'
         )
+
+    def test_clone_filter_with_skipped_params(self):
+        """
+        A filter with `init=False` param is cloned correctly.
+        """
+        @dataclass
+        class MyFilter(filters.VideoFilter):
+            my_flag: bool = param(init=False, default=True)
+
+        f = MyFilter()
+
+        cloned = f._clone()
+
+        self.assertTrue(asdict(cloned)['my_flag'])
