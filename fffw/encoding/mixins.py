@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from fffw.graph import base, VIDEO
 
@@ -9,7 +9,7 @@ else:
 
 
 class StreamValidationMixin(StreamValidationTarget):
-    hardware: str
+    hardware: Optional[str]
 
     def connect_edge(self, edge: base.Edge) -> base.Edge:
         self.validate_edge_kind(edge)
@@ -30,7 +30,11 @@ class StreamValidationMixin(StreamValidationTarget):
         meta = edge.get_meta_data(self)
         if meta is None:
             return
-        filter_hardware = getattr(self, 'hardware', None)
+        try:
+            filter_hardware = getattr(self, 'hardware')
+        except AttributeError:
+            # no hardware restrictions for filter/codec
+            return
         device = getattr(meta, 'device', None)
         edge_hardware = None if device is None else device.hardware
         if filter_hardware != edge_hardware:

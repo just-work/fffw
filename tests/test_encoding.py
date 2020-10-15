@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from unittest import TestCase
 
 from fffw.graph import StreamType, VIDEO, AUDIO, video_meta_data
@@ -81,8 +82,13 @@ class InputsTestCase(TestCase):
                            hardware='cuda',
                            device='foo')
 
+        @dataclass
+        class X264(VideoCodec):
+            codec = 'libx264'
+            hardware = None  # cpu only
+
         with self.assertRaises(ValueError):
-            src.video > VideoCodec('libx264')
+            src.video > X264()
 
         with self.assertRaises(ValueError):
             src.video | filters.Scale(640, 360)
