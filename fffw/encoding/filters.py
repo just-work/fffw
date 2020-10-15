@@ -157,6 +157,7 @@ class Scale(VideoFilter):
     :arg height: resulting video height
     """
     filter = "scale"
+    hardware = None  # cpu only
 
     width: int = param(name='w')
     height: int = param(name='h')
@@ -201,10 +202,6 @@ class Split(AutoFilter):
         if self.output_count == 2:
             return ''
         return str(self.output_count)
-
-    def validate_edge_device(self, edge: base.Edge) -> None:
-        # Any device is supported
-        return
 
 
 @dataclass
@@ -354,10 +351,6 @@ class Concat(Filter):
         if samples != 0:
             kwargs['samples'] = samples
         return replace(metadata[0], **kwargs)
-
-    def validate_edge_device(self, edge: base.Edge) -> None:
-        # Any device is supported
-        return
 
 
 @dataclass
