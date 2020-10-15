@@ -317,5 +317,5 @@ class FilterGraphTestCase(TestCase):
             concat = Concat(VIDEO, input_count=2)
             split | concat
             split | concat
-        except ValueError:
+        except ValueError:  # pragma: no cover
             self.fail("hardware validation unexpectedly failed")
