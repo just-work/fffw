@@ -1,4 +1,4 @@
-from dataclasses import dataclass, replace, asdict, field
+from dataclasses import dataclass, replace, asdict, field, fields
 from typing import Union, List, cast
 
 from fffw.graph import base
@@ -91,7 +91,8 @@ class Filter(mixins.StreamValidationMixin, base.Node, Params):
 
         Inputs and outputs are not copied.
         """
-        kwargs = asdict(self)
+        skip = [f.name for f in fields(self) if not f.init]
+        kwargs = {k: v for k, v in asdict(self).items() if k not in skip}
         # noinspection PyArgumentList
         return type(self)(**kwargs)  # type: ignore
 
