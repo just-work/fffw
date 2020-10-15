@@ -202,6 +202,10 @@ class Split(AutoFilter):
             return ''
         return str(self.output_count)
 
+    def validate_edge_device(self, edge: base.Edge) -> None:
+        # Any device is supported
+        return
+
 
 @dataclass
 class Trim(AutoFilter):
@@ -350,6 +354,10 @@ class Concat(Filter):
         if samples != 0:
             kwargs['samples'] = samples
         return replace(metadata[0], **kwargs)
+
+    def validate_edge_device(self, edge: base.Edge) -> None:
+        # Any device is supported
+        return
 
 
 @dataclass

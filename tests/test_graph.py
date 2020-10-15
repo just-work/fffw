@@ -305,3 +305,17 @@ class FilterGraphTestCase(TestCase):
 
         cuda = meta.Device(hardware='cuda', name='foo')
         self.source.video | Upload(device=cuda) | ScaleCuda(640, 360)
+
+    def test_concat_split_allows_any_hardware(self):
+        """
+        Concat and split filters allow any hardware acceleration.
+        """
+        try:
+            cuda = meta.Device(hardware='cuda', name='foo')
+            hw = self.source.video | Upload(device=cuda)
+            split = hw | Split(VIDEO, output_count=2)
+            concat = Concat(VIDEO, input_count=2)
+            split | concat
+            split | concat
+        except ValueError:  # pragma: no cover
+            self.fail("hardware validation unexpectedly failed")
