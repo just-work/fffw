@@ -157,7 +157,7 @@ class Scale(VideoFilter):
     :arg height: resulting video height
     """
     filter = "scale"
-    hardware = None
+    hardware = None  # cpu only
 
     width: int = param(name='w')
     height: int = param(name='h')
