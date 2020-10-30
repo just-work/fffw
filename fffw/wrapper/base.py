@@ -5,15 +5,80 @@ from asyncio.subprocess import Process
 from dataclasses import dataclass
 from logging import getLogger
 from types import TracebackType
-from typing import Tuple, List, Any, Optional, cast, Callable, Union, TextIO, \
-    Type
+from typing import Tuple, List, Any, Optional, cast, Callable, Union, TextIO
+from typing import Type, AsyncIterator, Iterator
 
 from fffw.wrapper.helpers import quote, ensure_binary, ensure_text
 from fffw.wrapper.params import Params
 
 
+class UniversalLineReader:
+    """
+    Reads bytes from asyncio.StreamReader and splits it to lines with either
+    CR or LF, or even CRLF.
+
+    >>> # noinspection PyUnresolvedReferences
+    ... line_iter = UniversalLineReader(process.stderr)
+    >>> async for line in line_iter:
+    ...    print(line)
+
+    """
+
+    def __init__(self,
+                 reader: asyncio.StreamReader,
+                 bufsize: int = 10 * io.DEFAULT_BUFFER_SIZE,
+                 encoding: str = 'utf8') -> None:
+        self.reader = reader
+        self.bufsize = bufsize
+        self.buffer = b''
+        self.encoding = encoding
+        self.at_eof = False
+
+    def __aiter__(self) -> AsyncIterator[str]:
+        return self.readlines()
+
+    async def readlines(self) -> AsyncIterator[str]:
+        while not self.at_eof:
+            block = await self.reader.read(io.DEFAULT_BUFFER_SIZE)
+            # empty read means that reader is closed
+            self.at_eof = len(block) == 0
+
+            # checking max buffer size
+            buffered = len(self.buffer) + len(block)
+            if buffered > self.bufsize:
+                raise asyncio.LimitOverrunError("buffer overrun", buffered)
+
+            self.buffer += block
+            for line in self.drain_buffer():
+                yield line
+        if self.buffer:
+            # yielding last incomplete line after reader close
+            yield self.buffer.decode(self.encoding)
+
+    def drain_buffer(self) -> Iterator[str]:
+        """
+        Yield complete lines from buffer.
+
+        Buffer is cleared if all lines in buffer are complete, or is set to
+        last incomplete line.
+        """
+        terminators = (ord(b'\r'), ord(b'\n'))
+        for line in self.buffer.splitlines(keepends=True):
+            if line[-1] in terminators:
+                # complete line
+                yield line.decode(self.encoding)
+            else:
+                # last incomplete line
+                self.buffer = line
+                break
+        else:
+            # all lines yielded without break
+            self.buffer = b''
+
+
 class Runner:
     """ Wrapper for Popen process for non-blocking streams handling."""
+    buffer_size = 10 * io.DEFAULT_BUFFER_SIZE
 
     def __init__(self, command: Union[str, bytes], *args: Any,
                  stdin: Union[None, str, TextIO] = None,
@@ -78,14 +143,10 @@ class Runner:
         """
         if callback is None or reader is None:
             return
-        while True:
-            line = await reader.readline()
-            if line:
-                data = callback(line.decode())
-                if data:
-                    output.write(data)
-            else:
-                break
+        async for line in UniversalLineReader(reader):
+            data = callback(line)
+            if data:
+                output.write(data)
 
     @staticmethod
     async def write(writer: Optional[asyncio.StreamWriter],
