@@ -19,7 +19,31 @@ __all__ = [
     'Split',
     'Trim',
     'Upload',
+    'ensure_video',
+    'ensure_audio',
 ]
+
+
+def ensure_video(meta: Meta, *_: Meta) -> VideoMeta:
+    """
+    Checks that first passed stream is a video stream
+
+    :returns: first passed stream
+    """
+    if not isinstance(meta, VideoMeta):
+        raise TypeError(meta)
+    return meta
+
+
+def ensure_audio(meta: Meta, *_: Meta) -> AudioMeta:
+    """
+    Checks that first passed stream is a audio stream
+
+    :returns: first passed stream
+    """
+    if not isinstance(meta, AudioMeta):
+        raise TypeError(meta)
+    return meta
 
 
 @dataclass
@@ -163,9 +187,7 @@ class Scale(VideoFilter):
     height: int = param(name='h')
 
     def transform(self, *metadata: Meta) -> Meta:
-        meta = metadata[0]
-        if not isinstance(meta, VideoMeta):
-            raise TypeError(meta)
+        meta = ensure_video(*metadata)
         par = meta.dar / (self.width / self.height)
         return replace(meta, width=self.width, height=self.height, par=par)
 
@@ -384,7 +406,5 @@ class Upload(VideoFilter):
 
     def transform(self, *metadata: Meta) -> VideoMeta:
         """ Marks a stream as uploaded to a device."""
-        meta = super().transform(*metadata)
-        if not isinstance(meta, VideoMeta):
-            raise ValueError(meta)
+        meta = ensure_video(*metadata)
         return replace(meta, device=self.device)
