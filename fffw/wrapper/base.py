@@ -17,6 +17,8 @@ class UniversalLineReader:
     Reads bytes from asyncio.StreamReader and splits it to lines with either
     CR or LF, or even CRLF.
 
+    https://docs.python.org/3/glossary.html#term-universal-newlines
+
     >>> # noinspection PyUnresolvedReferences
     ... line_iter = UniversalLineReader(process.stderr)
     >>> async for line in line_iter:
@@ -27,7 +29,9 @@ class UniversalLineReader:
     def __init__(self,
                  reader: asyncio.StreamReader,
                  bufsize: int = 10 * io.DEFAULT_BUFFER_SIZE,
+                 blocksize: int = io.DEFAULT_BUFFER_SIZE,
                  encoding: str = 'utf8') -> None:
+        self.blocksize = blocksize
         self.reader = reader
         self.bufsize = bufsize
         self.buffer = b''
@@ -39,7 +43,7 @@ class UniversalLineReader:
 
     async def readlines(self) -> AsyncIterator[str]:
         while not self.at_eof:
-            block = await self.reader.read(io.DEFAULT_BUFFER_SIZE)
+            block = await self.reader.read(self.blocksize)
             # empty read means that reader is closed
             self.at_eof = len(block) == 0
 
@@ -59,21 +63,14 @@ class UniversalLineReader:
         """
         Yield complete lines from buffer.
 
-        Buffer is cleared if all lines in buffer are complete, or is set to
-        last incomplete line.
+        Buffer is set to last line (complete or incomplete) to ensure proper
+        handling
         """
-        terminators = (ord(b'\r'), ord(b'\n'))
-        for line in self.buffer.splitlines(keepends=True):
-            if line[-1] in terminators:
-                # complete line
-                yield line.decode(self.encoding)
-            else:
-                # last incomplete line
-                self.buffer = line
-                break
-        else:
-            # all lines yielded without break
-            self.buffer = b''
+        # Split buffer to line with any of CR, LF of CRLF separators
+        # Last line is buffered in case CRLF sequence split to subsequent reads.
+        [*lines, self.buffer] = self.buffer.splitlines(keepends=True)
+        for line in lines:
+            yield line.decode(self.encoding)
 
 
 class Runner:
