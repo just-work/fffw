@@ -1,9 +1,47 @@
 import asyncio
 import io
 import random
+import sys
+import time
+from dataclasses import dataclass
 from typing import List
 from unittest import TestCase, mock
-from fffw.wrapper.base import UniversalLineReader
+
+from fffw.wrapper import param
+from fffw.wrapper.base import UniversalLineReader, BaseWrapper
+
+
+@dataclass
+class Python(BaseWrapper):
+    command = 'python'
+    module: str = param(name='m')
+
+
+def script():
+    line = input()
+    sys.stdout.write(f'stdout: {line}\n')
+    sys.stderr.write(f'stderr: {line}\n')
+    time.sleep(int(line) // 100)
+    return int(line)
+
+
+if __name__ == '__main__':
+    sys.exit(script())
+
+
+class WrapperTestCase(TestCase):
+
+    def test_run_child_process(self):
+        p = Python(module='tests.test_wrapper')
+        ret, out, err = p.run('1')
+        self.assertEqual(ret, 1)
+        self.assertEqual(out, 'stdout: 1\n')
+        self.assertEqual(err, 'stderr: 1\n')
+
+    def test_child_timeout(self):
+        p = Python(module='tests.test_wrapper')
+        ret, out, err = p.run('100', timeout=0.01)
+        self.assertEqual(ret, -9)
 
 
 class UniversalLineReaderTestCase(TestCase):
