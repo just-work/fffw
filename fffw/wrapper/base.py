@@ -44,7 +44,7 @@ class UniversalLineReader:
     async def readlines(self) -> AsyncIterator[str]:
         while not self.at_eof:
             block = await self.reader.read(self.blocksize)
-            # empty read means that reader is closed
+            # empty read means that stream is closed
             self.at_eof = len(block) == 0
 
             # checking max buffer size
@@ -53,10 +53,11 @@ class UniversalLineReader:
                 raise asyncio.LimitOverrunError("buffer overrun", buffered)
 
             self.buffer += block
-            for line in self.drain_buffer():
-                yield line
+            if self.buffer:
+                for line in self.drain_buffer():
+                    yield line
+        # drain_buffer always one non-empty line, but stream may be empty
         if self.buffer:
-            # yielding last incomplete line after reader close
             yield self.buffer.decode(self.encoding)
 
     def drain_buffer(self) -> Iterator[str]:
@@ -131,7 +132,7 @@ class Runner:
         """
         Handles read from stdout/stderr.
 
-        Reads lines from reader and feeds it to callback. Values, filtered by
+        Reads lines from stream and feeds it to callback. Values, filtered by
         callback, are written to output buffer.
 
         :param reader: Process.stdout or Process.stderr instance
