@@ -31,6 +31,13 @@ class UniversalLineReader:
                  bufsize: int = 10 * io.DEFAULT_BUFFER_SIZE,
                  blocksize: int = io.DEFAULT_BUFFER_SIZE,
                  encoding: str = 'utf8') -> None:
+        """
+        :param reader: asynchronous stream reader, i.e. stdout/stderr of
+            asyncio Process instance.
+        :param bufsize: max buffer size
+        :param blocksize: read block size
+        :param encoding: text encoding
+        """
         self.blocksize = blocksize
         self.reader = reader
         self.bufsize = bufsize
@@ -65,7 +72,7 @@ class UniversalLineReader:
         Yield complete lines from buffer.
 
         Buffer is set to last line (complete or incomplete) to ensure proper
-        handling
+        CRLF handling.
         """
         # Split buffer to line with any of CR, LF of CRLF separators
         # Last line is buffered in case CRLF sequence split to subsequent reads.
