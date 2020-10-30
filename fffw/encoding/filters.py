@@ -331,16 +331,8 @@ class Concat(Filter):
         duration = TS(0)
         scenes = []
         streams: List[str] = []
-        samples = 0
-        sampling_rate = None
         for meta in metadata:
             duration += meta.duration
-            if isinstance(meta, AudioMeta):
-                samples += meta.samples
-                if sampling_rate is None:
-                    sampling_rate = meta.sampling_rate
-                else:
-                    assert sampling_rate == meta.sampling_rate
             scenes.extend(meta.scenes)
             for stream in meta.streams:
                 if not streams or streams[-1] != stream:
@@ -348,8 +340,11 @@ class Concat(Filter):
                     # contiguous duplicates.
                     streams.append(stream)
         kwargs = dict(duration=duration, scenes=scenes, streams=streams)
-        if samples != 0:
-            kwargs['samples'] = samples
+        meta = metadata[0]
+        if isinstance(meta, AudioMeta):
+            # Recompute samples and sampling rate: sampling rate from first
+            # input, samples count corresponds duration.
+            kwargs['samples'] = round(meta.sampling_rate * duration)
         return replace(metadata[0], **kwargs)
 
 
