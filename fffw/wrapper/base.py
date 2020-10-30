@@ -83,7 +83,6 @@ class UniversalLineReader:
 
 class Runner:
     """ Wrapper for Popen process for non-blocking streams handling."""
-    buffer_size = 10 * io.DEFAULT_BUFFER_SIZE
 
     def __init__(self, command: Union[str, bytes], *args: Any,
                  stdin: Union[None, str, TextIO] = None,
