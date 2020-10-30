@@ -49,6 +49,18 @@ class FilterGraphTestCase(TestCase):
         self.output_list = outputs.OutputList((self.output,))
         self.fc = FilterComplex(self.input_list, self.output_list)
 
+    def test_ensure_video(self):
+        """ Test video stream type assertion helper."""
+        with self.assertRaises(TypeError):
+            ensure_video(self.audio_metadata)
+        self.assertIs(ensure_video(self.video_metadata), self.video_metadata)
+
+    def test_ensure_audio(self):
+        """ Test audio stream type assertion helper."""
+        with self.assertRaises(TypeError):
+            ensure_audio(self.video_metadata)
+        self.assertIs(ensure_audio(self.audio_metadata), self.audio_metadata)
+
     def test_filter_graph(self):
         """ Filter complex smoke test and features demo.
 
