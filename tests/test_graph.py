@@ -49,6 +49,18 @@ class FilterGraphTestCase(TestCase):
         self.output_list = outputs.OutputList((self.output,))
         self.fc = FilterComplex(self.input_list, self.output_list)
 
+    def test_ensure_video(self):
+        """ Test video stream type assertion helper."""
+        with self.assertRaises(TypeError):
+            ensure_video(self.audio_metadata)
+        self.assertIs(ensure_video(self.video_metadata), self.video_metadata)
+
+    def test_ensure_audio(self):
+        """ Test audio stream type assertion helper."""
+        with self.assertRaises(TypeError):
+            ensure_audio(self.video_metadata)
+        self.assertIs(ensure_audio(self.audio_metadata), self.audio_metadata)
+
     def test_filter_graph(self):
         """ Filter complex smoke test and features demo.
 
@@ -246,8 +258,8 @@ class FilterGraphTestCase(TestCase):
         """
         Concat filter sums samples count for audio streams.
         """
-        audio_meta = audio_meta_data(duration=1000.0, sampling_rate=48000,
-                                     samples_count=48000 * 1000)
+        audio_meta = audio_meta_data(duration=1000.0, sampling_rate=24000,
+                                     samples_count=24000 * 1000)
         a = inputs.Stream(AUDIO, meta=audio_meta)
         self.input_list.append(inputs.input_file('second.mp4', a))
         concat = a | Concat(AUDIO)
@@ -258,7 +270,7 @@ class FilterGraphTestCase(TestCase):
         am = cast(AudioMeta, self.output.codecs[-1].get_meta_data())
         self.assertEqual(self.audio_metadata.duration + audio_meta.duration,
                          am.duration)
-        self.assertEqual(self.audio_metadata.samples + audio_meta.samples,
+        self.assertEqual(round(am.duration * audio_meta.sampling_rate),
                          am.samples)
 
     def test_trim_metadata(self):

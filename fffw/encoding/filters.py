@@ -19,7 +19,31 @@ __all__ = [
     'Split',
     'Trim',
     'Upload',
+    'ensure_video',
+    'ensure_audio',
 ]
+
+
+def ensure_video(meta: Meta, *_: Meta) -> VideoMeta:
+    """
+    Checks that first passed stream is a video stream
+
+    :returns: first passed stream
+    """
+    if not isinstance(meta, VideoMeta):
+        raise TypeError(meta)
+    return meta
+
+
+def ensure_audio(meta: Meta, *_: Meta) -> AudioMeta:
+    """
+    Checks that first passed stream is a audio stream
+
+    :returns: first passed stream
+    """
+    if not isinstance(meta, AudioMeta):
+        raise TypeError(meta)
+    return meta
 
 
 @dataclass
@@ -163,9 +187,7 @@ class Scale(VideoFilter):
     height: int = param(name='h')
 
     def transform(self, *metadata: Meta) -> Meta:
-        meta = metadata[0]
-        if not isinstance(meta, VideoMeta):
-            raise TypeError(meta)
+        meta = ensure_video(*metadata)
         par = meta.dar / (self.width / self.height)
         return replace(meta, width=self.width, height=self.height, par=par)
 
@@ -331,16 +353,8 @@ class Concat(Filter):
         duration = TS(0)
         scenes = []
         streams: List[str] = []
-        samples = 0
-        sampling_rate = None
         for meta in metadata:
             duration += meta.duration
-            if isinstance(meta, AudioMeta):
-                samples += meta.samples
-                if sampling_rate is None:
-                    sampling_rate = meta.sampling_rate
-                else:
-                    assert sampling_rate == meta.sampling_rate
             scenes.extend(meta.scenes)
             for stream in meta.streams:
                 if not streams or streams[-1] != stream:
@@ -348,8 +362,11 @@ class Concat(Filter):
                     # contiguous duplicates.
                     streams.append(stream)
         kwargs = dict(duration=duration, scenes=scenes, streams=streams)
-        if samples != 0:
-            kwargs['samples'] = samples
+        meta = metadata[0]
+        if isinstance(meta, AudioMeta):
+            # Recompute samples and sampling rate: sampling rate from first
+            # input, samples count corresponds duration.
+            kwargs['samples'] = round(meta.sampling_rate * duration)
         return replace(metadata[0], **kwargs)
 
 
@@ -389,7 +406,5 @@ class Upload(VideoFilter):
 
     def transform(self, *metadata: Meta) -> VideoMeta:
         """ Marks a stream as uploaded to a device."""
-        meta = super().transform(*metadata)
-        if not isinstance(meta, VideoMeta):
-            raise ValueError(meta)
+        meta = ensure_video(*metadata)
         return replace(meta, device=self.device)
