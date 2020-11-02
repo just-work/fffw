@@ -330,6 +330,8 @@ class VideoMeta(Meta):
     """ Display aspect ratio."""
     frame_rate: float
     """ Frames per second."""
+    frames: int
+    """ Number of frames."""
     device: Optional[Device]
     """ Hardware device asociated with current stream."""
 
@@ -345,6 +347,11 @@ class VideoMeta(Meta):
             assert abs(self.dar - self.width / self.height * self.par) <= 0.001
         else:
             assert str(self.dar) == 'nan'
+
+        if self.duration != 0:
+            assert abs(self.frames / self.duration - self.frame_rate) <= 0.001
+        else:
+            assert self.frames == 0
 
 
 @dataclass
@@ -437,6 +444,7 @@ def video_meta_data(**kwargs: Any) -> VideoMeta:
         par=par,
         dar=dar,
         frame_rate=frame_rate,
+        frames=frames,
         device=None,
     )
 
