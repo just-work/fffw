@@ -348,10 +348,8 @@ class VideoMeta(Meta):
         else:
             assert str(self.dar) == 'nan'
 
-        if self.duration != 0:
-            assert abs(self.frames / self.duration - self.frame_rate) <= 0.001
-        else:
-            assert self.frames == 0
+        interval = float(self.duration - self.start)
+        assert abs(self.frames - interval * self.frame_rate) <= 1
 
 
 @dataclass
@@ -376,11 +374,8 @@ class AudioMeta(Meta):
         return AUDIO
 
     def validate(self) -> None:
-        duration = self.duration.total_seconds()
-        if duration != 0:
-            assert abs(self.sampling_rate - self.samples / duration) < 0.001
-        else:
-            assert self.sampling_rate == 0
+        interval = float(self.duration - self.start)
+        assert abs(self.samples - interval * self.sampling_rate) <= 1
 
 
 def audio_meta_data(**kwargs: Any) -> AudioMeta:

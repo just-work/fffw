@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import cast
 from unittest import TestCase
 
-from fffw.encoding import inputs, outputs
+from fffw.encoding import inputs, outputs, codecs
 from fffw.encoding.complex import FilterComplex
 from fffw.encoding.filters import *
 from fffw.graph import *
@@ -34,17 +34,22 @@ class FilterGraphTestCase(TestCase):
             dar=1.777777778,
             par=1.0,
             duration=300.0,
+            frame_rate=10.0,
+            frame_count=3000
         )
         self.audio_metadata = audio_meta_data(
             duration=200.0,
             sampling_rate=48000,
-            samples_count=200*48000)
+            samples_count=200 * 48000)
 
         self.source = inputs.Input(
             input_file='input.mp4',
             streams=(inputs.Stream(VIDEO, meta=self.video_metadata),
                      inputs.Stream(AUDIO, meta=self.audio_metadata)))
-        self.output = outputs.output_file('output.mp4')
+        self.output = outputs.output_file(
+            'output.mp4',
+            codecs.VideoCodec('libx264'),
+            codecs.AudioCodec('libfdk_aac'))
         self.input_list = inputs.InputList((self.source,))
         self.output_list = outputs.OutputList((self.output,))
         self.fc = FilterComplex(self.input_list, self.output_list)
@@ -237,13 +242,16 @@ class FilterGraphTestCase(TestCase):
         self.assertEqual(vm.width, self.video_metadata.width)
         self.assertEqual(vm.height, self.video_metadata.height)
 
-    def test_concat_metadata(self):
+    def test_concat_video_metadata(self):
         """
         Concat filter sums stream duration
 
         $ ffmpeg -y -i first.mp4 -i second.mp4 -filter_complex concat test.mp4
         """
-        vs = inputs.Stream(VIDEO, meta=video_meta_data(duration=1000.0))
+        video_meta = video_meta_data(duration=1000.0,
+                                     frame_count=10000,
+                                     frame_rate=10.0)
+        vs = inputs.Stream(VIDEO, meta=video_meta)
         self.input_list.append(inputs.input_file('second.mp4', vs))
         concat = vs | Concat(VIDEO)
         self.source | concat
@@ -253,12 +261,15 @@ class FilterGraphTestCase(TestCase):
         vm = cast(VideoMeta, self.output.codecs[0].get_meta_data())
         self.assertEqual(self.video_metadata.duration + vs.meta.duration,
                          vm.duration)
+        self.assertEqual(self.video_metadata.frames + video_meta.frames,
+                         vm.frames)
 
     def test_concat_audio_metadata(self):
         """
         Concat filter sums samples count for audio streams.
         """
-        audio_meta = audio_meta_data(duration=1000.0, sampling_rate=24000,
+        audio_meta = audio_meta_data(duration=1000.0,
+                                     sampling_rate=24000,
                                      samples_count=24000 * 1000)
         a = inputs.Stream(AUDIO, meta=audio_meta)
         self.input_list.append(inputs.input_file('second.mp4', a))
@@ -273,7 +284,7 @@ class FilterGraphTestCase(TestCase):
         self.assertEqual(round(am.duration * audio_meta.sampling_rate),
                          am.samples)
 
-    def test_trim_metadata(self):
+    def test_video_trim_metadata(self):
         """
         Trim filter sets start and changes stream duration.
         $ ffmpeg -y -i source.mp4 -vf trim=start=3:end=4 -an test.mp4
@@ -285,6 +296,21 @@ class FilterGraphTestCase(TestCase):
         vm = cast(VideoMeta, self.output.codecs[0].get_meta_data())
         self.assertEqual(vm.start, TS(3.0))
         self.assertEqual(vm.duration, TS(4.0))
+        self.assertEqual(vm.frames, 1.0 * vm.frame_rate)
+
+    def test_audio_trim_metadata(self):
+        """
+        Trim filter sets start and changes stream duration.
+        $ ffmpeg -y -i source.mp4 -af atrim=start=3:end=4 -vn test.mp4
+
+        Note that resulting video has 3 seconds of frozen frame at 00:00:03.000,
+        total duration is 4.
+        """
+        self.source | Trim(AUDIO, start=3.0, end=4.0) > self.output
+        am = cast(AudioMeta, self.output.codecs[1].get_meta_data())
+        self.assertEqual(am.start, TS(3.0))
+        self.assertEqual(am.duration, TS(4.0))
+        self.assertEqual(am.samples, 1.0 * am.sampling_rate)
 
     def test_setpts_metadata(self):
         """
