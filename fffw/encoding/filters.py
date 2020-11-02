@@ -284,7 +284,7 @@ class Trim(AutoFilter):
             'scenes': scenes,
             'streams': streams
         }
-        interval = self.end - self.start
+        interval = cast(TS, self.end) - cast(TS, self.start)
         if isinstance(meta, AudioMeta):
             kwargs['samples'] = round(meta.sampling_rate * interval)
         if isinstance(meta, VideoMeta):
