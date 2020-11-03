@@ -229,6 +229,7 @@ class MetaDataTestCase(TestCase):
             par=1.0,
             dar=1.778,
             frame_rate=50.0,
+            frames=337,
             device=None,
         )
         self.assertEqual(expected, video)
@@ -264,7 +265,6 @@ class MetaDataTestCase(TestCase):
             my_custom_metadata: str
 
         self.assertTrue(fields(ExtendedVideoMeta))
-
 
 
 class TimeStampTestCase(TestCase):

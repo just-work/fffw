@@ -278,8 +278,18 @@ class Trim(AutoFilter):
                 scenes.append(Scene(stream=scene.stream, start=start,
                                     duration=end - start))
 
-        return replace(meta, start=self.start, duration=self.end,
-                       scenes=scenes, streams=streams)
+        kwargs = {
+            'start': self.start,
+            'duration': self.end,
+            'scenes': scenes,
+            'streams': streams
+        }
+        interval = cast(TS, self.end) - cast(TS, self.start)
+        if isinstance(meta, AudioMeta):
+            kwargs['samples'] = round(meta.sampling_rate * interval)
+        if isinstance(meta, VideoMeta):
+            kwargs['frames'] = round(meta.frame_rate * interval)
+        return replace(meta, **kwargs)
 
 
 @dataclass
@@ -353,6 +363,7 @@ class Concat(Filter):
         duration = TS(0)
         scenes = []
         streams: List[str] = []
+        frames: int = 0
         for meta in metadata:
             duration += meta.duration
             scenes.extend(meta.scenes)
@@ -361,12 +372,17 @@ class Concat(Filter):
                     # Add all streams for each concatenated metadata and remove
                     # contiguous duplicates.
                     streams.append(stream)
+            if isinstance(meta, VideoMeta):
+                frames += meta.frames
         kwargs = dict(duration=duration, scenes=scenes, streams=streams)
         meta = metadata[0]
         if isinstance(meta, AudioMeta):
             # Recompute samples and sampling rate: sampling rate from first
             # input, samples count corresponds duration.
             kwargs['samples'] = round(meta.sampling_rate * duration)
+        if isinstance(meta, VideoMeta):
+            # Sum frames count from all input streams
+            kwargs['frames'] = frames
         return replace(metadata[0], **kwargs)
 
 

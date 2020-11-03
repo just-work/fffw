@@ -330,6 +330,8 @@ class VideoMeta(Meta):
     """ Display aspect ratio."""
     frame_rate: float
     """ Frames per second."""
+    frames: int
+    """ Number of frames."""
     device: Optional[Device]
     """ Hardware device asociated with current stream."""
 
@@ -345,6 +347,9 @@ class VideoMeta(Meta):
             assert abs(self.dar - self.width / self.height * self.par) <= 0.001
         else:
             assert str(self.dar) == 'nan'
+
+        interval = float(self.duration - self.start)
+        assert abs(self.frames - interval * self.frame_rate) <= 1
 
 
 @dataclass
@@ -369,11 +374,8 @@ class AudioMeta(Meta):
         return AUDIO
 
     def validate(self) -> None:
-        duration = self.duration.total_seconds()
-        if duration != 0:
-            assert abs(self.sampling_rate - self.samples / duration) < 0.001
-        else:
-            assert self.sampling_rate == 0
+        interval = float(self.duration - self.start)
+        assert abs(self.samples - interval * self.sampling_rate) <= 1
 
 
 def audio_meta_data(**kwargs: Any) -> AudioMeta:
@@ -437,6 +439,7 @@ def video_meta_data(**kwargs: Any) -> VideoMeta:
         par=par,
         dar=dar,
         frame_rate=frame_rate,
+        frames=frames,
         device=None,
     )
 
