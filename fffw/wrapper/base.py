@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from logging import getLogger
 from types import TracebackType
 from typing import Tuple, List, Any, Optional, cast, Callable, Union, TextIO
-from typing import Type, AsyncIterator, Iterator
+from typing import Type, AsyncIterator
 
 from fffw.wrapper.helpers import quote, ensure_binary, ensure_text
 from fffw.wrapper.params import Params
@@ -50,6 +50,10 @@ class UniversalLineReader:
 
     async def readlines(self) -> AsyncIterator[str]:
         while not self.at_eof:
+            # StreamReader supports only LF line separator. This leads to buffer
+            # overrun when it contains only CR-terminated lines. Thus, we read
+            # blocks manually and then split it to lines with universal line
+            # separator.
             block = await self.reader.read(self.blocksize)
             # empty read means that stream is closed
             self.at_eof = len(block) == 0
@@ -61,24 +65,16 @@ class UniversalLineReader:
 
             self.buffer += block
             if self.buffer:
-                for line in self.drain_buffer():
-                    yield line
-        # drain_buffer always one non-empty line, but stream may be empty
+                # Split buffer to line with any of CR, LF of CRLF separators
+                # Last line is buffered to handle the case when CRLF sequence is
+                # being split to subsequent reads.
+                [*lines, self.buffer] = self.buffer.splitlines(keepends=True)
+                for line in lines:
+                    yield line.decode(self.encoding)
+        # We always leave one non-empty line above, but stream may be empty. In
+        # this case we don't want to yield empty line.
         if self.buffer:
             yield self.buffer.decode(self.encoding)
-
-    def drain_buffer(self) -> Iterator[str]:
-        """
-        Yield complete lines from buffer.
-
-        Buffer is set to last line (complete or incomplete) to ensure proper
-        CRLF handling.
-        """
-        # Split buffer to line with any of CR, LF of CRLF separators
-        # Last line is buffered in case CRLF sequence split to subsequent reads.
-        [*lines, self.buffer] = self.buffer.splitlines(keepends=True)
-        for line in lines:
-            yield line.decode(self.encoding)
 
 
 class Runner:
