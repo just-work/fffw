@@ -5,11 +5,76 @@ from asyncio.subprocess import Process
 from dataclasses import dataclass
 from logging import getLogger
 from types import TracebackType
-from typing import Tuple, List, Any, Optional, cast, Callable, Union, TextIO, \
-    Type
+from typing import Tuple, List, Any, Optional, cast, Callable, Union, TextIO
+from typing import Type, AsyncIterator
 
 from fffw.wrapper.helpers import quote, ensure_binary, ensure_text
 from fffw.wrapper.params import Params
+
+
+class UniversalLineReader:
+    """
+    Reads bytes from asyncio.StreamReader and splits it to lines with either
+    CR or LF, or even CRLF.
+
+    https://docs.python.org/3/glossary.html#term-universal-newlines
+
+    >>> # noinspection PyUnresolvedReferences
+    ... line_iter = UniversalLineReader(process.stderr)
+    >>> async for line in line_iter:
+    ...    print(line)
+
+    """
+
+    def __init__(self,
+                 reader: asyncio.StreamReader,
+                 bufsize: int = 10 * io.DEFAULT_BUFFER_SIZE,
+                 blocksize: int = io.DEFAULT_BUFFER_SIZE,
+                 encoding: str = 'utf8') -> None:
+        """
+        :param reader: asynchronous stream reader, i.e. stdout/stderr of
+            asyncio Process instance.
+        :param bufsize: max buffer size
+        :param blocksize: read block size
+        :param encoding: text encoding
+        """
+        self.blocksize = blocksize
+        self.reader = reader
+        self.bufsize = bufsize
+        self.buffer = b''
+        self.encoding = encoding
+        self.at_eof = False
+
+    def __aiter__(self) -> AsyncIterator[str]:
+        return self.readlines()
+
+    async def readlines(self) -> AsyncIterator[str]:
+        while not self.at_eof:
+            # StreamReader supports only LF line separator. This leads to buffer
+            # overrun when it contains only CR-terminated lines. Thus, we read
+            # blocks manually and then split it to lines with universal line
+            # separator.
+            block = await self.reader.read(self.blocksize)
+            # empty read means that stream is closed
+            self.at_eof = len(block) == 0
+
+            # checking max buffer size
+            buffered = len(self.buffer) + len(block)
+            if buffered > self.bufsize:
+                raise asyncio.LimitOverrunError("buffer overrun", buffered)
+
+            self.buffer += block
+            if self.buffer:
+                # Split buffer to line with any of CR, LF of CRLF separators
+                # Last line is buffered to handle the case when CRLF sequence is
+                # being split to subsequent reads.
+                [*lines, self.buffer] = self.buffer.splitlines(keepends=True)
+                for line in lines:
+                    yield line.decode(self.encoding)
+        # We always leave one non-empty line above, but stream may be empty. In
+        # this case we don't want to yield empty line.
+        if self.buffer:
+            yield self.buffer.decode(self.encoding)
 
 
 class Runner:
@@ -69,7 +134,7 @@ class Runner:
         """
         Handles read from stdout/stderr.
 
-        Reads lines from reader and feeds it to callback. Values, filtered by
+        Reads lines from stream and feeds it to callback. Values, filtered by
         callback, are written to output buffer.
 
         :param reader: Process.stdout or Process.stderr instance
@@ -78,14 +143,10 @@ class Runner:
         """
         if callback is None or reader is None:
             return
-        while True:
-            line = await reader.readline()
-            if line:
-                data = callback(line.decode())
-                if data:
-                    output.write(data)
-            else:
-                break
+        async for line in UniversalLineReader(reader):
+            data = callback(line)
+            if data:
+                output.write(data)
 
     @staticmethod
     async def write(writer: Optional[asyncio.StreamWriter],
