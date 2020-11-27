@@ -119,6 +119,23 @@ class FFMPEGTestCase(BaseTestCase):
             '/tmp/out.mp3'
         )
 
+    def test_inputs_property(self):
+        """
+        ffmpeg private input list could be accessed via property
+        """
+        self.ffmpeg < self.source
+
+        self.assertTupleEqual(self.ffmpeg.inputs, (self.source,))
+
+    def test_outputs_property(self):
+        """
+        ffmpeg private output list could be accessed via property
+        """
+        self.ffmpeg < self.source
+        self.ffmpeg > self.output
+
+        self.assertTupleEqual(self.ffmpeg.outputs, (self.output,))
+
     def test_filter_device_helper(self):
         """
         filter_device correcly parses init_hardware and filter_hardware flags.
