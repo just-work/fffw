@@ -1,4 +1,4 @@
-from dataclasses import field, dataclass, Field, fields
+from dataclasses import field, dataclass, Field, fields, MISSING
 from typing import Any, Optional, Tuple, cast, List, Callable
 
 
@@ -89,7 +89,7 @@ class Params:
         for f in self._fields:  # type: Field
             key = f.name
             value = getattr(self, key)
-            if f.default == value and f.init:
+            if f.default is not MISSING and f.default == value and f.init:
                 # if field value has default value and is configurable via
                 # __init__, we omit this field
                 continue

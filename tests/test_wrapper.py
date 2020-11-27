@@ -7,8 +7,10 @@ from dataclasses import dataclass
 from typing import List
 from unittest import TestCase, mock
 
+from fffw.graph import TS
 from fffw.wrapper import param
 from fffw.wrapper.base import UniversalLineReader, BaseWrapper
+from fffw.wrapper.params import Params
 
 
 @dataclass
@@ -119,3 +121,20 @@ class UniversalLineReaderTestCase(TestCase):
 
         with self.assertRaises(asyncio.LimitOverrunError):
             self.assert_lines(lines)
+
+
+@dataclass
+class Wrapper(Params):
+    field: TS  # no default and TS instance
+
+
+class ParamsTestCase(TestCase):
+    """ Check command line parameters rendering."""
+
+    def test_as_pairs_if_default_is_missing(self):
+        """
+        Checks that missing default does not checks value for equality with
+        dataclasses.MISSING.
+        """
+        w = Wrapper(TS(42.0))
+        self.assertEqual(w.as_pairs(), [('field', '42.0')])
