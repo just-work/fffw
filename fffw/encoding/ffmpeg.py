@@ -1,9 +1,8 @@
 from dataclasses import dataclass
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple
 
-from fffw.encoding import inputs
 from fffw.encoding.complex import FilterComplex
-from fffw.encoding.inputs import InputList, Input
+from fffw.encoding.inputs import InputList, Input, Stream
 from fffw.encoding.outputs import OutputList, Output, Codec
 from fffw.graph import base, meta
 from fffw.graph.meta import AUDIO, VIDEO, StreamType
@@ -98,6 +97,20 @@ class FFMPEG(BaseWrapper):
         return self.add_output(other)
 
     @property
+    def inputs(self) -> Tuple[Input, ...]:
+        """
+        :return: a copy of ffmpeg input list.
+        """
+        return tuple(self.__inputs)
+
+    @property
+    def outputs(self) -> Tuple[Output, ...]:
+        """
+        :return: a copy of ffmpeg output list.
+        """
+        return tuple(self.__outputs)
+
+    @property
     def filter_device(self) -> meta.Device:
         """ Returns filter hardware device metadata."""
         hardware, init = self.init_hardware.split("=")
@@ -107,7 +120,7 @@ class FFMPEG(BaseWrapper):
         return meta.Device(hardware, name)
 
     @property
-    def video(self) -> inputs.Stream:
+    def video(self) -> Stream:
         """
         :returns: first video stream not yet connected to filter graph or codec.
 
@@ -120,7 +133,7 @@ class FFMPEG(BaseWrapper):
         return self._get_free_source(VIDEO)
 
     @property
-    def audio(self) -> inputs.Stream:
+    def audio(self) -> Stream:
         """
 
         :returns: first audio stream not yet connected to filter graph or codec.
@@ -134,7 +147,7 @@ class FFMPEG(BaseWrapper):
         """
         return self._get_free_source(AUDIO)
 
-    def _get_free_source(self, kind: StreamType) -> inputs.Stream:
+    def _get_free_source(self, kind: StreamType) -> Stream:
         """
         :param kind: stream type
         :return: first stream of this kind not connected to destination
