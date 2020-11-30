@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, List, Tuple, cast, Iterable, Union, Any, Type
+from typing import Optional, List, Tuple, cast, Iterable, Union, Any
 
 from fffw.encoding import filters, outputs
 from fffw.graph import base
@@ -80,14 +80,9 @@ class FFMPEGIndexDescriptor(base.Once):
     This index is used to identify streams in filter graph and in metadata.
     """
 
-    def __get__(self, instance: "Input", owner: Type["Input"]) -> int:
-        return super().__get__(instance, owner)
-
     def __set__(self, instance: "Input", value: int) -> None:
         super().__set__(instance, value)
-        identity = f'{instance.input_file}#{value}'
-        for stream in instance.streams:
-            stream.connect_input(identity)
+        instance.connect_streams()
 
 
 @dataclass
@@ -181,6 +176,14 @@ class Input(BaseWrapper):
             if stream.kind == kind:
                 return stream
         raise KeyError(kind)
+
+    def connect_streams(self) -> None:
+        """
+        Sets a unique source identifier for each stream metadata in input.
+        """
+        identity = f'{self.input_file}#{self.index}'
+        for stream in self.streams:
+            stream.connect_input(identity)
 
 
 def input_file(filename: str, *streams: Stream, **kwargs: Any) -> Input:
