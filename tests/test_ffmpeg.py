@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass
 from unittest import expectedFailure
 
@@ -423,6 +424,39 @@ class FFMPEGTestCase(BaseTestCase):
                 else:
                     self.assertFalse(raises)
 
+    def test_fix_trim_buffering(self):
+        """
+        Trim buffering could be fixed with multiple source file deconding.
+        """
+        ff = FFMPEG()
+        # Unlink metadata instances from each other
+        v1 = inputs.Stream(VIDEO, deepcopy(self.source.streams[0].meta))
+        a1 = inputs.Stream(AUDIO, deepcopy(self.source.streams[1].meta))
+        v2 = inputs.Stream(VIDEO, deepcopy(self.source.streams[0].meta))
+        a2 = inputs.Stream(AUDIO, deepcopy(self.source.streams[1].meta))
+
+        # When an input file is created with a stream, new Origin instance is
+        # created from filename and set to stream meta.
+        in1 = ff < inputs.input_file('input.mp4', v1, a1)
+        in2 = ff < inputs.input_file('input.mp4', v2, a2)
+
+        v = in1.video
+
+        t1 = in1.video | filters.Trim(VIDEO, 2.0, 3.0)
+
+        m = t1.meta
+        p1 = t1 | filters.SetPTS(VIDEO)
+        t2 = in2.video | filters.Trim(VIDEO, 1.0, 2.0)
+        p2 = t2 | filters.SetPTS(VIDEO)
+
+        concat = p1 | filters.Concat(VIDEO)
+        output = outputs.output_file('output.mp4',
+                                     codecs.VideoCodec('libx264'))
+        p2 | concat > output
+
+        ff > output
+        ff.check_buffering()
+
     def test_detect_concat_buffering(self):
         """
         When single source is used for multiple outputs, and one of outputs
@@ -521,7 +555,8 @@ class FFMPEGTestCase(BaseTestCase):
     def test_shortcut_outputs_with_codec(self):
         """ Check ff > output shortcut if codecs list specified."""
         ff = FFMPEG(input=inputs.input_file("input.mp4"))
-        scaled = ff.video | filters.Scale(width=1280, height=720)
+        v = ff.video
+        scaled = v | filters.Scale(width=1280, height=720)
 
         with self.assertRaises(RuntimeError):
             codec = codecs.VideoCodec("libx264")

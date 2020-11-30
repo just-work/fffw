@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, List, Tuple, cast, Iterable, Union, Any
+from typing import Optional, List, Tuple, cast, Iterable, Union, Any, Type
 
 from fffw.encoding import filters, outputs
 from fffw.graph import base
@@ -72,6 +72,24 @@ def default_streams() -> Tuple[Stream, ...]:
     return Stream(VIDEO), Stream(AUDIO)
 
 
+class FFMPEGIndexDescriptor(base.Once):
+    """
+    Input index descriptor.
+
+    When an input is added to a FFMPEG instance, it receives an index.
+    This index is used to identify streams in filter graph and in metadata.
+    """
+
+    def __get__(self, instance: "Input", owner: Type["Input"]) -> int:
+        return super().__get__(instance, owner)
+
+    def __set__(self, instance: "Input", value: int) -> None:
+        super().__set__(instance, value)
+        identity = f'{instance.input_file}#{value}'
+        for stream in instance.streams:
+            stream.connect_input(identity)
+
+
 @dataclass
 class Input(BaseWrapper):
     # noinspection PyUnresolvedReferences
@@ -84,7 +102,7 @@ class Input(BaseWrapper):
         from offset to end of file.
     :arg duration: stop decoding frames after an interval
     """
-    index = cast(int, base.Once("index"))
+    index = FFMPEGIndexDescriptor("index")
     """ Internal ffmpeg source file index."""
     streams: Tuple[Stream, ...] = param(default=default_streams, skip=True)
     """ List of audio and video streams for input file."""
@@ -129,6 +147,7 @@ class Input(BaseWrapper):
         audio_streams = 0
         if self.streams is None:
             raise RuntimeError("Streams not initialized")
+
         for stream in self.streams:
             if stream.kind == VIDEO:
                 meta: Optional[VideoMeta] = getattr(stream, 'meta', None)
@@ -167,8 +186,7 @@ class Input(BaseWrapper):
 def input_file(filename: str, *streams: Stream, **kwargs: Any) -> Input:
     kwargs['input_file'] = filename
     if streams:
-        for stream in streams:
-            stream.connect_input(filename)
+        # skip empty streams list to force Input.streams default_factory
         kwargs['streams'] = streams
     return Input(**kwargs)
 
