@@ -82,7 +82,7 @@ class FFMPEGIndexDescriptor(base.Once):
 
     def __set__(self, instance: base.Obj, value: Any) -> None:
         super().__set__(instance, value)
-        if not isinstance(instance, Input):
+        if not isinstance(instance, Input):  # pragma: no cover
             # We can't seal instance type, but restrict using descriptor only
             # with Input subclasses.
             raise TypeError(instance)
