@@ -428,7 +428,6 @@ class FFMPEGTestCase(BaseTestCase):
         Trim buffering could be fixed with multiple source file deconding.
         """
         ff = FFMPEG()
-        # Unlink metadata instances from each other
         v1 = inputs.Stream(VIDEO, self.source.streams[0].meta)
         a1 = inputs.Stream(AUDIO, self.source.streams[1].meta)
         v2 = inputs.Stream(VIDEO, self.source.streams[0].meta)
