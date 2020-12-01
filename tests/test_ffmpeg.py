@@ -423,6 +423,31 @@ class FFMPEGTestCase(BaseTestCase):
                 else:
                     self.assertFalse(raises)
 
+    def test_fix_trim_buffering(self):
+        """
+        Trim buffering could be fixed with multiple source file deconding.
+        """
+        ff = FFMPEG()
+        v1 = inputs.Stream(VIDEO, self.source.streams[0].meta)
+        a1 = inputs.Stream(AUDIO, self.source.streams[1].meta)
+        v2 = inputs.Stream(VIDEO, self.source.streams[0].meta)
+        a2 = inputs.Stream(AUDIO, self.source.streams[1].meta)
+
+        in1 = ff < inputs.input_file('input.mp4', v1, a1)
+        in2 = ff < inputs.input_file('input.mp4', v2, a2)
+
+        p1 = in1.video | filters.Trim(VIDEO, 2.0, 3.0) | filters.SetPTS(VIDEO)
+        p2 = in2.video | filters.Trim(VIDEO, 1.0, 2.0) | filters.SetPTS(VIDEO)
+
+        output = outputs.output_file('output.mp4',
+                                     codecs.VideoCodec('libx264'))
+
+        concat = p1 | filters.Concat(VIDEO)
+        p2 | concat > output
+
+        ff > output
+        ff.check_buffering()
+
     def test_detect_concat_buffering(self):
         """
         When single source is used for multiple outputs, and one of outputs

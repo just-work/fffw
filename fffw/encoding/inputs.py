@@ -72,6 +72,23 @@ def default_streams() -> Tuple[Stream, ...]:
     return Stream(VIDEO), Stream(AUDIO)
 
 
+class FFMPEGIndexDescriptor(base.Once):
+    """
+    Input index descriptor.
+
+    When an input is added to a FFMPEG instance, it receives an index.
+    This index is used to identify streams in filter graph and in metadata.
+    """
+
+    def __set__(self, instance: base.Obj, value: Any) -> None:
+        super().__set__(instance, value)
+        if not isinstance(instance, Input):  # pragma: no cover
+            # We can't seal instance type, but restrict using descriptor only
+            # with Input subclasses.
+            raise TypeError(instance)
+        instance.connect_streams()
+
+
 @dataclass
 class Input(BaseWrapper):
     # noinspection PyUnresolvedReferences
@@ -84,7 +101,7 @@ class Input(BaseWrapper):
         from offset to end of file.
     :arg duration: stop decoding frames after an interval
     """
-    index = cast(int, base.Once("index"))
+    index = FFMPEGIndexDescriptor("index")
     """ Internal ffmpeg source file index."""
     streams: Tuple[Stream, ...] = param(default=default_streams, skip=True)
     """ List of audio and video streams for input file."""
@@ -129,6 +146,7 @@ class Input(BaseWrapper):
         audio_streams = 0
         if self.streams is None:
             raise RuntimeError("Streams not initialized")
+
         for stream in self.streams:
             if stream.kind == VIDEO:
                 meta: Optional[VideoMeta] = getattr(stream, 'meta', None)
@@ -163,12 +181,19 @@ class Input(BaseWrapper):
                 return stream
         raise KeyError(kind)
 
+    def connect_streams(self) -> None:
+        """
+        Sets a unique source identifier for each stream metadata in input.
+        """
+        identity = f'{self.input_file}#{self.index}'
+        for stream in self.streams:
+            stream.connect_input(identity)
+
 
 def input_file(filename: str, *streams: Stream, **kwargs: Any) -> Input:
     kwargs['input_file'] = filename
     if streams:
-        for stream in streams:
-            stream.connect_input(filename)
+        # skip empty streams list to force Input.streams default_factory
         kwargs['streams'] = streams
     return Input(**kwargs)
 
