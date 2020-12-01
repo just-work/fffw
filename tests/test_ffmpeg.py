@@ -1,4 +1,3 @@
-from copy import deepcopy
 from dataclasses import dataclass
 from unittest import expectedFailure
 
@@ -401,8 +400,8 @@ class FFMPEGTestCase(BaseTestCase):
             with self.subTest(case):
                 raises, first, second = case
                 ff = FFMPEG()
-                s1 = inputs.Stream(VIDEO, deepcopy(self.source.streams[0].meta))
-                s2 = inputs.Stream(VIDEO, deepcopy(self.source.streams[1].meta))
+                s1 = inputs.Stream(VIDEO, self.source.streams[0].meta)
+                s2 = inputs.Stream(VIDEO, self.source.streams[1].meta)
 
                 ff < inputs.input_file('input.mp4', s1, s2)
                 split = ff.video | filters.Split(VIDEO)
@@ -430,10 +429,10 @@ class FFMPEGTestCase(BaseTestCase):
         """
         ff = FFMPEG()
         # Unlink metadata instances from each other
-        v1 = inputs.Stream(VIDEO, deepcopy(self.source.streams[0].meta))
-        a1 = inputs.Stream(AUDIO, deepcopy(self.source.streams[1].meta))
-        v2 = inputs.Stream(VIDEO, deepcopy(self.source.streams[0].meta))
-        a2 = inputs.Stream(AUDIO, deepcopy(self.source.streams[1].meta))
+        v1 = inputs.Stream(VIDEO, self.source.streams[0].meta)
+        a1 = inputs.Stream(AUDIO, self.source.streams[1].meta)
+        v2 = inputs.Stream(VIDEO, self.source.streams[0].meta)
+        a2 = inputs.Stream(AUDIO, self.source.streams[1].meta)
 
         in1 = ff < inputs.input_file('input.mp4', v1, a1)
         in2 = ff < inputs.input_file('input.mp4', v2, a2)
@@ -466,10 +465,10 @@ class FFMPEGTestCase(BaseTestCase):
             with self.subTest(case):
                 raises, split_pre, split_src = case
                 ff = FFMPEG()
-                v1 = inputs.Stream(VIDEO, deepcopy(self.preroll.streams[0].meta))
-                a1 = inputs.Stream(AUDIO, deepcopy(self.preroll.streams[1].meta))
-                v2 = inputs.Stream(VIDEO, deepcopy(self.source.streams[0].meta))
-                a2 = inputs.Stream(AUDIO, deepcopy(self.source.streams[1].meta))
+                v1 = inputs.Stream(VIDEO, self.preroll.streams[0].meta)
+                a1 = inputs.Stream(AUDIO, self.preroll.streams[1].meta)
+                v2 = inputs.Stream(VIDEO, self.source.streams[0].meta)
+                a2 = inputs.Stream(AUDIO, self.source.streams[1].meta)
                 ff < inputs.input_file('preroll.mp4', v1, a1)
                 ff < inputs.input_file('source.mp4', v2, a2)
                 vf1 = v1 | filters.Split(VIDEO, output_count=int(split_pre) + 1)

@@ -1,5 +1,6 @@
 import abc
 from collections import Counter
+from copy import deepcopy
 from typing import Dict, Any, TypeVar, Type, overload
 from typing import Optional, List, Union
 
@@ -408,7 +409,7 @@ class Source(Traversable, metaclass=abc.ABCMeta):
         """
         self._outputs: List[Edge] = []
         self._kind = kind
-        self._meta = meta
+        self._meta = deepcopy(meta)
 
     def __repr__(self) -> str:
         return f"Source('[{self.name}]')"
