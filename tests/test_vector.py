@@ -40,12 +40,13 @@ class VectorTestCase(BaseTestCase):
         super().setUp()
         self.video_meta = video_meta_data(width=1920, height=1080)
         self.audio_meta = audio_meta_data(bit_rate=128000)
+        self.audio_bitrate = 64000
         self.source = input_file('input.mp4',
                                  Stream(VIDEO, self.video_meta),
                                  Stream(AUDIO, self.audio_meta))
         self.output1 = output_file('output1.mp4',
                                    VideoCodec('libx264'),
-                                   AudioCodec('aac'))
+                                   AAC(bitrate=self.audio_bitrate))
         self.output2 = output_file('output2.mp5',
                                    VideoCodec('libx265'),
                                    AudioCodec('libfdk_aac'))
@@ -72,7 +73,9 @@ class VectorTestCase(BaseTestCase):
         """
         with self.subTest("input meta"):
             v = self.simd.video
+            a = self.simd.audio
             self.assertEqual(v.meta, self.video_meta)
+            self.assertEqual(a.meta, self.audio_meta)
 
         with self.subTest("filter meta"):
             v = v | Scale(1280, 720)
@@ -80,13 +83,8 @@ class VectorTestCase(BaseTestCase):
             self.assertEqual(v.meta, expected)
 
         with self.subTest("codec meta"):
-            a = self.simd.audio
-            expected_bitrate = 64000
-            output = output_file('output1.mp4',
-                                 VideoCodec('libx264'),
-                                 AAC(bitrate=expected_bitrate))
-            expected = replace(self.audio_meta, bitrate=expected_bitrate)
-            simd = SIMD(self.source, output)
+            expected = replace(self.audio_meta, bitrate=self.audio_bitrate)
+            simd = SIMD(self.source, self.output1)
             a = a > simd
             self.assertEqual(a.meta, expected)
 
@@ -103,7 +101,7 @@ class VectorTestCase(BaseTestCase):
         self.assert_simd_args(
             '-i', 'input.mp4',
             '-map', '0:v', '-c:v', 'libx264',
-            '-map', '0:a', '-c:a', 'aac',
+            '-map', '0:a', '-c:a', 'aac', '-b:a', '64000',
             'output1.mp4',
             '-map', '0:v', '-c:v', 'libx265',
             '-map', '0:a', '-c:a', 'libfdk_aac',
@@ -120,7 +118,7 @@ class VectorTestCase(BaseTestCase):
             '[0:a]volume=30.00[a:volume0];'
             '[a:volume0]asplit[aout0][aout1]',
             '-map', '0:v', '-c:v', 'libx264',
-            '-map', '[aout0]', '-c:a', 'aac',
+            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '64000',
             'output1.mp4',
             '-map', '0:v', '-c:v', 'libx265',
             '-map', '[aout1]', '-c:a', 'libfdk_aac',
@@ -137,7 +135,7 @@ class VectorTestCase(BaseTestCase):
             '[0:a]asplit[a:asplit0][aout0];'
             '[a:asplit0]volume=30.00[aout1]',
             '-map', '0:v', '-c:v', 'libx264',
-            '-map', '[aout0]', '-c:a', 'aac',
+            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '64000',
             'output1.mp4',
             '-map', '0:v', '-c:v', 'libx265',
             '-map', '[aout1]', '-c:a', 'libfdk_aac',
@@ -152,7 +150,7 @@ class VectorTestCase(BaseTestCase):
             '-filter_complex',
             '[0:a]asplit[aout0][aout1]',
             '-map', '0:v', '-c:v', 'libx264',
-            '-map', '[aout0]', '-c:a', 'aac',
+            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '64000',
             'output1.mp4',
             '-map', '0:v', '-c:v', 'libx265',
             '-map', '[aout1]', '-c:a', 'libfdk_aac',
@@ -169,7 +167,7 @@ class VectorTestCase(BaseTestCase):
             '[a:asplit0]volume=20.00[aout0];'
             '[a:asplit1]volume=30.00[aout1]',
             '-map', '0:v', '-c:v', 'libx264',
-            '-map', '[aout0]', '-c:a', 'aac',
+            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '64000',
             'output1.mp4',
             '-map', '0:v', '-c:v', 'libx265',
             '-map', '[aout1]', '-c:a', 'libfdk_aac',
@@ -185,7 +183,7 @@ class VectorTestCase(BaseTestCase):
             '[0:a]volume=30.00[a:volume0];'
             '[a:volume0]asplit[aout0][aout1]',
             '-map', '0:v', '-c:v', 'libx264',
-            '-map', '[aout0]', '-c:a', 'aac',
+            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '64000',
             'output1.mp4',
             '-map', '0:v', '-c:v', 'libx265',
             '-map', '[aout1]', '-c:a', 'libfdk_aac',
@@ -208,7 +206,7 @@ class VectorTestCase(BaseTestCase):
             '[a:asplit1]volume=30.00[a:volume1];'
             '[a:volume1]stub[aout1]',
             '-map', '0:v', '-c:v', 'libx264',
-            '-map', '[aout0]', '-c:a', 'aac',
+            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '64000',
             'output1.mp4',
             '-map', '0:v', '-c:v', 'libx265',
             '-map', '[aout1]', '-c:a', 'libfdk_aac',
@@ -242,7 +240,7 @@ class VectorTestCase(BaseTestCase):
             '[v:split4][v:scale0]overlay[vout0];'
             '[v:split5][v:scale1]overlay[vout1]',
             '-map', '[vout0]', '-c:v', 'libx264',
-            '-map', '0:a', '-c:a', 'aac',
+            '-map', '0:a', '-c:a', 'aac', '-b:a', '64000',
             'output1.mp4',
             '-map', '[vout1]', '-c:v', 'libx265',
             '-map', '0:a', '-c:a', 'libfdk_aac',
@@ -270,7 +268,7 @@ class VectorTestCase(BaseTestCase):
             '[v:split2][v:scale0]overlay[vout0];'
             '[v:split3][v:scale1]overlay[vout1]',
             '-map', '[vout0]', '-c:v', 'libx264',
-            '-map', '0:a', '-c:a', 'aac',
+            '-map', '0:a', '-c:a', 'aac', '-b:a', '64000',
             'output1.mp4',
             '-map', '[vout1]', '-c:v', 'libx265',
             '-map', '0:a', '-c:a', 'libfdk_aac',
@@ -294,7 +292,7 @@ class VectorTestCase(BaseTestCase):
             '[0:v]split[v:split0][vout0];'
             '[1:v][v:split0]overlay[vout1]',
             '-map', '[vout1]', '-c:v', 'libx264',
-            '-map', '0:a', '-c:a', 'aac',
+            '-map', '0:a', '-c:a', 'aac', '-b:a', '64000',
             'output1.mp4',
             '-map', '[vout0]', '-c:v', 'libx265',
             '-map', '0:a', '-c:a', 'libfdk_aac',
@@ -325,7 +323,7 @@ class VectorTestCase(BaseTestCase):
             '[1:v][v:split0]concat[vout1];'
             '[1:a][a:asplit0]concat=v=0:a=1:n=2[aout1]',
             '-map', '[vout1]', '-c:v', 'libx264',
-            '-map', '[aout1]', '-c:a', 'aac',
+            '-map', '[aout1]', '-c:a', 'aac', '-b:a', '64000',
             'output1.mp4',
             '-map', '[vout0]', '-c:v', 'libx265',
             '-map', '[aout0]', '-c:a', 'libfdk_aac',
@@ -348,7 +346,7 @@ class VectorTestCase(BaseTestCase):
             '[1:v]scale=w=120:h=120[v:scale0];'
             '[0:v][v:scale0]overlay[v:overlay0]',
             '-map', '[vout0]', '-c:v', 'libx264',
-            '-map', '0:a', '-c:a', 'aac',
+            '-map', '0:a', '-c:a', 'aac', '-b:a', '64000',
             'output1.mp4',
             '-map', '[vout1]', '-c:v', 'libx265',
             '-map', '0:a', '-c:a', 'libfdk_aac',
@@ -380,7 +378,7 @@ class VectorTestCase(BaseTestCase):
             '-map', '[vout0]',
             '-c:v', 'libx264',
             '-map', '[aout0]',
-            '-c:a', 'aac',
+            '-c:a', 'aac', '-b:a', '64000',
             'output1.mp4',
             '-map', '[vout1]',
             '-c:v', 'libx265',

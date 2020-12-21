@@ -93,17 +93,6 @@ class Codec(mixins.StreamValidationMixin, base.Dest, BaseWrapper):
             prev = scene
         return meta.streams
 
-    @property
-    def meta(self) -> Optional[Meta]:
-        metadata = self.get_meta_data(self)
-        if metadata is None:
-            return None
-        return self.transform(metadata)
-
-    def transform(self, metadata: Meta) -> Meta:
-        """ Apply filter changes to codec metadata."""
-        return metadata
-
 
 @dataclass
 class Output(BaseWrapper):

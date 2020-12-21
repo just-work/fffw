@@ -59,7 +59,14 @@ class Dest(Traversable):
 
     @property
     def meta(self) -> Optional[Meta]:
-        return self.get_meta_data(self)
+        metadata = self.get_meta_data(self)
+        if metadata is None:
+            return None
+        return self.transform(metadata)
+
+    def transform(self, *metadata: Meta) -> Meta:
+        """ Apply codec changes to stream metadata."""
+        return metadata[0]
 
     @property
     def edge(self) -> Optional["Edge"]:
