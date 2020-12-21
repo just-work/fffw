@@ -10,6 +10,15 @@ from tests.test_ffmpeg import Volume
 
 
 @dataclass
+class AAC(AudioCodec):
+    codec = 'aac'
+    bitrate: int = param(name='b', stream_suffix=True)
+
+    def transform(self, metadata: Meta) -> Meta:
+        return replace(metadata, bitrate=self.bitrate)
+
+
+@dataclass
 class StubFilter(AudioFilter):
     filter = 'stub'
     p: int = param()
@@ -30,7 +39,7 @@ class VectorTestCase(BaseTestCase):
     def setUp(self) -> None:
         super().setUp()
         self.video_meta = video_meta_data(width=1920, height=1080)
-        self.audio_meta = audio_meta_data()
+        self.audio_meta = audio_meta_data(bit_rate=128000)
         self.source = input_file('input.mp4',
                                  Stream(VIDEO, self.video_meta),
                                  Stream(AUDIO, self.audio_meta))
@@ -71,9 +80,15 @@ class VectorTestCase(BaseTestCase):
             self.assertEqual(v.meta, expected)
 
         with self.subTest("codec meta"):
-            simd = SIMD(self.source, self.output1)
-            x = v > simd
-            self.assertEqual(x.meta, expected)
+            a = self.simd.audio
+            expected_bitrate = 64000
+            output = output_file('output1.mp4',
+                                 VideoCodec('libx264'),
+                                 AAC(bitrate=expected_bitrate))
+            expected = replace(self.audio_meta, bitrate=expected_bitrate)
+            simd = SIMD(self.source, output)
+            a = a > simd
+            self.assertEqual(a.meta, expected)
 
     def test_vector_metadata_for_multiple_streams(self):
         """
