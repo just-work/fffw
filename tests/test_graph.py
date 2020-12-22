@@ -47,13 +47,18 @@ class FilterGraphTestCase(TestCase):
             frame_rate=10.0,
             frame_count=3000
         )
+        self.source_audio_duration = 200.0
+        self.source_sampling_rate = 48000
+        self.source_samples_count = (self.source_audio_duration *
+                                     self.source_sampling_rate)
+        self.source_audio_bitrate = 128000
         self.audio_metadata = audio_meta_data(
-            duration=200.0,
-            sampling_rate=48000,
-            samples_count=200.0 * 48000,
-            bit_rate=128000,
+            duration=self.source_audio_duration,
+            sampling_rate=self.source_sampling_rate,
+            samples_count=self.source_samples_count,
+            bit_rate=self.source_audio_bitrate,
         )
-        self.audio_bitrate = 64000
+        self.target_audio_bitrate = 64000
 
         self.source = inputs.Input(
             input_file='input.mp4',
@@ -62,7 +67,7 @@ class FilterGraphTestCase(TestCase):
         self.output = outputs.output_file(
             'output.mp4',
             codecs.VideoCodec('libx264'),
-            FdkAAC(bitrate=self.audio_bitrate))
+            FdkAAC(bitrate=self.target_audio_bitrate))
         self.input_list = inputs.InputList((self.source,))
         self.output_list = outputs.OutputList((self.output,))
         self.fc = FilterComplex(self.input_list, self.output_list)
@@ -382,7 +387,7 @@ class FilterGraphTestCase(TestCase):
         with self.subTest('codec with transform'):
             self.source.audio > self.output
             am = cast(AudioMeta, self.output.codecs[1].meta)
-            self.assertEqual(am.bitrate, self.audio_bitrate)
+            self.assertEqual(am.bitrate, self.target_audio_bitrate)
 
         with self.subTest('no input metadata'):
             no_meta_input = inputs.input_file('input.mp4')
