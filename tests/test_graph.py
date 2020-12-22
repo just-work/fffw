@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import cast
 from unittest import TestCase
 
@@ -6,6 +6,7 @@ from fffw.encoding import inputs, outputs, codecs
 from fffw.encoding.complex import FilterComplex
 from fffw.encoding.filters import *
 from fffw.graph import *
+from fffw.wrapper import param
 
 
 @dataclass
@@ -24,6 +25,15 @@ class ScaleCuda(Scale):
     hardware = 'cuda'
 
 
+@dataclass
+class FdkAAC(codecs.AudioCodec):
+    codec = 'libfdk_aac'
+    bitrate: int = param(name='b', stream_suffix=True)
+
+    def transform(self, metadata: Meta) -> Meta:
+        return replace(metadata, bitrate=self.bitrate)
+
+
 class FilterGraphTestCase(TestCase):
 
     def setUp(self) -> None:
@@ -37,10 +47,18 @@ class FilterGraphTestCase(TestCase):
             frame_rate=10.0,
             frame_count=3000
         )
+        self.source_audio_duration = 200.0
+        self.source_sampling_rate = 48000
+        self.source_samples_count = (self.source_audio_duration *
+                                     self.source_sampling_rate)
+        self.source_audio_bitrate = 128000
         self.audio_metadata = audio_meta_data(
-            duration=200.0,
-            sampling_rate=48000,
-            samples_count=200 * 48000)
+            duration=self.source_audio_duration,
+            sampling_rate=self.source_sampling_rate,
+            samples_count=self.source_samples_count,
+            bit_rate=self.source_audio_bitrate,
+        )
+        self.target_audio_bitrate = 64000
 
         self.source = inputs.Input(
             input_file='input.mp4',
@@ -49,7 +67,7 @@ class FilterGraphTestCase(TestCase):
         self.output = outputs.output_file(
             'output.mp4',
             codecs.VideoCodec('libx264'),
-            codecs.AudioCodec('libfdk_aac'))
+            FdkAAC(bitrate=self.target_audio_bitrate))
         self.input_list = inputs.InputList((self.source,))
         self.output_list = outputs.OutputList((self.output,))
         self.fc = FilterComplex(self.input_list, self.output_list)
@@ -361,3 +379,26 @@ class FilterGraphTestCase(TestCase):
             s | Upload(device=cuda) | UniversalFilter()
         except ValueError:  # pragma: no cover
             self.fail("hardware validation unexpectedly failed")
+
+    def test_codec_metadata_transform(self):
+        """
+        Codecs parameters applied to stream metadata when using transform.
+        """
+        with self.subTest('codec with transform'):
+            self.source.audio > self.output
+            am = cast(AudioMeta, self.output.codecs[1].meta)
+            self.assertEqual(am.bitrate, self.target_audio_bitrate)
+
+        with self.subTest('no input metadata'):
+            no_meta_input = inputs.input_file('input.mp4')
+            output = outputs.output_file('output.mp4',
+                                         codecs.AudioCodec('aac'))
+            no_meta_input.audio > output.audio
+            self.assertIsNone(output.codecs[0].meta)
+
+        with self.subTest('no transform'):
+            output = outputs.output_file('output.mp4',
+                                         codecs.AudioCodec('aac'))
+            self.source.audio > output.audio
+            am = cast(AudioMeta, output.codecs[0].meta)
+            self.assertEqual(am.bitrate, self.audio_metadata.bitrate)
