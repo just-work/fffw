@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from itertools import chain
 from typing import List, cast, Optional, Iterable, Any
 
-from fffw.graph.meta import AUDIO, VIDEO, StreamType, Meta
+from fffw.graph.meta import AUDIO, VIDEO, StreamType
 from fffw.graph import base
 from fffw.wrapper import BaseWrapper, ensure_binary, param
 from fffw.encoding import mixins

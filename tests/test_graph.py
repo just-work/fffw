@@ -50,7 +50,7 @@ class FilterGraphTestCase(TestCase):
         self.audio_metadata = audio_meta_data(
             duration=200.0,
             sampling_rate=48000,
-            samples_count=200 * 48000,
+            samples_count=200.0 * 48000,
             bit_rate=128000,
         )
         self.audio_bitrate = 64000
