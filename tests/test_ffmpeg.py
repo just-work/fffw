@@ -169,6 +169,24 @@ class FFMPEGTestCase(BaseTestCase):
             'output.mp4'
         )
 
+    def test_bypass_disabled_filter(self):
+        """ Audio stream bypass mode."""
+        ff = self.ffmpeg
+        ff < self.source
+
+        scale = filters.Scale(640, 360)
+        scale.enabled = False
+        ff.video | scale > self.video_codec
+
+        ff > self.output
+
+        self.assert_ffmpeg_args(
+            '-i', 'source.mp4',
+            '-map', '0:v', '-c:v', 'libx264', '-b:v', '3600000',
+            '-map', '0:a', '-c:a', 'aac', '-b:a', '192000',
+            'output.mp4'
+        )
+
     def test_no_audio_if_no_codecs_found(self):
         """ If no audio codecs specified, set -an flag for an output."""
         ff = self.ffmpeg

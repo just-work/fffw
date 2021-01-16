@@ -55,6 +55,11 @@ class Dest(Traversable):
         """
         if self._edge is None:
             raise RuntimeError("Dest not connected")
+        name = self._edge.name
+        if ':' in name:
+            # dest is connected directly to the source, name is rendered from
+            # source ffmpeg stream specifier
+            return name
         return f'[{self._edge.name}]'
 
     @property
@@ -137,10 +142,6 @@ class Edge(Traversable):
         to Dest, or a  name of last enabled filter before (and including)
         current node.
         """
-        if isinstance(self.output, Dest):
-            # For final edges name is generated from destination node, like
-            # [vout0] or [aout1]
-            return Namer.name(self)
         # For edges connected to other filters disabled source nodes are skipped
         edge = self
         node = self.input
@@ -149,6 +150,15 @@ class Edge(Traversable):
                 raise RuntimeError("Node input is None")
             edge = node.inputs[0]
             node = edge.input
+        if isinstance(self.output, Dest):
+            if isinstance(node, Source):
+                # If a Dest is connected directly to a source, render source
+                # node name as ffmpeg stream specifier, i.e. '0:v'
+                return node.name
+            else:
+                # For final edges name is generated from destination node, like
+                # [vout0] or [aout1]
+                return Namer.name(self)
         return Namer.name(edge)
 
     def _connect_source(self, src: InputType) -> None:
