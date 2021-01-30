@@ -316,6 +316,15 @@ class FilterGraphTestCase(TestCase):
         self.assertEqual(vm.duration, TS(4.0))
         self.assertEqual(vm.frames, 1.0 * vm.frame_rate)
 
+    def test_video_trim_end_of_stream(self):
+        """
+        If Trim ends after stream end, duration is set to min value.
+        """
+        f = self.source | Trim(VIDEO, start=5.0, end=400.0) | SetPTS(VIDEO)
+        f > self.output
+        vm = cast(VideoMeta, self.output.codecs[0].get_meta_data())
+        self.assertEqual(vm.duration, TS(295.0))
+
     def test_audio_trim_metadata(self):
         """
         Trim filter sets start and changes stream duration.
