@@ -261,6 +261,8 @@ class Trim(AutoFilter):
         meta = metadata[0]
         scenes = []
         streams: List[str] = []
+        start = self.start or TS(0)
+        end = min(meta.duration, self.end or TS(0))
         for scene in meta.scenes:
             if scene.stream and (not streams or streams[0] != scene.stream):
                 # Adding an input stream without contiguous duplicates.
@@ -279,12 +281,12 @@ class Trim(AutoFilter):
                                     duration=end - start))
 
         kwargs = {
-            'start': self.start,
-            'duration': self.end,
+            'start': start,
+            'duration': end,
             'scenes': scenes,
             'streams': streams
         }
-        interval = cast(TS, self.end) - cast(TS, self.start)
+        interval = cast(TS, end) - cast(TS, start)
         if isinstance(meta, AudioMeta):
             kwargs['samples'] = round(meta.sampling_rate * interval)
         if isinstance(meta, VideoMeta):
