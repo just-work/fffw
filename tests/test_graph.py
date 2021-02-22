@@ -326,7 +326,7 @@ class FilterGraphTestCase(TestCase):
         assert len(expected) == 3
         current_duration = TS(0)
         for scene in expected:
-            scene.start += current_duration
+            scene.position += current_duration
             current_duration += scene.duration
         self.assertListEqual(c.meta.scenes, expected)
 
