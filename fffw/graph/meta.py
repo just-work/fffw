@@ -143,6 +143,7 @@ class TS(float):
             value = seconds + fractional
         return super().__new__(cls, value)  # type: ignore
 
+    __hash__ = float.__hash__
     __add__ = ts(float.__add__)
     __radd__ = ts(float.__radd__)
     __sub__ = ts(float.__sub__)
