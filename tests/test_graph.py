@@ -389,6 +389,15 @@ class FilterGraphTestCase(TestCase):
         except ValueError:  # pragma: no cover
             self.fail("hardware validation unexpectedly failed")
 
+    def test_upload_filter_clone(self):
+        """ While cloning Upload filter should preserve Device instance."""
+        cuda = meta.Device(hardware='cuda', name='foo')
+        upload = self.source.video | Upload(device=cuda)
+
+        upload = upload.clone(2)[1]
+        vm = cast(VideoMeta, upload.meta)
+        self.assertEqual(vm.device, cuda)
+
     def test_codec_metadata_transform(self):
         """
         Codecs parameters applied to stream metadata when using transform.
