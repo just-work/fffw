@@ -367,8 +367,13 @@ class Concat(Filter):
         streams: List[str] = []
         frames: int = 0
         for meta in metadata:
+            for scene in meta.scenes:
+                scenes.append(Scene(
+                    stream=scene.stream,
+                    duration=scene.duration,
+                    start=scene.start + duration
+                ))
             duration += meta.duration
-            scenes.extend(meta.scenes)
             for stream in meta.streams:
                 if not streams or streams[-1] != stream:
                     # Add all streams for each concatenated metadata and remove
