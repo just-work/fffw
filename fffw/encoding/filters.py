@@ -432,6 +432,12 @@ class Upload(VideoFilter):
     extra_hw_frames: int = param(default=64, init=False)
     device: Device = param(skip=True)
 
+    def __post_init__(self) -> None:
+        if isinstance(self.device, dict):
+            # deserialize back after filter cloning
+            self.device = Device(**self.device)
+        super().__post_init__()
+
     def transform(self, *metadata: Meta) -> VideoMeta:
         """ Marks a stream as uploaded to a device."""
         meta = ensure_video(*metadata)
