@@ -264,7 +264,9 @@ class Scene:
     duration: TS
     """ Stream duration."""
     start: TS
-    """ First frame/sample timestamp for stream."""
+    """ First frame/sample timestamp in source stream."""
+    position: TS
+    """ Position of scene in current stream."""
 
     @property
     def end(self) -> TS:
@@ -386,6 +388,7 @@ def audio_meta_data(**kwargs: Any) -> AudioMeta:
         stream=stream,
         duration=duration,
         start=start,
+        position=start,
     )
 
     return AudioMeta(
@@ -425,8 +428,9 @@ def video_meta_data(**kwargs: Any) -> VideoMeta:
     start = TS(kwargs.get('start', 0))
     scene = Scene(
         stream=stream,
-        start=start,
         duration=duration,
+        start=start,
+        position=start,
     )
     return VideoMeta(
         scenes=[scene],

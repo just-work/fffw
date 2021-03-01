@@ -269,16 +269,20 @@ class Trim(AutoFilter):
                 streams.append(scene.stream)
 
             # intersect scene with trim interval
-            start = cast(TS, max(self.start, scene.start))
-            end = cast(TS, min(self.end, scene.end))
+            start = cast(TS, max(self.start, scene.position))
+            end = cast(TS, min(self.end, scene.position + scene.duration))
 
             if start < end:
                 # If intersection is not empty, add intersection to resulting
                 # scenes list.
                 # This will allow to detect buffering when multiple scenes are
                 # reordered in same file: input[3:4] + input[1:2]
-                scenes.append(Scene(stream=scene.stream, start=start,
-                                    duration=end - start))
+                offset = start - scene.position
+                scenes.append(Scene(
+                    stream=scene.stream,
+                    start=scene.start + offset,
+                    position=scene.position + offset,
+                    duration=end - start))
 
         kwargs = {
             'start': start,
@@ -367,8 +371,14 @@ class Concat(Filter):
         streams: List[str] = []
         frames: int = 0
         for meta in metadata:
+            for scene in meta.scenes:
+                scenes.append(Scene(
+                    stream=scene.stream,
+                    duration=scene.duration,
+                    start=scene.start,
+                    position=scene.position + duration,
+                ))
             duration += meta.duration
-            scenes.extend(meta.scenes)
             for stream in meta.streams:
                 if not streams or streams[-1] != stream:
                     # Add all streams for each concatenated metadata and remove

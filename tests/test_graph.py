@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass, replace
 from typing import cast
 from unittest import TestCase
@@ -301,6 +302,33 @@ class FilterGraphTestCase(TestCase):
                          am.duration)
         self.assertEqual(round(am.duration * audio_meta.sampling_rate),
                          am.samples)
+
+    def test_concat_scenes(self):
+        """
+        Concat shifts scenes start/end timestamps.
+        """
+        video_meta = video_meta_data(duration=1000.0,
+                                     frame_count=10000,
+                                     frame_rate=10.0)
+        vs1 = inputs.Stream(VIDEO, meta=video_meta)
+        vs2 = inputs.Stream(VIDEO, meta=video_meta)
+        vs3 = inputs.Stream(VIDEO, meta=video_meta)
+
+        c = Concat(VIDEO, input_count=3)
+        vs1 | c
+        vs2 | c
+        vs3 | c
+        expected = (
+            deepcopy(vs1.meta.scenes) +
+            deepcopy(vs2.meta.scenes) +
+            deepcopy(vs3.meta.scenes)
+        )
+        assert len(expected) == 3
+        current_duration = TS(0)
+        for scene in expected:
+            scene.position += current_duration
+            current_duration += scene.duration
+        self.assertListEqual(c.meta.scenes, expected)
 
     def test_video_trim_metadata(self):
         """
