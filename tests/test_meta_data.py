@@ -303,6 +303,11 @@ class TimeStampTestCase(TestCase):
         self.assertIsInstance(ts, meta.TS)
         self.assertAlmostEqual(ts.total_seconds(), expected, places=4)
 
+    def test_ts_hashable(self):
+        marker = object()
+        data = {float(self.ts): marker}
+        self.assertIs(data.get(self.ts), marker)
+
     def test_ts_float(self):
         self.assertEqual(float(self.ts), self.td.total_seconds())
 
