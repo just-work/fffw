@@ -45,6 +45,17 @@ class WrapperTestCase(TestCase):
         ret, out, err = p.run('100', timeout=0.01)
         self.assertEqual(ret, -9)
 
+    def test_child_timeout_process_missing(self):
+        """
+        Handle ProcessLookupError if process exited just before timeout.
+        """
+        p = Python(module='tests.test_wrapper')
+        with mock.patch('asyncio.subprocess.Process.kill',
+                        side_effect=ProcessLookupError) as kill_mock:
+            ret, out, err = p.run('100', timeout=0.01)
+        kill_mock.assert_called_once_with()
+        self.assertEqual(ret, 100)
+
 
 class UniversalLineReaderTestCase(TestCase):
     def setUp(self) -> None:
