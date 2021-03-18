@@ -187,7 +187,10 @@ class Runner:
                     )),
                     timeout=self.timeout)
             except asyncio.TimeoutError:
-                self.proc.kill()
+                try:
+                    self.proc.kill()
+                except ProcessLookupError:
+                    pass
         return (cast(int, self.proc.returncode),
                 self.output.getvalue(),
                 self.errors.getvalue())
