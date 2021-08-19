@@ -268,6 +268,17 @@ class MetaDataTestCase(TestCase):
 
         self.assertTrue(fields(ExtendedVideoMeta))
 
+    def test_mkv_stream_duration(self):
+        """ MKV duration is stored as float and this is a problem for TS constuctor."""
+        original = meta.from_media_info(self.media_info)
+        s = SAMPLE
+        s = s.replace('<Duration>6742</Duration>', '<Duration>6742.000000</Duration>')
+        s = s.replace('<Duration>6740</Duration>', '<Duration>6740.000000</Duration>')
+        streams = meta.from_media_info(MediaInfo(s))
+        self.assertEqual(len(original), len(streams))
+        for s, o in zip(streams, original):
+            self.assertEqual(s.duration, o.duration)
+
 
 class TimeStampTestCase(TestCase):
     td: timedelta

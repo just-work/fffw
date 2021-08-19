@@ -381,9 +381,28 @@ class AudioMeta(Meta):
         assert abs(self.samples - interval * self.sampling_rate) <= 1
 
 
+def maybe_parse_duration(value: Union[str, float, int, None]) -> TS:
+    """
+    Parses duration from mediainfo output, if necessary.
+
+    Some containers store float value and some int, but in both cases (which is different from ffmpeg) value is
+    counted in milliseconds.
+    """
+    if value is None:
+        return TS(0)
+    if isinstance(value, str):
+        try:
+            value = int(value)
+        except ValueError:
+            # prepare seconds for TS constructor
+            value = float(value) / 1000
+    return TS(value)
+
+
 def audio_meta_data(**kwargs: Any) -> AudioMeta:
+    duration = maybe_parse_duration(kwargs.get('duration'))
+
     stream = kwargs.get('stream')
-    duration = TS(kwargs.get('duration', 0))
     start = TS(kwargs.get('start', 0))
     scene = Scene(
         stream=stream,
@@ -405,7 +424,7 @@ def audio_meta_data(**kwargs: Any) -> AudioMeta:
 
 
 def video_meta_data(**kwargs: Any) -> VideoMeta:
-    duration = TS(kwargs.get('duration', 0))
+    duration = maybe_parse_duration(kwargs.get('duration'))
     width = int(kwargs.get('width', 0))
     height = int(kwargs.get('height', 0))
     par = float(kwargs.get('pixel_aspect_ratio', 1.0))
