@@ -2,9 +2,10 @@ import json
 from copy import deepcopy
 from dataclasses import dataclass, fields
 from datetime import timedelta
+from itertools import product
 from typing import Iterable, Tuple, Any
 from unittest import TestCase
-from itertools import product
+
 from pymediainfo import MediaInfo  # type: ignore
 
 from fffw.graph import meta
