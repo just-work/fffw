@@ -393,8 +393,8 @@ class Concat(Filter):
             # input, samples count corresponds duration.
             kwargs['samples'] = round(meta.sampling_rate * duration)
         if isinstance(meta, VideoMeta):
-            # Sum frames count from all input streams
-            kwargs['frames'] = frames
+            # Recompute frames from frame rate and duration.
+            kwargs['frames'] = round(meta.frame_rate * duration)
         return replace(metadata[0], **kwargs)
 
 
