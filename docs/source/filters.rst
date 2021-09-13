@@ -126,6 +126,7 @@ Format
 Example
 ^^^^^^^
 .. code-block:: python
+
   hw = source | Format('nv12') | Upload(Device(hardware='cuda', name='foo'))
 
 Upload
