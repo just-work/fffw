@@ -89,7 +89,7 @@ class Dest(Traversable):
 
         :param edge: edge to connect output stream to.
         :type edge: Edge
-        :return None
+        :return Edge: connected edge
         """
         if not isinstance(edge, Edge):
             raise ValueError("Only edge allowed")
@@ -139,8 +139,8 @@ class Edge(Traversable):
         Property must be accessed within Namer context.
 
         :returns: edge identifier generated from output node name if connected
-        to Dest, or a  name of last enabled filter before (and including)
-        current node.
+                  to Dest, or a name of last enabled filter before
+                  (and including) current node.
         """
         # For edges connected to other filters disabled source nodes are skipped
         edge = self
