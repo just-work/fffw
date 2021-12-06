@@ -64,4 +64,5 @@ target/
 .idea/
 
 .mypy_cache/
+.pytest_cache/
 .dmypy.json
