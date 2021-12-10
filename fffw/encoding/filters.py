@@ -200,7 +200,7 @@ class Split(AutoFilter):
     Audio or video split filter.
 
     Splits audio or video stream to multiple output streams (2 by default).
-    Unlike ffmpeg `split` filter this one does not allow to pass multiple
+    Unlike ffmpeg `split` filter this one does not allow passing multiple
     inputs.
 
     :arg kind: stream type.
@@ -208,7 +208,7 @@ class Split(AutoFilter):
     """
     filter = 'split'
 
-    output_count: int = 2
+    output_count: int = 2  # used only as constructor parameter
 
     @property
     def enabled(self) -> bool:
@@ -289,7 +289,7 @@ class Trim(AutoFilter):
             if start < end:
                 # If intersection is not empty, add intersection to resulting
                 # scenes list.
-                # This will allow to detect buffering when multiple scenes are
+                # This will allow detecting buffering when multiple scenes are
                 # reordered in same file: input[3:4] + input[1:2]
                 offset = start - scene.position
                 scenes.append(Scene(

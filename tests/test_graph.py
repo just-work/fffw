@@ -468,3 +468,40 @@ class FilterGraphTestCase(TestCase):
 
         self.assertIsInstance(self.source.video > codecs.Copy(kind=VIDEO),
                               codecs.Copy)
+
+    def test_split_enable(self):
+        """
+        Disabled split is omitted in filter graph definition.
+        """
+        split = self.source.video | Split(VIDEO, output_count=1)
+        self.assertFalse(split.enabled)
+        split.enabled = True
+        # you can't explicitly enable a split with single output
+        self.assertFalse(split.enabled)
+
+        split = self.source.video | Split(VIDEO, output_count=2)
+        self.assertTrue(split.enabled)
+        with self.assertRaises(ValueError):
+            split.enabled = False
+
+    def test_split_shrink(self):
+        """
+        Split can remove output edge from itself.
+        """
+        split = self.source.video | Split(VIDEO, output_count=2)
+        s1 = split | Scale(1280, 720)
+        s2 = split | Scale(1920, 1080)
+
+        split.unsplit(s1.inputs[0])
+
+        # one output left
+        self.assertListEqual(split.outputs, [s2.inputs[0]])
+        # split is disabled because of single output
+        self.assertFalse(split.enabled)
+
+    def test_split_args(self):
+        """
+        Split args contain only a number of output edges.
+        """
+        split = self.source.video | Split(VIDEO, output_count=3)
+        self.assertEqual(split.args, '3')
