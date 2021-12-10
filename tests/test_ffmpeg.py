@@ -254,7 +254,7 @@ class FFMPEGTestCase(BaseTestCase):
         ff = self.ffmpeg
         ff < self.source
 
-        cv0 = codecs.VideoCodec('copy')
+        cv0 = codecs.Copy(kind=VIDEO)
         ca0 = codecs.AudioCodec('aac', bitrate=128000)
 
         ff.audio | Volume(20) > ca0
@@ -280,8 +280,8 @@ class FFMPEGTestCase(BaseTestCase):
 
         ff > self.output
 
-        cv1 = codecs.VideoCodec('copy')
-        ca1 = codecs.AudioCodec('copy')
+        cv1 = codecs.Copy(kind=VIDEO)
+        ca1 = codecs.Copy(kind=AUDIO)
         out1 = outputs.output_file('/tmp/out1.flv', cv1, ca1)
         v > cv1
         a > ca1
@@ -305,8 +305,8 @@ class FFMPEGTestCase(BaseTestCase):
         ff = self.ffmpeg
         ff < self.source
 
-        cv0 = codecs.VideoCodec('copy')
-        ca0 = codecs.AudioCodec('copy')
+        cv0 = codecs.Copy(kind=VIDEO)
+        ca0 = codecs.Copy(kind=AUDIO)
         ff > outputs.output_file('/tmp/copy.flv', cv0, ca0)
 
         cv1 = codecs.VideoCodec('libx264')

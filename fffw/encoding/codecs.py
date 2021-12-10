@@ -1,9 +1,13 @@
-from fffw.graph.meta import VIDEO, AUDIO
+from dataclasses import field, dataclass
+
 from fffw.encoding import outputs
+from fffw.graph import base
+from fffw.graph.meta import VIDEO, AUDIO, StreamType
 
 __all__ = [
     'AudioCodec',
     'VideoCodec',
+    'Copy',
 ]
 
 
@@ -43,3 +47,19 @@ class AudioCodec(outputs.Codec):
     >>> copy = AudioCodec('copy')
     """
     kind = AUDIO
+
+
+@dataclass
+class Copy(outputs.Codec):
+    codec = 'copy'
+    kind: StreamType = field(metadata={'skip': True}, default=None)
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if self.kind is None:
+            raise ValueError('codec kind not passed')
+
+    def connect_edge(self, edge: base.Edge) -> base.Edge:
+        if not isinstance(edge.input, base.Source):
+            raise ValueError('copy codec can be connected only to source')
+        return super().connect_edge(edge)

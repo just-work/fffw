@@ -448,3 +448,23 @@ class FilterGraphTestCase(TestCase):
             self.source.audio > output.audio
             am = cast(AudioMeta, output.codecs[0].meta)
             self.assertEqual(am.bitrate, self.audio_metadata.bitrate)
+
+    def test_copy_codec_kind_required(self):
+        """
+        As codec is initially added to output file, it's kind is required.
+        """
+        with self.assertRaises(ValueError):
+            codecs.Copy()
+
+        self.assertEqual(codecs.Copy(kind=VIDEO).kind, VIDEO)
+        self.assertEqual(codecs.Copy(kind=AUDIO).kind, AUDIO)
+
+    def test_copy_codec_filter_forbidden(self):
+        """
+        Copy codec must use a stream as source, not a filter from graph.
+        """
+        with self.assertRaises(ValueError):
+            self.source.video | Scale(1920, 1080) > codecs.Copy(kind=VIDEO)
+
+        self.assertIsInstance(self.source.video > codecs.Copy(kind=VIDEO),
+                              codecs.Copy)
