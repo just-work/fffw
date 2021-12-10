@@ -214,6 +214,11 @@ class Split(AutoFilter):
     def enabled(self) -> bool:
         return len(self.outputs) > 1
 
+    @enabled.setter
+    def enabled(self, value: bool) -> None:
+        if len(self.outputs) > 1:
+            raise ValueError("can't bypass split with more than one output")
+
     @property
     def args(self) -> str:
         """
@@ -232,7 +237,7 @@ class Split(AutoFilter):
         for filtered streams.
         """
         self.outputs.remove(edge)
-        return self.inputs[0]
+        return cast(base.Edge, self.inputs[0])
 
 
 @dataclass
