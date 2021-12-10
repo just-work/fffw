@@ -1,9 +1,14 @@
-from fffw.graph.meta import VIDEO, AUDIO
+from dataclasses import field, dataclass
+from typing import NoReturn
+
 from fffw.encoding import outputs
+from fffw.graph import base
+from fffw.graph.meta import VIDEO, AUDIO, StreamType
 
 __all__ = [
     'AudioCodec',
     'VideoCodec',
+    'Copy',
 ]
 
 
@@ -43,3 +48,25 @@ class AudioCodec(outputs.Codec):
     >>> copy = AudioCodec('copy')
     """
     kind = AUDIO
+
+
+def _not_implemented() -> NoReturn:
+    """
+    A hack around MyPy dataclass handling.
+    """
+    raise NotImplementedError()
+
+
+@dataclass
+class Copy(outputs.Codec):
+    codec = 'copy'
+    kind: StreamType = field(metadata={'skip': True},
+                             # There should be no default, but base class
+                             # already defines fields with default and thus
+                             # dataclass can't be created.
+                             default_factory=_not_implemented)
+
+    def connect_edge(self, edge: base.Edge) -> base.Edge:
+        if not isinstance(edge.input, base.Source):
+            raise ValueError('copy codec can be connected only to source')
+        return super().connect_edge(edge)
