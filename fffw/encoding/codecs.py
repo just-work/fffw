@@ -66,11 +66,6 @@ class Copy(outputs.Codec):
                              # dataclass can't be created.
                              default_factory=_not_implemented)
 
-    def __post_init__(self) -> None:
-        super().__post_init__()
-        if self.kind not in (VIDEO, AUDIO):
-            raise ValueError('codec kind not passed')
-
     def connect_edge(self, edge: base.Edge) -> base.Edge:
         if not isinstance(edge.input, base.Source):
             raise ValueError('copy codec can be connected only to source')
