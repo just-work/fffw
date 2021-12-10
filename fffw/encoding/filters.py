@@ -226,6 +226,10 @@ class Split(AutoFilter):
     def unsplit(self, edge: base.Edge) -> base.Edge:
         """
         Removes unused edge from outputs and returns input edge instead.
+
+        This is used for "copy" codec, because it must be able to remove a
+        graph path from input stream to an output codec, as copy is not allowed
+        for filtered streams.
         """
         self.outputs.remove(edge)
         return self.inputs[0]

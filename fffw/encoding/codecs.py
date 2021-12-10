@@ -67,6 +67,21 @@ class Copy(outputs.Codec):
                              default_factory=_not_implemented)
 
     def connect_edge(self, edge: base.Edge) -> base.Edge:
+        """
+        Cuts out a graph path that leads from input stream to copy codec.
+
+        * copy codec cannot be used with filtered frames because they are not
+          even decoded
+        * when using vectorized processing to construct processing graph,
+          intermediate vectors don't know whether their output will be connected
+          to a copy codec or to another filter
+        * so input streams for complex vectors are connected to split filters
+        * to copy codec properly, after all there split filters must be
+          disconnected from input stream
+        * if there is any another filter except split, it's an error
+
+        :returns: edge pointing to an input stream
+        """
         src = edge.input
         while isinstance(src, filters.Split):
             # shrink split output list until we got source stream, because

@@ -373,10 +373,9 @@ class Vector(tuple):
             if not enabled:
                 destinations[i] = None
 
-        # handle direct connections
+        # connect any codec so an input stream directly without useless splits
         for i, (s, d) in enumerate(zip(sources, destinations)):
-            if (isinstance(s, base.Source) and
-                    isinstance(d, base.Dest)):
+            if isinstance(s, base.Source) and isinstance(d, base.Dest):
                 # Stream to Codec direct mapping
                 s.connect_dest(d)
                 # Removing src from split-based connections
