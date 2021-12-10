@@ -121,6 +121,28 @@ class VectorTestCase(BaseTestCase):
             '-map', '0:a', '-c:a', 'libfdk_aac',
             'output2.mp5')
 
+    def test_single_quality_copy_pass_through(self):
+        """
+        Copy codec is connected directly to input with vectorized filters.
+        """
+        self.output2.codecs[0] = codecs.Copy(kind=VIDEO)
+        src = Vector(self.source.video)
+        params = [(1920, 1080), None]
+        scaled = src.connect(Scale, params=params, mask=[True, False])
+        scaled > self.simd
+        Vector(self.source.audio) > self.simd
+
+        self.assert_simd_args(
+            '-i', 'input.mp4',
+            '-filter_complex',
+            '[0:v]scale=w=1920:h=1080[vout0]',
+            '-map', '[vout0]', '-c:v', 'libx264',
+            '-map', '0:a', '-c:a', 'aac', '-b:a', '64000',
+            'output1.mp4',
+            '-map', '0:v', '-c:v', 'copy',
+            '-map', '0:a', '-c:a', 'libfdk_aac',
+            'output2.mp5')
+
     def test_same_filter_for_all_streams(self):
         """ Single filter can be applied to each stream in vector."""
         cursor = self.simd | Volume(30)
@@ -405,6 +427,7 @@ class VectorTestCase(BaseTestCase):
         """
         A filter with `init=False` param is cloned correctly.
         """
+
         @dataclass
         class MyFilter(filters.VideoFilter):
             my_flag: bool = param(init=False, default=True)

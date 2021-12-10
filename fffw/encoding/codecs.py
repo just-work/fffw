@@ -1,7 +1,7 @@
 from dataclasses import field, dataclass
 from typing import NoReturn
 
-from fffw.encoding import outputs
+from fffw.encoding import outputs, filters
 from fffw.graph import base
 from fffw.graph.meta import VIDEO, AUDIO, StreamType
 
@@ -67,6 +67,12 @@ class Copy(outputs.Codec):
                              default_factory=_not_implemented)
 
     def connect_edge(self, edge: base.Edge) -> base.Edge:
-        if not isinstance(edge.input, base.Source):
+        src = edge.input
+        while isinstance(src, filters.Split):
+            # shrink split output list until we got source stream, because
+            # copy codec can't be applied to a filter.
+            edge = src.unsplit(edge)
+            src = edge.input
+        if not isinstance(src, base.Source):
             raise ValueError('copy codec can be connected only to source')
         return super().connect_edge(edge)

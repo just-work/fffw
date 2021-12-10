@@ -210,21 +210,25 @@ class Split(AutoFilter):
 
     output_count: int = 2
 
-    def __post_init__(self) -> None:
-        """
-        Disables filter if `output_count` equals 1 (no real split is preformed).
-        """
-        self.enabled = self.output_count > 1
-        super().__post_init__()
+    @property
+    def enabled(self) -> bool:
+        return len(self.outputs) > 1
 
     @property
     def args(self) -> str:
         """
         :returns: split/asplit filter parameters
         """
-        if self.output_count == 2:
+        if len(self.outputs) == 2:
             return ''
-        return str(self.output_count)
+        return str(len(self.outputs))
+
+    def unsplit(self, edge: base.Edge) -> base.Edge:
+        """
+        Removes unused edge from outputs and returns input edge instead.
+        """
+        self.outputs.remove(edge)
+        return self.inputs[0]
 
 
 @dataclass
