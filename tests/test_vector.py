@@ -14,8 +14,8 @@ class AAC(AudioCodec):
     codec = 'aac'
     bitrate: int = param(name='b', stream_suffix=True)
 
-    def transform(self, metadata: Meta) -> Meta:
-        return replace(metadata, bitrate=self.bitrate)
+    def transform(self, *metadata: Meta) -> Meta:
+        return replace(ensure_audio(*metadata), bitrate=self.bitrate)
 
 
 @dataclass

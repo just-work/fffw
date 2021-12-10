@@ -1,4 +1,5 @@
 from dataclasses import field, dataclass
+from typing import NoReturn
 
 from fffw.encoding import outputs
 from fffw.graph import base
@@ -49,14 +50,25 @@ class AudioCodec(outputs.Codec):
     kind = AUDIO
 
 
+def _not_implemented() -> NoReturn:
+    """
+    A hack around MyPy dataclass handling.
+    """
+    raise NotImplementedError()
+
+
 @dataclass
 class Copy(outputs.Codec):
     codec = 'copy'
-    kind: StreamType = field(metadata={'skip': True}, default=None)
+    kind: StreamType = field(metadata={'skip': True},
+                             # There should be no default, but base class
+                             # already defines fields with default and thus
+                             # dataclass can't be created.
+                             default_factory=_not_implemented)
 
     def __post_init__(self) -> None:
         super().__post_init__()
-        if self.kind is None:
+        if self.kind not in (VIDEO, AUDIO):
             raise ValueError('codec kind not passed')
 
     def connect_edge(self, edge: base.Edge) -> base.Edge:

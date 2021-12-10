@@ -1,5 +1,5 @@
 from dataclasses import dataclass, replace, asdict, field, fields
-from typing import Union, List, cast
+from typing import Union, List, cast, Optional
 
 from fffw.graph import base
 from fffw.encoding import mixins
@@ -133,6 +133,7 @@ class VideoFilter(Filter):
     >>>
     """
     kind = VIDEO
+    hardware: Optional[str]
 
 
 class AudioFilter(Filter):
@@ -181,7 +182,7 @@ class Scale(VideoFilter):
     :arg height: resulting video height
     """
     filter = "scale"
-    hardware = None  # cpu only
+    hardware = None  # type: Optional[str]
 
     width: int = param(name='w')
     height: int = param(name='h')

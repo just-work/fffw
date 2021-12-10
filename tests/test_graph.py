@@ -31,8 +31,8 @@ class FdkAAC(codecs.AudioCodec):
     codec = 'libfdk_aac'
     bitrate: int = param(name='b', stream_suffix=True)
 
-    def transform(self, metadata: Meta) -> Meta:
-        return replace(metadata, bitrate=self.bitrate)
+    def transform(self, *metadata: Meta) -> Meta:
+        return replace(ensure_audio(*metadata), bitrate=self.bitrate)
 
 
 class FilterGraphTestCase(TestCase):
@@ -453,7 +453,7 @@ class FilterGraphTestCase(TestCase):
         """
         As codec is initially added to output file, it's kind is required.
         """
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NotImplementedError):
             codecs.Copy()
 
         self.assertEqual(codecs.Copy(kind=VIDEO).kind, VIDEO)
