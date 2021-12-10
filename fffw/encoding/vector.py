@@ -1,6 +1,7 @@
 from typing import *
 
 from fffw.graph.meta import AUDIO, VIDEO, StreamType, Meta
+from fffw.graph import base
 from fffw.encoding import filters, inputs, outputs, FFMPEG
 
 Group = Dict[int, Set[int]]
@@ -16,9 +17,9 @@ def group(first: Iterable[Any], second: Iterable[Any]) -> Group:
     """
     Group second iterable by first.
 
-    :param first: First iterable. Id of each object in iterable will be used as
+    :param first: First iterable. ID of each object in iterable will be used as
         a key.
-    :param second: Second iterable. Id of each object in iterable will be added
+    :param second: Second iterable. ID of each object in iterable will be added
         to a set, which is a value for corresponding key in first iterable.
     :returns: A dict that maps single object from first iterable to a set of
         objects from second iterable by object ids.
@@ -83,7 +84,7 @@ def prepare_dst_clones(destinations: Dict[int, Outgoing],
 
 
 def map_sources_to_destinations(
-        sources: List[Incoming],
+        sources: List[Optional[Incoming]],
         src_splits: Dict[Tuple[int, int], filters.Filter],
         destinations: List[Optional[Outgoing]],
         dst_clones: Dict[Tuple[int, int], Outgoing]
@@ -111,6 +112,10 @@ def map_sources_to_destinations(
     results: List[Outgoing] = list()
     # connecting sources to destinations and gathering results
     for src, dst in zip(sources, destinations):
+        if src is None and dst is not None:
+            # direct link between src and dst already established
+            results.append(dst)
+            continue
         # use split instead of initial incoming node
         split = src_splits[id(src), id(dst)]
         if dst is None:
@@ -184,11 +189,11 @@ def normalize_args(dst: Union[filters.Filter,
     :param dst: destination vector, single filter or filter class used to
         initialize same filter with different parameters.
     :param mask: list of flags that allows to skip applying destination
-        filters to some of sources.
+        filters to some sources.
     :param params: filter class constructor arguments used to initialize
         a destination filter vector from filter class.
     :returns: new vector which is a result of applying destination filters
-        to a input streams vector.
+        to an input streams vector.
     """
     if isinstance(dst, type):
         # handle filter class + params
@@ -250,7 +255,7 @@ class Vector(tuple):
         return self.connect(other)
 
     def __ror__(self, other: filters.Filter) -> "Vector":
-        # noinspection PyUnresolvedReferences
+        # noinspection PyUnresolvedReferences,GrazieInspection
         """ A shortcut to connect a filter to the vector.
 
         >>> overlay: Vector = simd | Overlay(1100, 100)
@@ -335,18 +340,18 @@ class Vector(tuple):
         :param dst: destination vector, single filter or filter class used to
             initialize same filter with different parameters.
         :param mask: list of flags that allows to skip applying destination
-            filters to some of sources.
+            filters to some sources.
         :param params: filter class constructor arguments used to initialize
             a destination filter vector from filter class.
         :returns: new vector which is a result of applying destination filters
-            to a input streams vector.
+            to an input streams vector.
         """
         # Transform different args to same form: vector of filters/codecs and
         # boolean mask with corresponding length.
         dst, mask = normalize_args(dst, mask, params)
 
         # input list
-        sources: List[Union[Incoming]] = list(self)
+        sources: List[Optional[Incoming]] = list(self)
         # filter list
         destinations: List[Optional[Outgoing]] = list(dst)
 
@@ -356,10 +361,10 @@ class Vector(tuple):
             # multiple sources to a single destination.
             if len(sources) == 1:
                 # adjusting single source to multiple destinations
-                sources = sources * len(destinations)
+                sources *= len(destinations)
             elif len(destinations) == 1:
                 # adjusting single destination to multiple sources
-                destinations = destinations * len(sources)
+                destinations *= len(sources)
             else:
                 raise RuntimeError("Can't apply M sources to N destinations")
 
@@ -368,8 +373,18 @@ class Vector(tuple):
             if not enabled:
                 destinations[i] = None
 
+        # handle direct connections
+        for i, (s, d) in enumerate(zip(sources, destinations)):
+            if (isinstance(s, base.Source) and
+                    isinstance(d, base.Dest)):
+                # Stream to Codec direct mapping
+                s.connect_dest(d)
+                # Removing src from split-based connections
+                sources[i] = None
+
         # sources cache
-        src_by_id: Dict[int, Incoming] = {id(src): src for src in sources}
+        src_by_id: Dict[int, Incoming] = {
+            id(src): src for src in sources if src is not None}
         # destinations cache
         dst_by_id: Dict[int, Outgoing] = {
             id(dst): dst for dst in destinations if dst is not None}
@@ -437,7 +452,7 @@ class SIMD:
     def __lt__(self, other: Union[Vector, inputs.Input, inputs.Stream,
                                   filters.Filter]
                ) -> Union[Vector, inputs.Input]:
-        # noinspection PyUnresolvedReferences
+        # noinspection PyUnresolvedReferences,GrazieInspection
         """
         A shortcut to connect additional input file or codec vector.
 

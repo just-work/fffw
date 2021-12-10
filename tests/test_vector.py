@@ -107,6 +107,20 @@ class VectorTestCase(BaseTestCase):
             '-map', '0:a', '-c:a', 'libfdk_aac',
             'output2.mp5')
 
+    def test_filter_graph_pass_through(self):
+        """ Empty graph is removed from output arguments."""
+        Vector(self.source.video) > self.simd
+        Vector(self.source.audio) > self.simd
+
+        self.assert_simd_args(
+            '-i', 'input.mp4',
+            '-map', '0:v', '-c:v', 'libx264',
+            '-map', '0:a', '-c:a', 'aac', '-b:a', '64000',
+            'output1.mp4',
+            '-map', '0:v', '-c:v', 'libx265',
+            '-map', '0:a', '-c:a', 'libfdk_aac',
+            'output2.mp5')
+
     def test_same_filter_for_all_streams(self):
         """ Single filter can be applied to each stream in vector."""
         cursor = self.simd | Volume(30)
