@@ -67,6 +67,31 @@ class VectorTestCase(BaseTestCase):
         v = Vector([VideoFilter(), AudioFilter()])
         self.assertRaises(RuntimeError, getattr, v, 'kind')
 
+    def test_vector_dimensions(self):
+        """
+        Vector to vector connection must be one of 1:N, M:1, K:K.
+        """
+        with self.subTest("1:N"):
+            v1 = Vector(self.source.video)
+            v2 = Vector([VideoFilter(), VideoFilter()])
+            self.assertTrue(v1 | v2)
+
+        with self.subTest("M:1"):
+            a1 = Vector([self.source.audio, self.source.audio])  # type: ignore
+            a2 = Vector([Concat(AUDIO)])
+            self.assertTrue(a1 | a2)
+
+        with self.subTest("K:K"):
+            v1 = Vector([self.source.video, self.source.video])  # type: ignore
+            v2 = Vector([VideoFilter(), VideoFilter()])
+            self.assertTrue(v1 | v2)
+
+        with self.subTest("M:N"):
+            v1 = Vector([self.source.video, self.source.video])  # type: ignore
+            v2 = Vector([VideoFilter(), VideoFilter(), VideoFilter()])
+            with self.assertRaises(RuntimeError):
+                self.assertTrue(v1 | v2)
+
     def test_vector_metadata(self):
         """
         Checks that vector outputs metadata for a single stream in it.
