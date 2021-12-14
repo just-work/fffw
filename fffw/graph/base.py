@@ -147,9 +147,9 @@ class Edge(Traversable):
         edge = self
         node = self.input
         while not getattr(node, 'enabled', True) and isinstance(node, Node):
-            edge = node.input
-            if edge is None:
+            if node.input is None:
                 raise RuntimeError("Node input is None")
+            edge = node.input
             node = edge.input
         if isinstance(self.output, Dest):
             if isinstance(node, Source):
