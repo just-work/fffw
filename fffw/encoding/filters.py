@@ -228,7 +228,7 @@ class Split(AutoFilter):
             return ''
         return str(len(self.outputs))
 
-    def unsplit(self, edge: base.Edge) -> base.Edge:
+    def disconnect(self, edge: base.Edge) -> Optional[base.Edge]:
         """
         Removes unused edge from outputs and returns input edge instead.
 
@@ -237,7 +237,28 @@ class Split(AutoFilter):
         for filtered streams.
         """
         self.outputs.remove(edge)
-        return cast(base.Edge, self.inputs[0])
+        if self.outputs:
+            # After disconnecting current edge from input, there are more
+            # outputs in current split. We just decrement output count for
+            # current split filter and that's it.
+            return self.input
+        if self.input is None:
+            # Current split is not connected to parent node, just return.
+            return self.input
+        edge = self.input
+        parent = edge.input
+        if isinstance(parent, base.Source):
+            # Current split was connected directly to an input stream. No need
+            # to do anything more.
+            return edge
+        if isinstance(parent, Split):
+            # Current split was connected to another split. As current split
+            # has now zero outputs, it is useless, so we need to disconnect
+            # an edge from parent split filter
+            return parent.disconnect(edge)
+        # Current split was connected to something else, so real filtering is
+        # intended, and it's an unrecoverable error.
+        raise RuntimeError("can't disconnect from real filter")
 
 
 @dataclass

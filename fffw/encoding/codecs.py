@@ -83,11 +83,14 @@ class Copy(outputs.Codec):
         :returns: edge pointing to an input stream
         """
         src = edge.input
+        # Ensure that edge is connected to a source with only split filters
+        # in between.
         while isinstance(src, filters.Split):
-            # shrink split output list until we got source stream, because
-            # copy codec can't be applied to a filter.
-            edge = src.unsplit(edge)
-            src = edge.input
+            src = src.input.input
         if not isinstance(src, base.Source):
             raise ValueError('copy codec can be connected only to source')
+        src = edge.input
+        if isinstance(src, filters.Split):
+            # Remove current edge from filter graph
+            edge = src.disconnect(edge)
         return super().connect_edge(edge)

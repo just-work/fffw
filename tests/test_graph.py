@@ -35,7 +35,7 @@ class FdkAAC(codecs.AudioCodec):
         return replace(ensure_audio(*metadata), bitrate=self.bitrate)
 
 
-class FilterGraphTestCase(TestCase):
+class FilterGraphBaseTestCase(TestCase):
 
     def setUp(self) -> None:
         super().setUp()
@@ -72,6 +72,9 @@ class FilterGraphTestCase(TestCase):
         self.input_list = inputs.InputList((self.source,))
         self.output_list = outputs.OutputList((self.output,))
         self.fc = FilterComplex(self.input_list, self.output_list)
+
+
+class FilterGraphTestCase(FilterGraphBaseTestCase):
 
     def test_ensure_video(self):
         """ Test video stream type assertion helper."""
@@ -331,6 +334,7 @@ class FilterGraphTestCase(TestCase):
         self.assertListEqual(c.meta.scenes, expected)
 
     def test_video_trim_metadata(self):
+        # noinspection GrazieInspection
         """
         Trim filter sets start and changes stream duration.
         $ ffmpeg -y -i source.mp4 -vf trim=start=3:end=4 -an test.mp4
@@ -368,6 +372,7 @@ class FilterGraphTestCase(TestCase):
         self.assertEqual(am.samples, 1.0 * am.sampling_rate)
 
     def test_setpts_metadata(self):
+        # noinspection GrazieInspection
         """
         SetPTS resets PTS and modifies trimmed streams duration.
 
@@ -401,7 +406,7 @@ class FilterGraphTestCase(TestCase):
 
     def test_any_hardware_filter(self):
         """
-        A filter may be defined that allows to be ran on any hardware
+        A filter may be defined that allows to be used with any hardware
         """
 
         @dataclass
@@ -449,9 +454,38 @@ class FilterGraphTestCase(TestCase):
             am = cast(AudioMeta, output.codecs[0].meta)
             self.assertEqual(am.bitrate, self.audio_metadata.bitrate)
 
+    def test_split_enable(self):
+        """
+        Disabled split is omitted in filter graph definition.
+        """
+        split = self.source.video | Split(VIDEO, output_count=1)
+        self.assertFalse(split.enabled)
+        split.enabled = True
+        # you can't explicitly enable a split with single output
+        self.assertFalse(split.enabled)
+
+        split = self.source.video | Split(VIDEO, output_count=2)
+        self.assertTrue(split.enabled)
+        with self.assertRaises(ValueError):
+            split.enabled = False
+
+    def test_split_args(self):
+        """
+        Split args contain only a number of output edges.
+        """
+        split = self.source.video | Split(VIDEO, output_count=3)
+        self.assertEqual(split.args, '3')
+
+
+class CopyCodecTestCase(FilterGraphBaseTestCase):
+    """
+    Tests for filter graph behavior with codec=copy.
+    """
+
     def test_copy_codec_kind_required(self):
         """
-        As codec is initially added to output file, it's kind is required.
+        As codec is initially added to output file, its kind can't be
+        autodetected and thus is required.
         """
         with self.assertRaises(NotImplementedError):
             codecs.Copy()
@@ -469,39 +503,82 @@ class FilterGraphTestCase(TestCase):
         self.assertIsInstance(self.source.video > codecs.Copy(kind=VIDEO),
                               codecs.Copy)
 
-    def test_split_enable(self):
+    def test_copy_codec_transient_filter_forbidden(self):
         """
-        Disabled split is omitted in filter graph definition.
+        Copy codec must use a stream as a source, even if temporarily connected
+        to a split filter.
         """
-        split = self.source.video | Split(VIDEO, output_count=1)
-        self.assertFalse(split.enabled)
-        split.enabled = True
-        # you can't explicitly enable a split with single output
-        self.assertFalse(split.enabled)
-
-        split = self.source.video | Split(VIDEO, output_count=2)
-        self.assertTrue(split.enabled)
         with self.assertRaises(ValueError):
-            split.enabled = False
+            chain = self.source.video | Scale(1920, 1080) | Split(VIDEO)
+            chain > codecs.Copy(kind=VIDEO)
 
-    def test_split_shrink(self):
+        chain = self.source.video | Split(VIDEO)
+        self.assertIsInstance(chain > codecs.Copy(kind=VIDEO), codecs.Copy)
+
+    def test_split_disconnect_on_copy_codec(self):
         """
         Split can remove output edge from itself.
         """
         split = self.source.video | Split(VIDEO, output_count=2)
-        s1 = split | Scale(1280, 720)
+        s1 = split
         s2 = split | Scale(1920, 1080)
 
-        split.unsplit(s1.inputs[0])
+        s1 > codecs.Copy(kind=VIDEO)
 
         # one output left
-        self.assertListEqual(split.outputs, [s2.inputs[0]])
+        self.assertListEqual(split.outputs, [s2.input])
         # split is disabled because of single output
         self.assertFalse(split.enabled)
 
-    def test_split_args(self):
+    def test_split_disconnect_on_single_output(self):
         """
-        Split args contain only a number of output edges.
+        Transitive split disconnection on copy codec.
         """
-        split = self.source.video | Split(VIDEO, output_count=3)
-        self.assertEqual(split.args, '3')
+        split = self.source.video | Split(VIDEO, output_count=2)
+        s2 = split | Split(VIDEO, output_count=1)
+        s = Scale(1920, 1080)
+        split | s
+
+        s2 > codecs.Copy(kind=VIDEO)
+
+        # s2 is now zero-output, so it's also disconnected from split.
+        self.assertListEqual(split.outputs, [s.input])
+
+    def test_disconnect_split_without_parent(self):
+        """
+        If parent node is not connected, split disconnect also works.
+        """
+        video = self.source.video
+        split = video | Split(VIDEO, output_count=1)
+        scale = split | Scale(1920, 1080)
+        # There is no valid way to use a filter without a connected input,
+        # because of StreamValidationMixin that checks stream kind.
+        split.inputs[0] = None
+
+        edge = split.disconnect(scale.input)
+        self.assertIsNone(edge)
+
+        self.assertListEqual(split.outputs, [])
+
+    def test_end_disconnect_on_source(self):
+        """
+        Split disconnection ends with Source input node.
+        """
+        video = self.source.video
+        split = video | Split(VIDEO, output_count=1)
+        scale = split | Scale(1920, 1080)
+
+        edge = split.disconnect(scale.input)
+
+        self.assertIs(edge.input, video)
+
+    def test_deny_disconnect_from_other_filters(self):
+        """
+        Disconnect operation is valid only with split filters.
+        """
+        scale = self.source.video | Scale(1920, 1080)
+        split = cast(Split, scale | Split(VIDEO, output_count=1))
+        s1 = split | VideoFilter()
+
+        with self.assertRaises(RuntimeError):
+            split.disconnect(s1.input)
