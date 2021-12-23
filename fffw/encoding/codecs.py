@@ -1,7 +1,7 @@
 from dataclasses import field, dataclass
 from typing import NoReturn
 
-from fffw.encoding import outputs
+from fffw.encoding import outputs, filters
 from fffw.graph import base
 from fffw.graph.meta import VIDEO, AUDIO, StreamType
 
@@ -67,6 +67,30 @@ class Copy(outputs.Codec):
                              default_factory=_not_implemented)
 
     def connect_edge(self, edge: base.Edge) -> base.Edge:
-        if not isinstance(edge.input, base.Source):
+        """
+        Cuts out a graph path that leads from input stream to copy codec.
+
+        * copy codec cannot be used with filtered frames because they are not
+          even decoded
+        * when using vectorized processing to construct processing graph,
+          intermediate vectors don't know whether their output will be connected
+          to a copy codec or to another filter
+        * so input streams for complex vectors are connected to split filters
+        * to copy codec properly, after all there split filters must be
+          disconnected from input stream
+        * if there is any another filter except split, it's an error
+
+        :returns: edge pointing to an input stream
+        """
+        src = edge.input
+        # Ensure that edge is connected to a source with only split filters
+        # in between.
+        while isinstance(src, filters.Split):
+            src = src.input.input
+        if not isinstance(src, base.Source):
             raise ValueError('copy codec can be connected only to source')
+        src = edge.input
+        if isinstance(src, filters.Split):
+            # Remove current edge from filter graph
+            edge = src.disconnect(edge)
         return super().connect_edge(edge)

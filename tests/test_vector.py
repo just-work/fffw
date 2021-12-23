@@ -67,6 +67,31 @@ class VectorTestCase(BaseTestCase):
         v = Vector([VideoFilter(), AudioFilter()])
         self.assertRaises(RuntimeError, getattr, v, 'kind')
 
+    def test_vector_dimensions(self):
+        """
+        Vector to vector connection must be one of 1:N, M:1, K:K.
+        """
+        with self.subTest("1:N"):
+            v1 = Vector(self.source.video)
+            v2 = Vector([VideoFilter(), VideoFilter()])
+            self.assertTrue(v1 | v2)
+
+        with self.subTest("M:1"):
+            a1 = Vector([self.source.audio, self.source.audio])  # type: ignore
+            a2 = Vector([Concat(AUDIO)])
+            self.assertTrue(a1 | a2)
+
+        with self.subTest("K:K"):
+            v1 = Vector([self.source.video, self.source.video])  # type: ignore
+            v2 = Vector([VideoFilter(), VideoFilter()])
+            self.assertTrue(v1 | v2)
+
+        with self.subTest("M:N"):
+            v1 = Vector([self.source.video, self.source.video])  # type: ignore
+            v2 = Vector([VideoFilter(), VideoFilter(), VideoFilter()])
+            with self.assertRaises(RuntimeError):
+                self.assertTrue(v1 | v2)
+
     def test_vector_metadata(self):
         """
         Checks that vector outputs metadata for a single stream in it.
@@ -104,6 +129,42 @@ class VectorTestCase(BaseTestCase):
             '-map', '0:a', '-c:a', 'aac', '-b:a', '64000',
             'output1.mp4',
             '-map', '0:v', '-c:v', 'libx265',
+            '-map', '0:a', '-c:a', 'libfdk_aac',
+            'output2.mp5')
+
+    def test_filter_graph_pass_through(self):
+        """ Empty graph is removed from output arguments."""
+        Vector(self.source.video) > self.simd
+        Vector(self.source.audio) > self.simd
+
+        self.assert_simd_args(
+            '-i', 'input.mp4',
+            '-map', '0:v', '-c:v', 'libx264',
+            '-map', '0:a', '-c:a', 'aac', '-b:a', '64000',
+            'output1.mp4',
+            '-map', '0:v', '-c:v', 'libx265',
+            '-map', '0:a', '-c:a', 'libfdk_aac',
+            'output2.mp5')
+
+    def test_single_quality_copy_pass_through(self):
+        """
+        Copy codec is connected directly to input with vectorized filters.
+        """
+        self.output2.codecs[0] = codecs.Copy(kind=VIDEO)
+        src = Vector(self.source.video)
+        params = [(1920, 1080), None]
+        scaled = src.connect(Scale, params=params, mask=[True, False])
+        scaled > self.simd
+        Vector(self.source.audio) > self.simd
+
+        self.assert_simd_args(
+            '-i', 'input.mp4',
+            '-filter_complex',
+            '[0:v]scale=w=1920:h=1080[vout0]',
+            '-map', '[vout0]', '-c:v', 'libx264',
+            '-map', '0:a', '-c:a', 'aac', '-b:a', '64000',
+            'output1.mp4',
+            '-map', '0:v', '-c:v', 'copy',
             '-map', '0:a', '-c:a', 'libfdk_aac',
             'output2.mp5')
 
@@ -391,6 +452,7 @@ class VectorTestCase(BaseTestCase):
         """
         A filter with `init=False` param is cloned correctly.
         """
+
         @dataclass
         class MyFilter(filters.VideoFilter):
             my_flag: bool = param(init=False, default=True)

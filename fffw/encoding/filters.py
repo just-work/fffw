@@ -200,7 +200,7 @@ class Split(AutoFilter):
     Audio or video split filter.
 
     Splits audio or video stream to multiple output streams (2 by default).
-    Unlike ffmpeg `split` filter this one does not allow to pass multiple
+    Unlike ffmpeg `split` filter this one does not allow passing multiple
     inputs.
 
     :arg kind: stream type.
@@ -208,23 +208,57 @@ class Split(AutoFilter):
     """
     filter = 'split'
 
-    output_count: int = 2
+    output_count: int = 2  # used only as constructor parameter
 
-    def __post_init__(self) -> None:
-        """
-        Disables filter if `output_count` equals 1 (no real split is preformed).
-        """
-        self.enabled = self.output_count > 1
-        super().__post_init__()
+    @property
+    def enabled(self) -> bool:
+        return len(self.outputs) > 1
+
+    @enabled.setter
+    def enabled(self, value: bool) -> None:
+        if len(self.outputs) > 1:
+            raise ValueError("can't bypass split with more than one output")
 
     @property
     def args(self) -> str:
         """
         :returns: split/asplit filter parameters
         """
-        if self.output_count == 2:
+        if len(self.outputs) == 2:
             return ''
-        return str(self.output_count)
+        return str(len(self.outputs))
+
+    def disconnect(self, edge: base.Edge) -> Optional[base.Edge]:
+        """
+        Removes unused edge from outputs and returns input edge instead.
+
+        This is used for "copy" codec, because it must be able to remove a
+        graph path from input stream to an output codec, as copy is not allowed
+        for filtered streams.
+        """
+        self.outputs.remove(edge)
+        if self.outputs:
+            # After disconnecting current edge from input, there are more
+            # outputs in current split. We just decrement output count for
+            # current split filter and that's it.
+            return self.input
+        if self.input is None:
+            # Current split is not connected to parent node, just return.
+            return self.input
+        edge = self.input
+        parent = edge.input
+        if isinstance(parent, base.Source):
+            # Current split was connected directly to an input stream. No need
+            # to do anything more.
+            return edge
+        if isinstance(parent, Split):
+            # Current split was connected to another split. As current split
+            # has now zero outputs, it is useless, so we need to disconnect
+            # an edge from parent split filter
+            return parent.disconnect(edge)
+        # Current split was connected to something else, so real filtering is
+        # intended, and it's an unrecoverable error.
+        raise RuntimeError("can't disconnect from real filter")
 
 
 @dataclass
@@ -276,7 +310,7 @@ class Trim(AutoFilter):
             if start < end:
                 # If intersection is not empty, add intersection to resulting
                 # scenes list.
-                # This will allow to detect buffering when multiple scenes are
+                # This will allow detecting buffering when multiple scenes are
                 # reordered in same file: input[3:4] + input[1:2]
                 offset = start - scene.position
                 scenes.append(Scene(

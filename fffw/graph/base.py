@@ -17,6 +17,7 @@ class Traversable(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def render(self, partial: bool = False) -> List[str]:
+        # noinspection GrazieInspection
         """
         Returns a list of filter_graph edge descriptions.
 
@@ -146,9 +147,9 @@ class Edge(Traversable):
         edge = self
         node = self.input
         while not getattr(node, 'enabled', True) and isinstance(node, Node):
-            if node.inputs[0] is None:
+            if node.input is None:
                 raise RuntimeError("Node input is None")
-            edge = node.inputs[0]
+            edge = node.input
             node = edge.input
         if isinstance(self.output, Dest):
             if isinstance(node, Source):
@@ -263,6 +264,10 @@ class Node(Traversable, abc.ABC):
         return self.__dict__['inputs']
 
     @property
+    def input(self) -> Optional[Edge]:
+        return self.inputs[0]
+
+    @property
     def outputs(self) -> List[Optional[Edge]]:
         """
         :returns: list of placeholders for output edges.
@@ -270,6 +275,10 @@ class Node(Traversable, abc.ABC):
         if 'outputs' not in self.__dict__:
             self.__dict__['outputs'] = [None] * self.output_count
         return self.__dict__['outputs']
+
+    @property
+    def output(self) -> Optional[Edge]:
+        return self.outputs[0]
 
     @property
     def enabled(self) -> bool:
