@@ -39,14 +39,14 @@ class FdkAAC(codecs.AudioCodec):
 class SourceImpl(base.Source):
 
     @property
-    def name(self) -> str:
+    def name(self) -> str:  # pragma: no cover
         return ''
 
 
 class NodeImpl(base.Node):
 
     @property
-    def args(self) -> str:
+    def args(self) -> str:  # pragma: no cover
         return ''
 
 
