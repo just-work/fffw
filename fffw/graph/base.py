@@ -93,9 +93,11 @@ class Dest(Traversable):
         :return Edge: connected edge
         """
         if not isinstance(edge, Edge):
-            raise ValueError("Only edge allowed")
+            raise TypeError("Only edge allowed")
         if self._edge is not None:
-            raise RuntimeError("Dest is already connected to %s" % self._edge)
+            raise RuntimeError("Dest input edge is already connected")
+        if edge.output is not self:
+            raise ValueError("Edge output is connected to another dest")
         self._edge = edge
         return edge
 
@@ -392,7 +394,9 @@ class Node(Traversable, abc.ABC):
         :returns: connected edge
         """
         if not isinstance(edge, Edge):
-            raise ValueError("only edge allowed")
+            raise TypeError("only edge allowed")
+        if edge.output is not self:
+            raise ValueError("Edge output is connected to another node")
         self.inputs[self.inputs.index(None)] = edge
         return edge
 
