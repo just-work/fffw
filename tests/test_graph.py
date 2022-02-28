@@ -523,12 +523,41 @@ class CopyCodecTestCase(FilterGraphBaseTestCase):
         s1 = split
         s2 = split | Scale(1920, 1080)
 
-        s1 > codecs.Copy(kind=VIDEO)
+        copy = s1 > codecs.Copy(kind=VIDEO)
 
         # one output left
         self.assertListEqual(split.outputs, [s2.input])
         # split is disabled because of single output
         self.assertFalse(split.enabled)
+        # copy codec is connected to source
+        self.assertIs(copy.edge.input, self.source.video)
+
+    def test_split_disconnect_transient(self):
+        """
+        With multiple splits, copy codec is being disconnected from all of them.
+        """
+        video = self.source.video
+        inter = video | Split(VIDEO, output_count=1)
+        split = inter | Split(VIDEO, output_count=2)
+        s1 = split
+        s2 = split | Scale(1920, 1080)
+
+        copy = s1 > codecs.Copy(kind=VIDEO)
+
+        # one output left
+        self.assertListEqual(split.outputs, [s2.input])
+        # split is disabled because of single output
+        self.assertFalse(split.enabled)
+
+        # intermediate split is still connected to another split
+        self.assertIs(inter.output.output, split)
+        # copy codec is connected to source
+        self.assertIs(copy.edge.input, video)
+        # source is still connected to split
+        edges = video._outputs
+        expected = [copy.edge, inter.input]
+        self.assertEqual(len(edges), 2)
+        self.assertSetEqual(set(edges), set(expected))
 
     def test_split_disconnect_on_single_output(self):
         """
