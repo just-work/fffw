@@ -1,5 +1,5 @@
 from dataclasses import field, dataclass
-from typing import NoReturn, cast
+from typing import NoReturn
 
 from fffw.encoding import outputs, filters
 from fffw.graph import base
@@ -112,7 +112,10 @@ class Copy(outputs.Codec):
         filter chain directly to Source.
         """
         # Remove and edge from existing Split filter chain
-        cast(filters.Split, edge.input).disconnect(edge)
+        split = edge.input
+        if not isinstance(split, filters.Split):
+            raise TypeError("Can't disconnect and edge from real filter")
+        split.disconnect(edge)
         # As the Edge is thrown away, forgot about it.
         self._edge = None
 
