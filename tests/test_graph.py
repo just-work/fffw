@@ -7,6 +7,7 @@ from fffw.encoding import inputs, outputs, codecs
 from fffw.encoding.complex import FilterComplex
 from fffw.encoding.filters import *
 from fffw.graph import *
+from fffw.graph import base
 from fffw.wrapper import param
 
 
@@ -33,6 +34,71 @@ class FdkAAC(codecs.AudioCodec):
 
     def transform(self, *metadata: Meta) -> Meta:
         return replace(ensure_audio(*metadata), bitrate=self.bitrate)
+
+
+class SourceImpl(base.Source):
+
+    @property
+    def name(self) -> str:
+        return ''
+
+
+class NodeImpl(base.Node):
+
+    @property
+    def args(self) -> str:
+        return ''
+
+
+class DestImpl(base.Dest):
+    pass
+
+
+class GraphBaseTestCase(TestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.source = SourceImpl(VIDEO)
+        self.node = NodeImpl()
+        self.another = NodeImpl()
+        self.dest = DestImpl()
+        self.source_edge = base.Edge(self.source, self.node)
+        self.inter_edge = base.Edge(self.node, self.another)
+        self.dest_edge = base.Edge(self.another, self.dest)
+
+    def test_node_connect_edge_validation(self):
+        """
+        Checks edge validation for Node.
+        """
+
+        with self.subTest("only edge allowed"):
+            with self.assertRaises(TypeError):
+                self.node.connect_edge(object())  # type: ignore
+
+        with self.subTest("edge output cross-link"):
+            with self.assertRaises(ValueError):
+                self.node.connect_edge(self.dest_edge)
+
+        with self.subTest("success"):
+            self.node.connect_edge(self.source_edge)
+
+    def test_dest_connect_edge_validation(self):
+        """
+        Checks edge validation for Dest.
+        """
+        with self.subTest("only edge allowed"):
+            with self.assertRaises(TypeError):
+                self.dest.connect_edge(object())  # type: ignore
+
+        with self.subTest("edge output cross-link"):
+            with self.assertRaises(ValueError):
+                self.dest.connect_edge(self.source_edge)
+
+        with self.subTest("success"):
+            self.dest.connect_edge(self.dest_edge)
+
+        with self.subTest("slot is busy"):
+            with self.assertRaises(RuntimeError):
+                self.dest.connect_edge(self.dest_edge)
 
 
 class FilterGraphBaseTestCase(TestCase):
@@ -322,9 +388,9 @@ class FilterGraphTestCase(FilterGraphBaseTestCase):
         vs2 | c
         vs3 | c
         expected = (
-            deepcopy(vs1.meta.scenes) +
-            deepcopy(vs2.meta.scenes) +
-            deepcopy(vs3.meta.scenes)
+                deepcopy(vs1.meta.scenes) +
+                deepcopy(vs2.meta.scenes) +
+                deepcopy(vs3.meta.scenes)
         )
         assert len(expected) == 3
         current_duration = TS(0)
