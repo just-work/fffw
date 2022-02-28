@@ -113,7 +113,9 @@ class Copy(outputs.Codec):
         """
         # Remove and edge from existing Split filter chain
         split = edge.input
-        if not isinstance(split, filters.Split):
+        if not isinstance(split, filters.Split):  # pragma: no cover
+            # Method is only called from connect_edge() in case of split
+            # filter presence.
             raise TypeError("Can't disconnect and edge from real filter")
         split.disconnect(edge)
         # As the Edge is thrown away, forgot about it.
