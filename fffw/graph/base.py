@@ -395,6 +395,8 @@ class Node(Traversable, abc.ABC):
         """
         if not isinstance(edge, Edge):
             raise ValueError("only edge allowed")
+        if edge.output is not self:
+            raise ValueError("Edge output is connected to another node")
         self.inputs[self.inputs.index(None)] = edge
         return edge
 
