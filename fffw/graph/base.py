@@ -96,6 +96,8 @@ class Dest(Traversable):
             raise ValueError("Only edge allowed")
         if self._edge is not None:
             raise RuntimeError("Dest is already connected to %s" % self._edge)
+        if edge.output is not self:
+            raise RuntimeError("Edge output is connected to another dest")
         self._edge = edge
         return edge
 
