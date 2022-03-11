@@ -33,10 +33,10 @@ class InputsTestCase(TestCase):
         il = inputs.InputList((self.i1, self.i2))
         self.assertEqual(il[0].index, 0)
         self.assertEqual(il[1].index, 1)
-        self.assertEqual(self.v1.name, '0:v')
-        self.assertEqual(self.a1.name, '0:a')
-        self.assertEqual(self.v2.name, '1:v')
-        self.assertEqual(self.a2.name, '1:a')
+        self.assertEqual(self.v1.name, '0:v:0')
+        self.assertEqual(self.a1.name, '0:a:0')
+        self.assertEqual(self.v2.name, '1:v:0')
+        self.assertEqual(self.a2.name, '1:a:0')
         self.assertEqual(self.a3.name, '1:a:1')
 
     def test_default_input(self):
@@ -61,7 +61,7 @@ class InputsTestCase(TestCase):
 
         il.append(inputs.Input(streams=(v3,)))
 
-        self.assertEqual(v3.name, '0:v')
+        self.assertEqual(v3.name, '0:v:0')
 
     def test_validate_stream_kind(self):
         """
