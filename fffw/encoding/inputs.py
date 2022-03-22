@@ -30,8 +30,6 @@ class Stream(base.Source):
 
     @property
     def name(self) -> str:
-        if self.index == 0:
-            return f'{self.source.index}:{self._kind.value}'
         return f'{self.source.index}:{self._kind.value}:{self.index}'
 
     def split(self, count: int = 1) -> List[filters.Filter]:

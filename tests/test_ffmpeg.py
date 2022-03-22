@@ -107,7 +107,7 @@ class FFMPEGTestCase(BaseTestCase):
             '-t', '321.2',
             '-i', 'source.mp4',
             '-filter_complex',
-            '[0:v]scale=w=640:h=360[vout0];[0:a]asplit[aout0][aout1]',
+            '[0:v:0]scale=w=640:h=360[vout0];[0:a:0]asplit[aout0][aout1]',
 
             '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '3600000',
             '-map', '[aout0]', '-c:a', 'aac', '-b:a', '192000',
@@ -163,9 +163,9 @@ class FFMPEGTestCase(BaseTestCase):
         self.assert_ffmpeg_args(
             '-i', 'source.mp4',
             '-filter_complex',
-            '[0:v]scale=w=640:h=360[vout0]',
+            '[0:v:0]scale=w=640:h=360[vout0]',
             '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '3600000',
-            '-map', '0:a', '-c:a', 'aac', '-b:a', '192000',
+            '-map', '0:a:0', '-c:a', 'aac', '-b:a', '192000',
             'output.mp4'
         )
 
@@ -182,8 +182,8 @@ class FFMPEGTestCase(BaseTestCase):
 
         self.assert_ffmpeg_args(
             '-i', 'source.mp4',
-            '-map', '0:v', '-c:v', 'libx264', '-b:v', '3600000',
-            '-map', '0:a', '-c:a', 'aac', '-b:a', '192000',
+            '-map', '0:v:0', '-c:v', 'libx264', '-b:v', '3600000',
+            '-map', '0:a:0', '-c:a', 'aac', '-b:a', '192000',
             'output.mp4'
         )
 
@@ -199,7 +199,7 @@ class FFMPEGTestCase(BaseTestCase):
         self.assert_ffmpeg_args(
             '-i', 'source.mp4',
             '-filter_complex',
-            '[0:v]scale=w=640:h=360[vout0]',
+            '[0:v:0]scale=w=640:h=360[vout0]',
             '-map', '[vout0]', '-c:v', 'libx264',
             '-an',
             'out.mp4'
@@ -213,8 +213,8 @@ class FFMPEGTestCase(BaseTestCase):
 
         self.assert_ffmpeg_args(
             '-i', 'source.mp4',
-            '-map', '0:v', '-c:v', 'libx264', '-b:v', '3600000',
-            '-map', '0:a', '-c:a', 'aac', '-b:a', '192000',
+            '-map', '0:v:0', '-c:v', 'libx264', '-b:v', '3600000',
+            '-map', '0:a:0', '-c:a', 'aac', '-b:a', '192000',
             'output.mp4'
         )
 
@@ -240,10 +240,10 @@ class FFMPEGTestCase(BaseTestCase):
             '-i', 'logo.png',
             '-i', 'source.mp4',
             '-filter_complex',
-            '[0:v]scale=w=640:h=360[v:scale0];'
+            '[0:v:0]scale=w=640:h=360[v:scale0];'
             '[v:scale0][v:scale1]overlay[vout0];'
-            '[1:v]scale=w=1280:h=720[v:scale1];'
-            '[1:a]volume=-20.00[aout0]',
+            '[1:v:0]scale=w=1280:h=720[v:scale1];'
+            '[1:a:0]volume=-20.00[aout0]',
             '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '3600000',
             '-map', '[aout0]', '-c:a', 'aac', '-b:a', '192000',
             'output.mp4'
@@ -263,8 +263,8 @@ class FFMPEGTestCase(BaseTestCase):
         self.assert_ffmpeg_args(
             '-i', 'source.mp4',
             '-filter_complex',
-            '[0:a]volume=20.00[aout0]',
-            '-map', '0:v',
+            '[0:a:0]volume=20.00[aout0]',
+            '-map', '0:v:0',
             '-c:v', 'copy',
             '-map', '[aout0]',
             '-c:a', 'aac', '-b:a', '128000',
@@ -288,14 +288,14 @@ class FFMPEGTestCase(BaseTestCase):
         ff > out1
         self.assert_ffmpeg_args(
             '-i', 'source.mp4',
-            '-map', '0:v',
+            '-map', '0:v:0',
             '-c:v', 'libx264', '-b:v', '3600000',
-            '-map', '0:a',
+            '-map', '0:a:0',
             '-c:a', 'aac', '-b:a', '192000',
             'output.mp4',
-            '-map', '0:v',
+            '-map', '0:v:0',
             '-c:v', 'copy',
-            '-map', '0:a',
+            '-map', '0:a:0',
             '-c:a', 'copy',
             '/tmp/out1.flv',
         )
@@ -319,15 +319,15 @@ class FFMPEGTestCase(BaseTestCase):
         self.assert_ffmpeg_args(
             '-i', 'source.mp4',
             '-filter_complex',
-            '[0:v]scale=w=640:h=360[vout0]',
-            '-map', '0:v',
+            '[0:v:0]scale=w=640:h=360[vout0]',
+            '-map', '0:v:0',
             '-c:v', 'copy',
-            '-map', '0:a',
+            '-map', '0:a:0',
             '-c:a', 'copy',
             '/tmp/copy.flv',
             '-map', '[vout0]',
             '-c:v', 'libx264',
-            '-map', '0:a',
+            '-map', '0:a:0',
             '-c:a', 'aac',
             '/tmp/out.flv')
 
@@ -360,9 +360,9 @@ class FFMPEGTestCase(BaseTestCase):
         expected = [
             'ffmpeg',
             '-i', '/tmp/input.mp4',
-            '-map', '0:v',
+            '-map', '0:v:0',
             '-c:v', 'libx264',
-            '-map', '0:a',
+            '-map', '0:a:0',
             '-c:a', 'aac',
             '-f', 'tee',
             '[f=hls:hls_time=2]http://ya.ru/1.m3u8|'
@@ -394,10 +394,10 @@ class FFMPEGTestCase(BaseTestCase):
             '-i', 'preroll.mp4',
             '-i', 'source.mp4',
             '-filter_complex',
-            "[0:v]scale=w=640:h=480[v:scale0];"
+            "[0:v:0]scale=w=640:h=480[v:scale0];"
             "[v:scale0]setsar=1[v:setsar0];"
-            "[v:setsar0][1:v]concat[vout0];"
-            "[0:a][1:a]concat=v=0:a=1:n=2[aout0]",
+            "[v:setsar0][1:v:0]concat[vout0];"
+            "[0:a:0][1:a:0]concat=v=0:a=1:n=2[aout0]",
             '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '3600000',
             '-map', '[aout0]', '-c:a', 'aac', '-b:a', '192000',
             'output.mp4'

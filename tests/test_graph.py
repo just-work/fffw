@@ -212,7 +212,7 @@ class FilterGraphTestCase(FilterGraphBaseTestCase):
 
         expected = ';'.join([
             # overlay logo
-            '[0:v][v:scale0]overlay=x=20:y=20[v:overlay0]',
+            '[0:v:0][v:scale0]overlay=x=20:y=20[v:overlay0]',
             # split video to two streams
             '[v:overlay0]split[v:split0][v:split1]',
             # each video is scaled to own size
@@ -220,10 +220,10 @@ class FilterGraphTestCase(FilterGraphBaseTestCase):
             '[v:split1]scale=w=1280:h=720[vout1]',
 
             # split audio to two streams
-            '[0:a]asplit[aout0][aout1]',
+            '[0:a:0]asplit[aout0][aout1]',
 
             # logo scaling
-            '[1:v]scale=w=200:h=50[v:scale0]',
+            '[1:v:0]scale=w=200:h=50[v:scale0]',
         ])
 
         self.assertEqual(expected.replace(';', ';\n'),
@@ -249,13 +249,13 @@ class FilterGraphTestCase(FilterGraphBaseTestCase):
             fc, src, dst = fc_factory()
 
             src | Scale(640, 360) | deint_factory() > dst.video
-            self.assertEqual('[0:v]scale=w=640:h=360[vout0]', fc.render())
+            self.assertEqual('[0:v:0]scale=w=640:h=360[vout0]', fc.render())
 
         with self.subTest("intermediate filter disabled"):
             fc, src, dst = fc_factory()
 
             src | deint_factory() | Scale(640, 360) > dst.video
-            self.assertEqual('[0:v]scale=w=640:h=360[vout0]', fc.render())
+            self.assertEqual('[0:v:0]scale=w=640:h=360[vout0]', fc.render())
 
         with self.subTest("all filters disabled"):
             fc, src, dst = fc_factory()
@@ -263,7 +263,7 @@ class FilterGraphTestCase(FilterGraphBaseTestCase):
             tmp = src | deint_factory()
             tmp = tmp | deint_factory()
             tmp | Scale(640, 360) > dst.video
-            self.assertEqual('[0:v]scale=w=640:h=360[vout0]', fc.render())
+            self.assertEqual('[0:v:0]scale=w=640:h=360[vout0]', fc.render())
 
         with self.subTest("two filters disabled"):
             fc, src, dst = fc_factory()
@@ -271,7 +271,7 @@ class FilterGraphTestCase(FilterGraphBaseTestCase):
             tmp = src | Scale(640, 360)
             tmp = tmp | deint_factory()
             tmp | deint_factory() > dst.video
-            self.assertEqual('[0:v]scale=w=640:h=360[vout0]', fc.render())
+            self.assertEqual('[0:v:0]scale=w=640:h=360[vout0]', fc.render())
 
     def test_skip_not_connected_sources(self):
         """ Skip unused sources in filter complex.
@@ -279,7 +279,7 @@ class FilterGraphTestCase(FilterGraphBaseTestCase):
         # passing only video to FilterComplex
         self.source | Scale(640, 360) > self.output
 
-        self.assertEqual('[0:v]scale=w=640:h=360[vout0]', self.fc.render())
+        self.assertEqual('[0:v:0]scale=w=640:h=360[vout0]', self.fc.render())
 
     def test_scale_changes_metadata(self):
         """
@@ -314,7 +314,7 @@ class FilterGraphTestCase(FilterGraphBaseTestCase):
         overlay takes bottom stream metadata
 
         $ ffmpeg -y -i source.mp4 -i logo.mp4 -t 1 \
-         -filter_complex '[0:v][1:v]overlay=x=100:y=100' test.mp4
+         -filter_complex '[0:v:0][1:v]overlay=x=100:y=100' test.mp4
         """
         vs = inputs.Stream(VIDEO, meta=video_meta_data(width=100, height=100))
         self.input_list.append(inputs.input_file('logo.png', vs))
@@ -324,7 +324,7 @@ class FilterGraphTestCase(FilterGraphBaseTestCase):
         vs | overlay
         overlay > self.output
 
-        expected = '[0:v][1:v]overlay=x=1918:y=1078[vout0]'
+        expected = '[0:v:0][1:v:0]overlay=x=1918:y=1078[vout0]'
         self.assertEqual(expected, self.fc.render())
         vm = cast(VideoMeta, self.output.codecs[0].get_meta_data())
         self.assertEqual(vm.width, self.video_metadata.width)
