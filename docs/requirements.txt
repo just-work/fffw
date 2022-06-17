@@ -1,4 +1,4 @@
-sphinx==5.0.1
+sphinx==5.0.2
 sphinxcontrib-blockdiag==3.0.0
 pymediainfo==5.1.0
 funcparserlib==1.0.0
