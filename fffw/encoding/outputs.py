@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from itertools import chain
-from typing import List, cast, Optional, Iterable, Any
+from typing import List, cast, Optional, Iterable, Any, Tuple
 
 from fffw.graph.meta import AUDIO, VIDEO, StreamType
 from fffw.graph import base
@@ -57,8 +57,21 @@ class Codec(mixins.StreamValidationMixin, base.Dest, BaseWrapper):
         return bool(self.edge)
 
     def get_args(self) -> List[bytes]:
+        """
+        Insert map argument before all rest codec params.
+        """
         args = ['-map', self.map]
         return ensure_binary(args) + super().get_args()
+
+    def as_pairs(self) -> List[Tuple[Optional[str], Optional[str]]]:
+        """
+        Add stream index suffix to all named params
+        """
+        pairs = super().as_pairs()
+        result = []
+        for p, v in pairs:
+            result.append((p and f'{p}:{self.index}', v))
+        return result
 
     def clone(self, count: int = 1) -> List["Codec"]:
         """
