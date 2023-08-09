@@ -4,7 +4,7 @@ from typing import Any, Optional, Tuple, cast, List, Callable
 
 def param(default: Any = None, name: Optional[str] = None,
           stream_suffix: bool = False, init: bool = True, skip: bool = False,
-          render: Callable[[Any], Any] = None
+          render: Optional[Callable[[Any], Any]] = None
           ) -> Any:
     """
     Command line and filter parameters constructor.
