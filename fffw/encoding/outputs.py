@@ -1,6 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import List, cast, Optional, Iterable, Any, Tuple
+from typing import List, cast, Optional, Iterable, Any, Tuple, Dict
 
 from fffw.encoding import mixins
 from fffw.graph import base
@@ -254,11 +254,11 @@ class OutputList(list):
         return result
 
     @staticmethod
-    def __set_index(output: Output):
+    def __set_index(output: Output) -> None:
         """
         Enumerate codecs in output with a stream index in this output
         """
-        indices = defaultdict(lambda: 0)
+        indices: Dict[StreamType, int] = defaultdict(lambda: 0)
         for codec in output.codecs:
             codec.index = indices[codec.kind]
             indices[codec.kind] += 1
