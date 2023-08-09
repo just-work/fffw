@@ -1,11 +1,12 @@
+from collections import defaultdict
 from dataclasses import dataclass
-from itertools import chain
 from typing import List, cast, Optional, Iterable, Any, Tuple
 
-from fffw.graph.meta import AUDIO, VIDEO, StreamType
-from fffw.graph import base
-from fffw.wrapper import BaseWrapper, ensure_binary, param
 from fffw.encoding import mixins
+from fffw.graph import base
+from fffw.graph.meta import AUDIO, VIDEO, StreamType
+from fffw.wrapper import BaseWrapper, ensure_binary, param
+
 __all__ = [
     'Codec',
     'Output',
@@ -215,8 +216,6 @@ class OutputList(list):
         :param outputs: list of output files
         """
         super().__init__()
-        self.__video_index = 0
-        self.__audio_index = 0
         self.extend(outputs)
 
     @property
@@ -232,8 +231,7 @@ class OutputList(list):
 
         :param output: output file
         """
-        for codec in output.codecs:
-            self.__set_index(codec)
+        self.__set_index(output)
         super().append(output)
 
     def extend(self, outputs: Iterable[Output]) -> None:
@@ -242,20 +240,25 @@ class OutputList(list):
 
         :param outputs: list of output files
         """
-        for codec in chain(*map(lambda output: output.codecs, outputs)):
-            self.__set_index(codec)
+        for output in outputs:
+            self.__set_index(output)
         super().extend(outputs)
 
     def get_args(self) -> List[bytes]:
+        """
+        Combine all output params together
+        """
         result: List[bytes] = []
-        for source in self:
-            result.extend(source.get_args())
+        for output in self:
+            result.extend(output.get_args())
         return result
 
-    def __set_index(self, codec: Codec) -> None:
-        if codec.kind == VIDEO:
-            codec.index = self.__video_index
-            self.__video_index += 1
-        else:
-            codec.index = self.__audio_index
-            self.__audio_index += 1
+    @staticmethod
+    def __set_index(output: Output):
+        """
+        Enumerate codecs in output with a stream index in this output
+        """
+        indices = defaultdict(lambda: 0)
+        for codec in output.codecs:
+            codec.index = indices[codec.kind]
+            indices[codec.kind] += 1

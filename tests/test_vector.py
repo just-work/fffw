@@ -125,11 +125,11 @@ class VectorTestCase(BaseTestCase):
         """ Checks that vector works correctly without filter graph."""
         self.assert_simd_args(
             '-i', 'input.mp4',
-            '-map', '0:v:0', '-c:v', 'libx264',
-            '-map', '0:a:0', '-c:a', 'aac', '-b:a', '64000',
+            '-map', '0:v:0', '-c:v:0', 'libx264',
+            '-map', '0:a:0', '-c:a:0', 'aac', '-b:a:0', '64000',
             'output1.mp4',
-            '-map', '0:v:0', '-c:v', 'libx265',
-            '-map', '0:a:0', '-c:a', 'libfdk_aac',
+            '-map', '0:v:0', '-c:v:0', 'libx265',
+            '-map', '0:a:0', '-c:a:0', 'libfdk_aac',
             'output2.mp5')
 
     def test_filter_graph_pass_through(self):
@@ -139,11 +139,11 @@ class VectorTestCase(BaseTestCase):
 
         self.assert_simd_args(
             '-i', 'input.mp4',
-            '-map', '0:v:0', '-c:v', 'libx264',
-            '-map', '0:a:0', '-c:a', 'aac', '-b:a', '64000',
+            '-map', '0:v:0', '-c:v:0', 'libx264',
+            '-map', '0:a:0', '-c:a:0', 'aac', '-b:a:0', '64000',
             'output1.mp4',
-            '-map', '0:v:0', '-c:v', 'libx265',
-            '-map', '0:a:0', '-c:a', 'libfdk_aac',
+            '-map', '0:v:0', '-c:v:0', 'libx265',
+            '-map', '0:a:0', '-c:a:0', 'libfdk_aac',
             'output2.mp5')
 
     def test_single_quality_copy_pass_through(self):
@@ -161,11 +161,11 @@ class VectorTestCase(BaseTestCase):
             '-i', 'input.mp4',
             '-filter_complex',
             '[0:v:0]scale=w=1920:h=1080[vout0]',
-            '-map', '[vout0]', '-c:v', 'libx264',
-            '-map', '0:a:0', '-c:a', 'aac', '-b:a', '64000',
+            '-map', '[vout0]', '-c:v:0', 'libx264',
+            '-map', '0:a:0', '-c:a:0', 'aac', '-b:a:0', '64000',
             'output1.mp4',
-            '-map', '0:v:0', '-c:v', 'copy',
-            '-map', '0:a:0', '-c:a', 'libfdk_aac',
+            '-map', '0:v:0', '-c:v:0', 'copy',
+            '-map', '0:a:0', '-c:a:0', 'libfdk_aac',
             'output2.mp5')
 
     def test_same_filter_for_all_streams(self):
@@ -178,11 +178,11 @@ class VectorTestCase(BaseTestCase):
             '-filter_complex',
             '[0:a:0]volume=30.00[a:volume0];'
             '[a:volume0]asplit[aout0][aout1]',
-            '-map', '0:v:0', '-c:v', 'libx264',
-            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '64000',
+            '-map', '0:v:0', '-c:v:0', 'libx264',
+            '-map', '[aout0]', '-c:a:0', 'aac', '-b:a:0', '64000',
             'output1.mp4',
-            '-map', '0:v:0', '-c:v', 'libx265',
-            '-map', '[aout1]', '-c:a', 'libfdk_aac',
+            '-map', '0:v:0', '-c:v:0', 'libx265',
+            '-map', '[aout1]', '-c:a:0', 'libfdk_aac',
             'output2.mp5')
 
     def test_same_filter_with_mask(self):
@@ -195,11 +195,11 @@ class VectorTestCase(BaseTestCase):
             '-filter_complex',
             '[0:a:0]asplit[a:asplit0][aout0];'
             '[a:asplit0]volume=30.00[aout1]',
-            '-map', '0:v:0', '-c:v', 'libx264',
-            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '64000',
+            '-map', '0:v:0', '-c:v:0', 'libx264',
+            '-map', '[aout0]', '-c:a:0', 'aac', '-b:a:0', '64000',
             'output1.mp4',
-            '-map', '0:v:0', '-c:v', 'libx265',
-            '-map', '[aout1]', '-c:a', 'libfdk_aac',
+            '-map', '0:v:0', '-c:v:0', 'libx265',
+            '-map', '[aout1]', '-c:a:0', 'libfdk_aac',
             'output2.mp5')
 
     def test_multiple_disabled_filters(self):
@@ -210,11 +210,11 @@ class VectorTestCase(BaseTestCase):
             'input.mp4',
             '-filter_complex',
             '[0:a:0]asplit[aout0][aout1]',
-            '-map', '0:v:0', '-c:v', 'libx264',
-            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '64000',
+            '-map', '0:v:0', '-c:v:0', 'libx264',
+            '-map', '[aout0]', '-c:a:0', 'aac', '-b:a:0', '64000',
             'output1.mp4',
-            '-map', '0:v:0', '-c:v', 'libx265',
-            '-map', '[aout1]', '-c:a', 'libfdk_aac',
+            '-map', '0:v:0', '-c:v:0', 'libx265',
+            '-map', '[aout1]', '-c:a:0', 'libfdk_aac',
             'output2.mp5')
 
     def test_apply_filter_with_params_vector(self):
@@ -227,11 +227,11 @@ class VectorTestCase(BaseTestCase):
             '[0:a:0]asplit[a:asplit0][a:asplit1];'
             '[a:asplit0]volume=20.00[aout0];'
             '[a:asplit1]volume=30.00[aout1]',
-            '-map', '0:v:0', '-c:v', 'libx264',
-            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '64000',
+            '-map', '0:v:0', '-c:v:0', 'libx264',
+            '-map', '[aout0]', '-c:a:0', 'aac', '-b:a:0', '64000',
             'output1.mp4',
-            '-map', '0:v:0', '-c:v', 'libx265',
-            '-map', '[aout1]', '-c:a', 'libfdk_aac',
+            '-map', '0:v:0', '-c:v:0', 'libx265',
+            '-map', '[aout1]', '-c:a:0', 'libfdk_aac',
             'output2.mp5')
 
     def test_apply_filter_with_equal_params(self):
@@ -243,11 +243,11 @@ class VectorTestCase(BaseTestCase):
             '-filter_complex',
             '[0:a:0]volume=30.00[a:volume0];'
             '[a:volume0]asplit[aout0][aout1]',
-            '-map', '0:v:0', '-c:v', 'libx264',
-            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '64000',
+            '-map', '0:v:0', '-c:v:0', 'libx264',
+            '-map', '[aout0]', '-c:a:0', 'aac', '-b:a:0', '64000',
             'output1.mp4',
-            '-map', '0:v:0', '-c:v', 'libx265',
-            '-map', '[aout1]', '-c:a', 'libfdk_aac',
+            '-map', '0:v:0', '-c:v:0', 'libx265',
+            '-map', '[aout1]', '-c:a:0', 'libfdk_aac',
             'output2.mp5')
 
     def test_split_filter_if_vector_differs(self):
@@ -266,11 +266,11 @@ class VectorTestCase(BaseTestCase):
             '[a:volume0]stub[aout0];'
             '[a:asplit1]volume=30.00[a:volume1];'
             '[a:volume1]stub[aout1]',
-            '-map', '0:v:0', '-c:v', 'libx264',
-            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '64000',
+            '-map', '0:v:0', '-c:v:0', 'libx264',
+            '-map', '[aout0]', '-c:a:0', 'aac', '-b:a:0', '64000',
             'output1.mp4',
-            '-map', '0:v:0', '-c:v', 'libx265',
-            '-map', '[aout1]', '-c:a', 'libfdk_aac',
+            '-map', '0:v:0', '-c:v:0', 'libx265',
+            '-map', '[aout1]', '-c:a:0', 'libfdk_aac',
             'output2.mp5')
 
     def test_clone_inputs_for_destination_filter(self):
@@ -300,11 +300,11 @@ class VectorTestCase(BaseTestCase):
             '[v:another0]split[v:split4][v:split5];'
             '[v:split4][v:scale0]overlay[vout0];'
             '[v:split5][v:scale1]overlay[vout1]',
-            '-map', '[vout0]', '-c:v', 'libx264',
-            '-map', '0:a:0', '-c:a', 'aac', '-b:a', '64000',
+            '-map', '[vout0]', '-c:v:0', 'libx264',
+            '-map', '0:a:0', '-c:a:0', 'aac', '-b:a:0', '64000',
             'output1.mp4',
-            '-map', '[vout1]', '-c:v', 'libx265',
-            '-map', '0:a:0', '-c:a', 'libfdk_aac',
+            '-map', '[vout1]', '-c:v:0', 'libx265',
+            '-map', '0:a:0', '-c:a:0', 'libfdk_aac',
             'output2.mp5')
 
     def test_clone_streams(self):
@@ -328,11 +328,11 @@ class VectorTestCase(BaseTestCase):
             '[v:split1]scale=w=640:h=360[v:scale1];'
             '[v:split2][v:scale0]overlay[vout0];'
             '[v:split3][v:scale1]overlay[vout1]',
-            '-map', '[vout0]', '-c:v', 'libx264',
-            '-map', '0:a:0', '-c:a', 'aac', '-b:a', '64000',
+            '-map', '[vout0]', '-c:v:0', 'libx264',
+            '-map', '0:a:0', '-c:a:0', 'aac', '-b:a:0', '64000',
             'output1.mp4',
-            '-map', '[vout1]', '-c:v', 'libx265',
-            '-map', '0:a:0', '-c:a', 'libfdk_aac',
+            '-map', '[vout1]', '-c:v:0', 'libx265',
+            '-map', '0:a:0', '-c:a:0', 'libfdk_aac',
             'output2.mp5'
         )
 
@@ -352,11 +352,11 @@ class VectorTestCase(BaseTestCase):
             '-filter_complex',
             '[0:v:0]split[v:split0][vout0];'
             '[1:v:0][v:split0]overlay[vout1]',
-            '-map', '[vout1]', '-c:v', 'libx264',
-            '-map', '0:a:0', '-c:a', 'aac', '-b:a', '64000',
+            '-map', '[vout1]', '-c:v:0', 'libx264',
+            '-map', '0:a:0', '-c:a:0', 'aac', '-b:a:0', '64000',
             'output1.mp4',
-            '-map', '[vout0]', '-c:v', 'libx265',
-            '-map', '0:a:0', '-c:a', 'libfdk_aac',
+            '-map', '[vout0]', '-c:v:0', 'libx265',
+            '-map', '0:a:0', '-c:a:0', 'libfdk_aac',
             'output2.mp5'
         )
 
@@ -383,11 +383,11 @@ class VectorTestCase(BaseTestCase):
             '[0:a:0]asplit[a:asplit0][aout0];'
             '[1:v:0][v:split0]concat[vout1];'
             '[1:a:0][a:asplit0]concat=v=0:a=1:n=2[aout1]',
-            '-map', '[vout1]', '-c:v', 'libx264',
-            '-map', '[aout1]', '-c:a', 'aac', '-b:a', '64000',
+            '-map', '[vout1]', '-c:v:0', 'libx264',
+            '-map', '[aout1]', '-c:a:0', 'aac', '-b:a:0', '64000',
             'output1.mp4',
-            '-map', '[vout0]', '-c:v', 'libx265',
-            '-map', '[aout0]', '-c:a', 'libfdk_aac',
+            '-map', '[vout0]', '-c:v:0', 'libx265',
+            '-map', '[aout0]', '-c:a:0', 'libfdk_aac',
             'output2.mp5')
 
     def test_connect_filter_to_a_vector(self):
@@ -406,11 +406,11 @@ class VectorTestCase(BaseTestCase):
             '[v:overlay0]split[vout0][vout1];'
             '[1:v:0]scale=w=120:h=120[v:scale0];'
             '[0:v:0][v:scale0]overlay[v:overlay0]',
-            '-map', '[vout0]', '-c:v', 'libx264',
-            '-map', '0:a:0', '-c:a', 'aac', '-b:a', '64000',
+            '-map', '[vout0]', '-c:v:0', 'libx264',
+            '-map', '0:a:0', '-c:a:0', 'aac', '-b:a:0', '64000',
             'output1.mp4',
-            '-map', '[vout1]', '-c:v', 'libx265',
-            '-map', '0:a:0', '-c:a', 'libfdk_aac',
+            '-map', '[vout1]', '-c:v:0', 'libx265',
+            '-map', '0:a:0', '-c:a:0', 'libfdk_aac',
             'output2.mp5'
         )
 
@@ -437,14 +437,14 @@ class VectorTestCase(BaseTestCase):
             '[v:concat0]scale=w=1820:h=720[v:scale0];'
             '[1:v:0][1:v:0]concat[v:concat0]',
             '-map', '[vout0]',
-            '-c:v', 'libx264',
+            '-c:v:0', 'libx264',
             '-map', '[aout0]',
-            '-c:a', 'aac', '-b:a', '64000',
+            '-c:a:0', 'aac', '-b:a:0', '64000',
             'output1.mp4',
             '-map', '[vout1]',
-            '-c:v', 'libx265',
+            '-c:v:0', 'libx265',
             '-map', '[aout1]',
-            '-c:a', 'libfdk_aac',
+            '-c:a:0', 'libfdk_aac',
             'output2.mp5'
         )
 

@@ -109,12 +109,12 @@ class FFMPEGTestCase(BaseTestCase):
             '-filter_complex',
             '[0:v:0]scale=w=640:h=360[vout0];[0:a:0]asplit[aout0][aout1]',
 
-            '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '3600000',
-            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '192000',
+            '-map', '[vout0]', '-c:v:0', 'libx264', '-b:v:0', '3600000',
+            '-map', '[aout0]', '-c:a:0', 'aac', '-b:a:0', '192000',
 
             'output.mp4',
 
-            '-map', '[aout1]', '-c:a', 'libmp3lame', '-b:a', '394000',
+            '-map', '[aout1]', '-c:a:0', 'libmp3lame', '-b:a:0', '394000',
             '-vn',
             '/tmp/out.mp3'
         )
@@ -164,9 +164,45 @@ class FFMPEGTestCase(BaseTestCase):
             '-i', 'source.mp4',
             '-filter_complex',
             '[0:v:0]scale=w=640:h=360[vout0]',
-            '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '3600000',
-            '-map', '0:a:0', '-c:a', 'aac', '-b:a', '192000',
+            '-map', '[vout0]', '-c:v:0', 'libx264', '-b:v:0', '3600000',
+            '-map', '0:a:0', '-c:a:0', 'aac', '-b:a:0', '192000',
             'output.mp4'
+        )
+
+    def test_set_stream_index_for_codec_params(self):
+        """ Codec params in same file should be properly indexed."""
+        ff = self.ffmpeg
+        ff < self.source
+
+        split = ff.video | filters.Scale(640, 360) | filters.Split(VIDEO, 4)
+        split > self.video_codec
+        vc1 = X264(bitrate=1800000)
+        vc2 = X264(bitrate=900000)
+        vc3 = X264(bitrate=450000)
+
+        split > vc1
+        split > vc2
+        split > vc3
+
+        output1 = outputs.output_file('first.mp4', self.video_codec, vc1)
+        output2 = outputs.output_file('second.mp4', vc2, vc3)
+
+        ff > output1
+        ff > output2
+
+        self.assert_ffmpeg_args(
+            '-i', 'source.mp4',
+            '-filter_complex',
+            '[0:v:0]scale=w=640:h=360[v:scale0];'
+            '[v:scale0]split=4[vout0][vout1][vout2][vout3]',
+            '-map', '[vout0]', '-c:v:0', 'libx264', '-b:v:0', '3600000',
+            '-map', '[vout1]', '-c:v:1', 'libx264', '-b:v:1', '1800000',
+            '-an',
+            'first.mp4',
+            '-map', '[vout2]', '-c:v:0', 'libx264', '-b:v:0', '900000',
+            '-map', '[vout3]', '-c:v:1', 'libx264', '-b:v:1', '450000',
+            '-an',
+            'second.mp4'
         )
 
     def test_bypass_disabled_filter(self):
@@ -182,8 +218,8 @@ class FFMPEGTestCase(BaseTestCase):
 
         self.assert_ffmpeg_args(
             '-i', 'source.mp4',
-            '-map', '0:v:0', '-c:v', 'libx264', '-b:v', '3600000',
-            '-map', '0:a:0', '-c:a', 'aac', '-b:a', '192000',
+            '-map', '0:v:0', '-c:v:0', 'libx264', '-b:v:0', '3600000',
+            '-map', '0:a:0', '-c:a:0', 'aac', '-b:a:0', '192000',
             'output.mp4'
         )
 
@@ -200,7 +236,7 @@ class FFMPEGTestCase(BaseTestCase):
             '-i', 'source.mp4',
             '-filter_complex',
             '[0:v:0]scale=w=640:h=360[vout0]',
-            '-map', '[vout0]', '-c:v', 'libx264',
+            '-map', '[vout0]', '-c:v:0', 'libx264',
             '-an',
             'out.mp4'
         )
@@ -213,8 +249,8 @@ class FFMPEGTestCase(BaseTestCase):
 
         self.assert_ffmpeg_args(
             '-i', 'source.mp4',
-            '-map', '0:v:0', '-c:v', 'libx264', '-b:v', '3600000',
-            '-map', '0:a:0', '-c:a', 'aac', '-b:a', '192000',
+            '-map', '0:v:0', '-c:v:0', 'libx264', '-b:v:0', '3600000',
+            '-map', '0:a:0', '-c:a:0', 'aac', '-b:a:0', '192000',
             'output.mp4'
         )
 
@@ -244,8 +280,8 @@ class FFMPEGTestCase(BaseTestCase):
             '[v:scale0][v:scale1]overlay[vout0];'
             '[1:v:0]scale=w=1280:h=720[v:scale1];'
             '[1:a:0]volume=-20.00[aout0]',
-            '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '3600000',
-            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '192000',
+            '-map', '[vout0]', '-c:v:0', 'libx264', '-b:v:0', '3600000',
+            '-map', '[aout0]', '-c:a:0', 'aac', '-b:a:0', '192000',
             'output.mp4'
         )
 
@@ -265,9 +301,9 @@ class FFMPEGTestCase(BaseTestCase):
             '-filter_complex',
             '[0:a:0]volume=20.00[aout0]',
             '-map', '0:v:0',
-            '-c:v', 'copy',
+            '-c:v:0', 'copy',
             '-map', '[aout0]',
-            '-c:a', 'aac', '-b:a', '128000',
+            '-c:a:0', 'aac', '-b:a:0', '128000',
             '/tmp/out.flv'
         )
 
@@ -289,14 +325,14 @@ class FFMPEGTestCase(BaseTestCase):
         self.assert_ffmpeg_args(
             '-i', 'source.mp4',
             '-map', '0:v:0',
-            '-c:v', 'libx264', '-b:v', '3600000',
+            '-c:v:0', 'libx264', '-b:v:0', '3600000',
             '-map', '0:a:0',
-            '-c:a', 'aac', '-b:a', '192000',
+            '-c:a:0', 'aac', '-b:a:0', '192000',
             'output.mp4',
             '-map', '0:v:0',
-            '-c:v', 'copy',
+            '-c:v:0', 'copy',
             '-map', '0:a:0',
-            '-c:a', 'copy',
+            '-c:a:0', 'copy',
             '/tmp/out1.flv',
         )
 
@@ -321,14 +357,14 @@ class FFMPEGTestCase(BaseTestCase):
             '-filter_complex',
             '[0:v:0]scale=w=640:h=360[vout0]',
             '-map', '0:v:0',
-            '-c:v', 'copy',
+            '-c:v:0', 'copy',
             '-map', '0:a:0',
-            '-c:a', 'copy',
+            '-c:a:0', 'copy',
             '/tmp/copy.flv',
             '-map', '[vout0]',
-            '-c:v', 'libx264',
+            '-c:v:0', 'libx264',
             '-map', '0:a:0',
-            '-c:a', 'aac',
+            '-c:a:0', 'aac',
             '/tmp/out.flv')
 
     def test_transcoding_without_graph(self):
@@ -361,9 +397,9 @@ class FFMPEGTestCase(BaseTestCase):
             'ffmpeg',
             '-i', '/tmp/input.mp4',
             '-map', '0:v:0',
-            '-c:v', 'libx264',
+            '-c:v:0', 'libx264',
             '-map', '0:a:0',
-            '-c:a', 'aac',
+            '-c:a:0', 'aac',
             '-f', 'tee',
             '[f=hls:hls_time=2]http://ya.ru/1.m3u8|'
             '[f=hls:hls_list_size=5]http://ya.ru/2.m3u8'
@@ -398,8 +434,8 @@ class FFMPEGTestCase(BaseTestCase):
             "[v:scale0]setsar=1[v:setsar0];"
             "[v:setsar0][1:v:0]concat[vout0];"
             "[0:a:0][1:a:0]concat=v=0:a=1:n=2[aout0]",
-            '-map', '[vout0]', '-c:v', 'libx264', '-b:v', '3600000',
-            '-map', '[aout0]', '-c:a', 'aac', '-b:a', '192000',
+            '-map', '[vout0]', '-c:v:0', 'libx264', '-b:v:0', '3600000',
+            '-map', '[aout0]', '-c:a:0', 'aac', '-b:a:0', '192000',
             'output.mp4'
         )
 
