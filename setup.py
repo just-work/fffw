@@ -63,7 +63,7 @@ def get_version() -> Optional[str]:
 
 setup(
     name=package_name,
-    version=get_version() or 'dev',
+    version=get_version(),
     packages=find_packages(exclude=["tests"]),
     url='http://github.com/just-work/fffw',
     license='MIT',
