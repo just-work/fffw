@@ -1,1 +1,1 @@
-pymediainfo==6.0.1
+pymediainfo==6.1.0
