@@ -133,7 +133,10 @@ class Copy(outputs.Codec):
         # Ensure that edge is connected to a source with only split filters
         # in between.
         while isinstance(src, filters.Split):
-            src = src.input.input
+            edge = src.input
+            if edge is None:
+                raise RuntimeError("Input edge not connected")
+            src = edge.input
         if not isinstance(src, base.Source):
             raise ValueError('copy codec can be connected only to source')
         return src

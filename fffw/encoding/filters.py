@@ -1,11 +1,16 @@
 from dataclasses import dataclass, replace, asdict, field, fields
-from typing import Union, List, cast, Optional
+from typing import Union, List, cast, Optional, TYPE_CHECKING
 
 from fffw.graph import base
 from fffw.encoding import mixins
 from fffw.graph.meta import Meta, VideoMeta, TS, Scene, VIDEO, AUDIO, AudioMeta
 from fffw.graph.meta import StreamType, Device
 from fffw.wrapper.params import Params, param
+
+if TYPE_CHECKING:
+    from _typeshed import DataclassInstance
+else:
+    DataclassInstance = object
 
 __all__ = [
     'AutoFilter',
@@ -47,7 +52,8 @@ def ensure_audio(meta: Meta, *_: Meta) -> AudioMeta:
 
 
 @dataclass
-class Filter(mixins.StreamValidationMixin, base.Node, Params):
+class Filter(mixins.StreamValidationMixin, base.Node, Params,
+             DataclassInstance):
     """
     Base class for ffmpeg filter definitions.
 
@@ -330,7 +336,7 @@ class Trim(AutoFilter):
             kwargs['samples'] = round(meta.sampling_rate * interval)
         if isinstance(meta, VideoMeta):
             kwargs['frames'] = round(meta.frame_rate * interval)
-        return replace(meta, **kwargs)
+        return replace(meta, **kwargs)  # type: ignore
 
 
 @dataclass
@@ -430,7 +436,7 @@ class Concat(Filter):
         if isinstance(meta, VideoMeta):
             # Recompute frames from frame rate and duration.
             kwargs['frames'] = round(meta.frame_rate * duration)
-        return replace(metadata[0], **kwargs)
+        return replace(metadata[0], **kwargs)  # type: ignore
 
 
 @dataclass
