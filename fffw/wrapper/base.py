@@ -1,12 +1,12 @@
 import asyncio
 import io
 import subprocess
-from asyncio.subprocess import Process
+from asyncio.subprocess import Process  # noqa
 from dataclasses import dataclass
 from logging import getLogger
 from types import TracebackType
 from typing import Tuple, List, Any, Optional, cast, Callable, Union, TextIO
-from typing import Type, AsyncIterator
+from typing import Type, AsyncIterator, Literal
 
 from fffw.wrapper.helpers import quote, ensure_binary, ensure_text
 from fffw.wrapper.params import Params
@@ -25,6 +25,7 @@ class UniversalLineReader:
     ...    print(line)
 
     """
+    unicode_error_handler: Literal['replace', 'strict', 'ignore'] = 'replace'
 
     def __init__(self,
                  reader: asyncio.StreamReader,
@@ -69,12 +70,14 @@ class UniversalLineReader:
                 # Last line is buffered to handle the case when CRLF sequence is
                 # being split to subsequent reads.
                 [*lines, self.buffer] = self.buffer.splitlines(keepends=True)
-                for line in lines:
-                    yield line.decode(self.encoding)
+                for line in lines:  # type: bytes
+                    yield line.decode(self.encoding,
+                                      errors=self.unicode_error_handler)
         # We always leave one non-empty line above, but stream may be empty. In
         # this case we don't want to yield empty line.
         if self.buffer:
-            yield self.buffer.decode(self.encoding)
+            yield self.buffer.decode(self.encoding,
+                                     errors=self.unicode_error_handler)
 
 
 class Runner:

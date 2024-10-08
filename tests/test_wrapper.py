@@ -133,6 +133,18 @@ class UniversalLineReaderTestCase(TestCase):
         with self.assertRaises(asyncio.LimitOverrunError):
             self.assert_lines(lines)
 
+    def test_unicode_error_handling(self):
+        real_log_line = (b'[info]         handler_name    : '
+                         b'\x8e\xe1\xf0\xe0\xe1\xee\xf2\xf7\xe8\xea '
+                         b'\xe2\xe8\xe4\xe5\xee Apple\n')
+        self.data.write(real_log_line)
+        self.data.seek(0)
+
+        string = asyncio.get_event_loop().run_until_complete(self.iterate())
+
+        self.assertIn("handler_name", '\n'.join(string))
+        self.assertIn("Apple", '\n'.join(string))
+
 
 @dataclass
 class Wrapper(Params):
