@@ -2,8 +2,9 @@ from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum
 from functools import wraps
-from typing import List, Union, Any, Optional, Callable, overload, Tuple, cast
-from fffw.types import Literal
+from typing import (
+    List, Union, Any, Optional, Callable, Tuple, Literal, overload, cast
+)
 
 from pymediainfo import MediaInfo  # type: ignore
 
@@ -31,6 +32,8 @@ class StreamType(Enum):
 VIDEO = StreamType.VIDEO
 AUDIO = StreamType.AUDIO
 
+NullaryOp = Callable[[], Any]
+NullaryTS = Callable[[], "TS"]
 BinaryOp = Callable[[Any, Any], Any]
 BinaryTS = Callable[[Any, Any], "TS"]
 UnaryOp = Callable[[Any], Any]
@@ -77,9 +80,29 @@ def ts(func: UnaryOp,
     ...
 
 
-def ts(func: Union[BinaryOp, UnaryOp], *,
+@overload
+def ts(func: NullaryOp,
+       *,
+       arg: bool = True,
+       res: Literal[True] = True,
+       noarg: Literal[True]
+       ) -> NullaryTS:
+    ...
+
+
+@overload
+def ts(func: NullaryOp,
+       *,
+       arg: bool = True,
+       res: Literal[False],
+       noarg: Literal[True]
+       ) -> NullaryTS:
+    ...
+
+
+def ts(func: Union[BinaryOp, UnaryOp, NullaryOp], *,
        arg: bool = True, res: bool = True, noarg: bool = False
-       ) -> Union[BinaryOp, UnaryOp]:
+       ) -> Union[BinaryTS, UnaryTS, NullaryTS]:
     """
     Decorates functions to automatically cast first argument and result to TS.
     """

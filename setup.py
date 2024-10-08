@@ -75,13 +75,11 @@ setup(
     test_suite="tests",
     install_requires=[
         'pymediainfo',
-        'typing_extensions; python_version < "3.8.0"',
     ],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Console',
         'Operating System :: POSIX',
-        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
