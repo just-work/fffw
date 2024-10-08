@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0", "setuptools-git-versioning"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools-git-versioning]
+enabled = true
+
+
+[project]
+name = "fffw"
+dynamic = ["version"]
+description = "FFMPEG wrapper"
+readme = "README.md"
+authors = [
+    { name = "Sergey Tikhonov", email = "zimbler@gmail.com" },
+]
+
+dependencies = [
+    "pymediainfo",
+]
+license = { text = "MIT" }
+keywords = [
+    "ffmpeg",
+    "wrapper",
+]
+classifiers = [
+        'Development Status :: 5 - Production/Stable',
+        'Environment :: Console',
+        'Operating System :: POSIX',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
+        'Programming Language :: Python :: 3.12',
+        'Topic :: Multimedia :: Video :: Conversion',
+]
+
+[project.urls]
+homepage = "https://github.com/just-work/fffw"
+documentation = "https://fffw.readthedocs.io/en/latest/"
+repository = "https://github.com/just-work/fffw.git"
+issues = "https://github.com/just-work/fffw/issues"
