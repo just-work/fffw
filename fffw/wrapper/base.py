@@ -6,9 +6,7 @@ from dataclasses import dataclass
 from logging import getLogger
 from types import TracebackType
 from typing import Tuple, List, Any, Optional, cast, Callable, Union, TextIO
-from typing import Type, AsyncIterator
-
-from typing_extensions import Literal
+from typing import Type, AsyncIterator, Literal
 
 from fffw.wrapper.helpers import quote, ensure_binary, ensure_text
 from fffw.wrapper.params import Params
