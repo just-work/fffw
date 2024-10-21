@@ -3,7 +3,7 @@ from copy import deepcopy
 from dataclasses import dataclass, fields
 from datetime import timedelta
 from itertools import product
-from typing import Iterable, Tuple, Any
+from typing import Iterable, Tuple, Any, TYPE_CHECKING, cast
 from unittest import TestCase
 
 from pymediainfo import MediaInfo  # type: ignore
@@ -255,19 +255,29 @@ class MetaDataTestCase(TestCase):
 
     def test_subclassing_video_meta(self):
         """ VideoMeta must be extensible."""
+        if TYPE_CHECKING:
+            from _typeshed import DataclassInstance
+        else:
+            DataclassInstance = object
+
         @dataclass
-        class ExtendedVideoMeta(meta.VideoMeta):
+        class ExtendedVideoMeta(meta.VideoMeta, DataclassInstance):
             my_custom_metadata: str
 
-        self.assertTrue(fields(ExtendedVideoMeta))
+        self.assertIn("my_custom_metadata", fields(ExtendedVideoMeta))
 
     def test_subclassing_audio_meta(self):
         """ VideoMeta must be extensible."""
+        if TYPE_CHECKING:
+            from _typeshed import DataclassInstance
+        else:
+            DataclassInstance = object
+
         @dataclass
-        class ExtendedVideoMeta(meta.AudioMeta):
+        class ExtendedAudioMeta(meta.AudioMeta, DataclassInstance):
             my_custom_metadata: str
 
-        self.assertTrue(fields(ExtendedVideoMeta))
+        self.assertIn("my_custom_metadata", fields(ExtendedAudioMeta))
 
     def test_mkv_stream_duration(self):
         """ MKV duration is stored as float and this is a problem for TS constuctor."""
@@ -311,7 +321,7 @@ class TimeStampTestCase(TestCase):
             (string, cls.ts),
         )
 
-    def assert_ts_equal(self, ts: meta.TS, expected: float):
+    def assert_ts_equal(self, ts: Any, expected: float):
         self.assertIsInstance(ts, meta.TS)
         self.assertAlmostEqual(ts.total_seconds(), expected, places=4)
 
@@ -409,7 +419,7 @@ class TimeStampTestCase(TestCase):
         self.assert_ts_equal(abs(ts), self.td.total_seconds())
 
     def test_compare(self):
-        v = self.ts + 0.001
+        v = cast(meta.TS, self.ts + 0.001)
         cases = (
             v,
             v.total_seconds(),
