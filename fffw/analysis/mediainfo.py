@@ -55,17 +55,16 @@ class Analyzer:
 
     def get_audio_meta_kwargs(self, track: Dict[str, Any]) -> Dict[str, Any]:
         duration = self.maybe_parse_duration(track.get('duration'))
-        stream = track.get('stream')
         start = meta.TS(track.get('start', 0))
         scene = meta.Scene(
-            stream=stream,
+            stream=None,
             duration=duration,
             start=start,
             position=start,
         )
         return dict(
             scenes=[scene],
-            streams=[stream] if stream else [],
+            streams=[],
             duration=duration,
             start=start,
             bitrate=int(track.get('bit_rate', 0)),
@@ -98,17 +97,16 @@ class Analyzer:
                 frame_rate = 0
             else:
                 frame_rate = frames / duration.total_seconds()
-        stream = track.get('stream')
         start = meta.TS(track.get('start', 0))
         scene = meta.Scene(
-            stream=stream,
+            stream=None,
             duration=duration,
             start=start,
             position=start,
         )
         return dict(
             scenes=[scene],
-            streams=[stream] if stream else [],
+            streams=[],
             duration=duration,
             start=start,
             bitrate=int(track.get('bit_rate', 0)),

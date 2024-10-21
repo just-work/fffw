@@ -8,7 +8,7 @@ from unittest import TestCase
 
 from pymediainfo import MediaInfo  # type: ignore
 
-from fffw.analysis import mediainfo
+from fffw.analysis import mediainfo, ffprobe
 from fffw.graph import meta
 
 MEDIAINFO_SAMPLE = '''<?xml version="1.0" encoding="UTF-8"?>
@@ -208,6 +208,128 @@ MEDIAINFO_SAMPLE = '''<?xml version="1.0" encoding="UTF-8"?>
 '''
 
 
+FFPROBE_SAMPLE = '''{
+    "streams": [
+        {
+            "index": 0,
+            "codec_name": "h264",
+            "codec_long_name": "H.264 / AVC / MPEG-4 AVC / MPEG-4 part 10",
+            "profile": "High",
+            "codec_type": "video",
+            "codec_tag_string": "avc1",
+            "codec_tag": "0x31637661",
+            "width": 1920,
+            "height": 1080,
+            "coded_width": 1920,
+            "coded_height": 1080,
+            "closed_captions": 0,
+            "film_grain": 0,
+            "has_b_frames": 2,
+            "sample_aspect_ratio": "1:1",
+            "display_aspect_ratio": "16:9",
+            "pix_fmt": "yuv420p",
+            "level": 42,
+            "chroma_location": "left",
+            "field_order": "progressive",
+            "refs": 1,
+            "is_avc": "true",
+            "nal_length_size": "4",
+            "id": "0x1",
+            "r_frame_rate": "50/1",
+            "avg_frame_rate": "50/1",
+            "time_base": "1/50",
+            "start_pts": 0,
+            "start_time": "0.000000",
+            "duration_ts": 337,
+            "duration": "6.740000",
+            "bit_rate": "4321425",
+            "bits_per_raw_sample": "8",
+            "nb_frames": "337",
+            "extradata_size": 44,
+            "disposition": {
+                "default": 1,
+                "dub": 0,
+                "original": 0,
+                "comment": 0,
+                "lyrics": 0,
+                "karaoke": 0,
+                "forced": 0,
+                "hearing_impaired": 0,
+                "visual_impaired": 0,
+                "clean_effects": 0,
+                "attached_pic": 0,
+                "timed_thumbnails": 0,
+                "non_diegetic": 0,
+                "captions": 0,
+                "descriptions": 0,
+                "metadata": 0,
+                "dependent": 0,
+                "still_image": 0,
+                "multilayer": 0
+            },
+            "tags": {
+                "language": "und",
+                "handler_name": "VideoHandler",
+                "vendor_id": "[0][0][0][0]"
+            }
+        },
+        {
+            "index": 1,
+            "codec_name": "aac",
+            "codec_long_name": "AAC (Advanced Audio Coding)",
+            "profile": "LC",
+            "codec_type": "audio",
+            "codec_tag_string": "mp4a",
+            "codec_tag": "0x6134706d",
+            "sample_fmt": "fltp",
+            "sample_rate": "48000",
+            "channels": 6,
+            "channel_layout": "5.1",
+            "bits_per_sample": 0,
+            "initial_padding": 0,
+            "id": "0x2",
+            "r_frame_rate": "0/0",
+            "avg_frame_rate": "0/0",
+            "time_base": "1/48000",
+            "start_pts": 0,
+            "start_time": "0.000000",
+            "duration_ts": 323584,
+            "duration": "6.741333",
+            "bit_rate": "192545",
+            "nb_frames": "316",
+            "extradata_size": 2,
+            "disposition": {
+                "default": 1,
+                "dub": 0,
+                "original": 0,
+                "comment": 0,
+                "lyrics": 0,
+                "karaoke": 0,
+                "forced": 0,
+                "hearing_impaired": 0,
+                "visual_impaired": 0,
+                "clean_effects": 0,
+                "attached_pic": 0,
+                "timed_thumbnails": 0,
+                "non_diegetic": 0,
+                "captions": 0,
+                "descriptions": 0,
+                "metadata": 0,
+                "dependent": 0,
+                "still_image": 0,
+                "multilayer": 0
+            },
+            "tags": {
+                "language": "und",
+                "handler_name": "SoundHandler",
+                "vendor_id": "[0][0][0][0]"
+            }
+        }
+    ]
+}
+'''
+
+
 class MetaDataTestCase(TestCase):
 
     def test_subclassing_video_meta(self):
@@ -293,6 +415,53 @@ class MediaInfoAnyzerTestCase(TestCase):
         self.assertEqual(len(original), len(streams))
         for s, o in zip(streams, original):
             self.assertEqual(s.duration, o.duration)
+
+
+class FFProbeAnyzerTestCase(TestCase):
+    def setUp(self) -> None:
+        self.ffprobe_info = json.loads(FFPROBE_SAMPLE)
+
+    def test_parse_streams(self):
+        streams = ffprobe.Analyzer().from_ffprobe_data(**self.ffprobe_info)
+        self.assertEqual(len(streams), 2)
+        video = streams[0]
+        self.assertIsInstance(video, meta.VideoMeta)
+        scene = meta.Scene(stream=None,
+                           start=meta.TS(0),
+                           duration=meta.TS(6.740),
+                           position=meta.TS(0))
+        expected = meta.VideoMeta(
+            scenes=[scene],
+            streams=[],
+            duration=meta.TS(6.740),
+            start=meta.TS(0),
+            bitrate=4321425,
+            width=1920,
+            height=1080,
+            par=1.0,
+            dar=1.778,
+            frame_rate=50.0,
+            frames=337,
+            device=None,
+        )
+        self.assertEqual(expected, video)
+        audio = streams[1]
+        self.assertIsInstance(audio, meta.AudioMeta)
+        scene = meta.Scene(stream=None,
+                           start=meta.TS(0),
+                           duration=meta.TS(6.741333),
+                           position=meta.TS(0))
+        expected = meta.AudioMeta(
+            scenes=[scene],
+            streams=[],
+            duration=meta.TS(6.741333),
+            start=meta.TS(0),
+            bitrate=192545,
+            sampling_rate=48000,
+            channels=6,
+            samples=323584,
+        )
+        self.assertEqual(expected, audio)
 
 
 class TimeStampTestCase(TestCase):

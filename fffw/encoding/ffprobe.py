@@ -31,14 +31,14 @@ class FFProbe(BaseWrapper):
     output_format: str = param(name='of')
 
 
-def analyze(source: str) -> List[Dict[str, Any]]:
+def analyze(source: str) -> Dict[str, Any]:
     """
     Performs source analysis with ffprobe.
     :param source: source uri
-    :return: list of stream metadata from ffprobe output
+    :return: metadata loaded from json output.
     """
     ff = FFProbe(source, show_streams=True, output_format='json')
     ret, output, errors = ff.run()
     if ret != 0:
         raise RuntimeError(f"ffprobe returned {ret}")
-    return json.loads(output).get("streams", [])
+    return json.loads(output)
