@@ -8,9 +8,10 @@ from unittest import TestCase
 
 from pymediainfo import MediaInfo  # type: ignore
 
+from fffw.analysis import mediainfo
 from fffw.graph import meta
 
-SAMPLE = '''<?xml version="1.0" encoding="UTF-8"?>
+MEDIAINFO_SAMPLE = '''<?xml version="1.0" encoding="UTF-8"?>
 <Mediainfo version="19.09">
 <File>
 <track type="General">
@@ -208,11 +209,40 @@ SAMPLE = '''<?xml version="1.0" encoding="UTF-8"?>
 
 
 class MetaDataTestCase(TestCase):
+
+    def test_subclassing_video_meta(self):
+        """ VideoMeta must be extensible."""
+        if TYPE_CHECKING:
+            from _typeshed import DataclassInstance
+        else:
+            DataclassInstance = object
+
+        @dataclass
+        class ExtendedVideoMeta(meta.VideoMeta, DataclassInstance):
+            my_custom_metadata: str
+
+        self.assertIn("my_custom_metadata", [f.name for f in fields(ExtendedVideoMeta)])
+
+    def test_subclassing_audio_meta(self):
+        """ VideoMeta must be extensible."""
+        if TYPE_CHECKING:
+            from _typeshed import DataclassInstance
+        else:
+            DataclassInstance = object
+
+        @dataclass
+        class ExtendedAudioMeta(meta.AudioMeta, DataclassInstance):
+            my_custom_metadata: str
+
+        self.assertIn("my_custom_metadata", [f.name for f in fields(ExtendedAudioMeta)])
+
+
+class MediaInfoAnyzerTestCase(TestCase):
     def setUp(self) -> None:
-        self.media_info = MediaInfo(SAMPLE)
+        self.media_info = MediaInfo(MEDIAINFO_SAMPLE)
 
     def test_parse_streams(self):
-        streams = meta.from_media_info(self.media_info)
+        streams = mediainfo.Analyzer().from_media_info(self.media_info)
         self.assertEqual(len(streams), 2)
         video = streams[0]
         self.assertIsInstance(video, meta.VideoMeta)
@@ -253,39 +283,13 @@ class MetaDataTestCase(TestCase):
         )
         self.assertEqual(expected, audio)
 
-    def test_subclassing_video_meta(self):
-        """ VideoMeta must be extensible."""
-        if TYPE_CHECKING:
-            from _typeshed import DataclassInstance
-        else:
-            DataclassInstance = object
-
-        @dataclass
-        class ExtendedVideoMeta(meta.VideoMeta, DataclassInstance):
-            my_custom_metadata: str
-
-        self.assertIn("my_custom_metadata", [f.name for f in fields(ExtendedVideoMeta)])
-
-    def test_subclassing_audio_meta(self):
-        """ VideoMeta must be extensible."""
-        if TYPE_CHECKING:
-            from _typeshed import DataclassInstance
-        else:
-            DataclassInstance = object
-
-        @dataclass
-        class ExtendedAudioMeta(meta.AudioMeta, DataclassInstance):
-            my_custom_metadata: str
-
-        self.assertIn("my_custom_metadata", [f.name for f in fields(ExtendedAudioMeta)])
-
     def test_mkv_stream_duration(self):
         """ MKV duration is stored as float and this is a problem for TS constuctor."""
-        original = meta.from_media_info(self.media_info)
-        s = SAMPLE
+        original = mediainfo.Analyzer().from_media_info(self.media_info)
+        s = MEDIAINFO_SAMPLE
         s = s.replace('<Duration>6742</Duration>', '<Duration>6742.000000</Duration>')
         s = s.replace('<Duration>6740</Duration>', '<Duration>6740.000000</Duration>')
-        streams = meta.from_media_info(MediaInfo(s))
+        streams = mediainfo.Analyzer().from_media_info(MediaInfo(s))
         self.assertEqual(len(original), len(streams))
         for s, o in zip(streams, original):
             self.assertEqual(s.duration, o.duration)
