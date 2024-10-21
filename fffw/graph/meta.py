@@ -1,3 +1,4 @@
+import warnings
 from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum
@@ -423,79 +424,18 @@ def maybe_parse_duration(value: Union[str, float, int, None]) -> TS:
 
 
 def audio_meta_data(**kwargs: Any) -> AudioMeta:
-    duration = maybe_parse_duration(kwargs.get('duration'))
-
-    stream = kwargs.get('stream')
-    start = TS(kwargs.get('start', 0))
-    scene = Scene(
-        stream=stream,
-        duration=duration,
-        start=start,
-        position=start,
-    )
-
-    return AudioMeta(
-        scenes=[scene],
-        streams=[stream] if stream else [],
-        duration=duration,
-        start=start,
-        bitrate=int(kwargs.get('bit_rate', 0)),
-        channels=int(kwargs.get('channel_s', 0)),
-        sampling_rate=int(kwargs.get('sampling_rate', 0)),
-        samples=int(kwargs.get('samples_count', 0)),
-    )
+    warnings.warn("use fffw.analysis.mediainfo.Analyzer.audio_meta_data", DeprecationWarning, stacklevel=2)
+    from fffw.analysis.mediainfo import Analyzer
+    return Analyzer().audio_meta_data(**kwargs)
 
 
 def video_meta_data(**kwargs: Any) -> VideoMeta:
-    duration = maybe_parse_duration(kwargs.get('duration'))
-    width = int(kwargs.get('width', 0))
-    height = int(kwargs.get('height', 0))
-    par = float(kwargs.get('pixel_aspect_ratio', 1.0))
-    try:
-        dar = float(kwargs['display_aspect_ratio'])
-    except KeyError:
-        if height == 0:
-            dar = float('nan')
-        else:
-            dar = width / height * par
-    frames = int(kwargs.get('frame_count', 0))
-    try:
-        frame_rate = float(kwargs['frame_rate'])
-    except KeyError:
-        if duration.total_seconds() == 0:
-            frame_rate = 0
-        else:
-            frame_rate = frames / duration.total_seconds()
-
-    stream = kwargs.get('stream')
-    start = TS(kwargs.get('start', 0))
-    scene = Scene(
-        stream=stream,
-        duration=duration,
-        start=start,
-        position=start,
-    )
-    return VideoMeta(
-        scenes=[scene],
-        streams=[stream] if stream else [],
-        duration=duration,
-        start=start,
-        bitrate=int(kwargs.get('bit_rate', 0)),
-        width=width,
-        height=height,
-        par=par,
-        dar=dar,
-        frame_rate=frame_rate,
-        frames=frames,
-        device=None,
-    )
+    warnings.warn("use fffw.analysis.mediainfo.Analyzer.video_meta_data", DeprecationWarning, stacklevel=2)
+    from fffw.analysis.mediainfo import Analyzer
+    return Analyzer().video_meta_data(**kwargs)
 
 
 def from_media_info(mi: MediaInfo) -> List[Meta]:
-    streams: List[Meta] = []
-    for track in mi.tracks:
-        if track.track_type in ('Video', 'Image'):
-            streams.append(video_meta_data(**track.__dict__))
-        elif track.track_type == 'Audio':
-            streams.append(audio_meta_data(**track.__dict__))
-    return streams
+    warnings.warn("use fffw.analysis.mediainfo.Analyzer.from_media_info", DeprecationWarning, stacklevel=2)
+    from fffw.analysis.mediainfo import Analyzer
+    return Analyzer().from_media_info(mi)

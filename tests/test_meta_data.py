@@ -264,7 +264,7 @@ class MetaDataTestCase(TestCase):
         class ExtendedVideoMeta(meta.VideoMeta, DataclassInstance):
             my_custom_metadata: str
 
-        self.assertIn("my_custom_metadata", fields(ExtendedVideoMeta))
+        self.assertIn("my_custom_metadata", [f.name for f in fields(ExtendedVideoMeta)])
 
     def test_subclassing_audio_meta(self):
         """ VideoMeta must be extensible."""
@@ -277,7 +277,7 @@ class MetaDataTestCase(TestCase):
         class ExtendedAudioMeta(meta.AudioMeta, DataclassInstance):
             my_custom_metadata: str
 
-        self.assertIn("my_custom_metadata", fields(ExtendedAudioMeta))
+        self.assertIn("my_custom_metadata", [f.name for f in fields(ExtendedAudioMeta)])
 
     def test_mkv_stream_duration(self):
         """ MKV duration is stored as float and this is a problem for TS constuctor."""
