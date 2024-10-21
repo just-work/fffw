@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from unittest import TestCase
 
-from fffw.graph import StreamType, VIDEO, AUDIO, video_meta_data
-from fffw.graph import meta
 from fffw.encoding import inputs, outputs, codecs, Upload, VideoCodec, filters
+from fffw.graph import StreamType, VIDEO, AUDIO
+from fffw.graph import meta
 
 
 class H264Cuda(codecs.VideoCodec):
@@ -77,7 +77,20 @@ class InputsTestCase(TestCase):
         Hardware-decoded input could not be passed to CPU codec and so on.
         """
         vs = inputs.Stream(StreamType.VIDEO,
-                           meta=video_meta_data(width=640, height=360))
+                           meta=meta.VideoMeta(
+                               duration=meta.TS(10.0),
+                               start=meta.TS(0),
+                               bitrate=500000,
+                               scenes=[],
+                               streams=[],
+                               width=640,
+                               height=360,
+                               par=1.0,
+                               dar=16/9,
+                               frame_rate=30,
+                               frames=300,
+                               device=None
+                           ))
         src = inputs.Input(streams=(vs,),
                            hardware='cuda',
                            device='foo')
@@ -98,14 +111,30 @@ class InputsTestCase(TestCase):
 
 class OutputsTestCase(TestCase):
     def setUp(self) -> None:
-        self.video_metadata = meta.video_meta_data(
+        self.video_metadata = meta.VideoMeta(
+            duration=meta.TS(300.0),
+            start=meta.TS(0),
+            bitrate=0,
+            scenes=[],
+            streams=[],
             width=1920,
             height=1080,
             dar=1.777777778,
             par=1.0,
-            duration=300.0,
+            frame_rate=50.0,
+            frames=15000,
+            device=None,
         )
-        self.audio_metadata = meta.audio_meta_data()
+        self.audio_metadata = meta.AudioMeta(
+            duration=meta.TS(300.0),
+            start=meta.TS(0),
+            bitrate=0,
+            scenes=[],
+            streams=[],
+            sampling_rate=48000,
+            channels=2,
+            samples=300 * 48000,
+        )
 
         self.source = inputs.Input(
             input_file='input.mp4',
