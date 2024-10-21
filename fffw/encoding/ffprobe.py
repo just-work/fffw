@@ -1,8 +1,10 @@
+import json
 from dataclasses import dataclass
+from typing import Any, Dict, List
 
 from fffw.wrapper import BaseWrapper, param
 
-__all__ = ['FFProbe']
+__all__ = ['FFProbe', 'analyze']
 
 
 @dataclass
@@ -27,3 +29,16 @@ class FFProbe(BaseWrapper):
     show_streams: bool = param(default=False)
     show_format: bool = param(default=False)
     output_format: str = param(name='of')
+
+
+def analyze(source: str) -> List[Dict[str, Any]]:
+    """
+    Performs source analysis with ffprobe.
+    :param source: source uri
+    :return: list of stream metadata from ffprobe output
+    """
+    ff = FFProbe(source, show_streams=True, output_format='json')
+    ret, output, errors = ff.run()
+    if ret != 0:
+        raise RuntimeError(f"ffprobe returned {ret}")
+    return json.loads(output).get("streams", [])
