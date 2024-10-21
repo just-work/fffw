@@ -1,6 +1,6 @@
 from typing import List, Any, Union, Dict
 
-import pymediainfo
+import pymediainfo  # type: ignore
 
 from fffw.graph import meta
 
