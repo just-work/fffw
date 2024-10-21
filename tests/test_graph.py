@@ -9,6 +9,7 @@ from fffw.encoding.filters import *
 from fffw.graph import *
 from fffw.graph import base
 from fffw.wrapper import param
+from tests.base import BaseTestCase
 
 
 @dataclass
@@ -101,29 +102,24 @@ class GraphBaseTestCase(TestCase):
                 self.dest.connect_edge(self.dest_edge)
 
 
-class FilterGraphBaseTestCase(TestCase):
+class FilterGraphBaseTestCase(BaseTestCase):
 
     def setUp(self) -> None:
         super().setUp()
-        self.video_metadata = video_meta_data(
+        self.video_metadata = self.video_meta_data(
             width=1920,
             height=1080,
-            dar=1.777777778,
-            par=1.0,
             duration=300.0,
             frame_rate=10.0,
-            frame_count=3000
         )
         self.source_audio_duration = 200.0
         self.source_sampling_rate = 48000
         self.source_samples_count = (self.source_audio_duration *
                                      self.source_sampling_rate)
         self.source_audio_bitrate = 128000
-        self.audio_metadata = audio_meta_data(
+        self.audio_metadata = self.audio_meta_data(
             duration=self.source_audio_duration,
-            sampling_rate=self.source_sampling_rate,
-            samples_count=self.source_samples_count,
-            bit_rate=self.source_audio_bitrate,
+            bitrate=self.source_audio_bitrate,
         )
         self.target_audio_bitrate = 64000
 
@@ -316,7 +312,7 @@ class FilterGraphTestCase(FilterGraphBaseTestCase):
         $ ffmpeg -y -i source.mp4 -i logo.mp4 -t 1 \
          -filter_complex '[0:v:0][1:v]overlay=x=100:y=100' test.mp4
         """
-        vs = inputs.Stream(VIDEO, meta=video_meta_data(width=100, height=100))
+        vs = inputs.Stream(VIDEO, meta=self.video_meta_data(width=100, height=100))
         self.input_list.append(inputs.input_file('logo.png', vs))
         overlay = self.source | Overlay(
             x=self.video_metadata.width - 2,
@@ -336,9 +332,7 @@ class FilterGraphTestCase(FilterGraphBaseTestCase):
 
         $ ffmpeg -y -i first.mp4 -i second.mp4 -filter_complex concat test.mp4
         """
-        video_meta = video_meta_data(duration=1000.0,
-                                     frame_count=10000,
-                                     frame_rate=10.0)
+        video_meta = self.video_meta_data(duration=1000.0, frame_rate=10.0)
         vs = inputs.Stream(VIDEO, meta=video_meta)
         self.input_list.append(inputs.input_file('second.mp4', vs))
         concat = vs | Concat(VIDEO)
@@ -356,9 +350,8 @@ class FilterGraphTestCase(FilterGraphBaseTestCase):
         """
         Concat filter sums samples count for audio streams.
         """
-        audio_meta = audio_meta_data(duration=1000.0,
-                                     sampling_rate=24000,
-                                     samples_count=24000 * 1000)
+        audio_meta = self.audio_meta_data(duration=1000.0,
+                                          sampling_rate=24000)
         a = inputs.Stream(AUDIO, meta=audio_meta)
         self.input_list.append(inputs.input_file('second.mp4', a))
         concat = a | Concat(AUDIO)
@@ -376,9 +369,8 @@ class FilterGraphTestCase(FilterGraphBaseTestCase):
         """
         Concat shifts scenes start/end timestamps.
         """
-        video_meta = video_meta_data(duration=1000.0,
-                                     frame_count=10000,
-                                     frame_rate=10.0)
+        video_meta = self.video_meta_data(duration=1000.0,
+                                          frame_rate=10.0)
         vs1 = inputs.Stream(VIDEO, meta=video_meta)
         vs2 = inputs.Stream(VIDEO, meta=video_meta)
         vs3 = inputs.Stream(VIDEO, meta=video_meta)
@@ -388,9 +380,9 @@ class FilterGraphTestCase(FilterGraphBaseTestCase):
         vs2 | c
         vs3 | c
         expected = (
-                deepcopy(vs1.meta.scenes) +
-                deepcopy(vs2.meta.scenes) +
-                deepcopy(vs3.meta.scenes)
+            deepcopy(vs1.meta.scenes) +
+            deepcopy(vs2.meta.scenes) +
+            deepcopy(vs3.meta.scenes)
         )
         assert len(expected) == 3
         current_duration = TS(0)

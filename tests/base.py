@@ -28,7 +28,7 @@ class BaseTestCase(TestCase):
         self.assertListEqual(expected, args)
 
     @staticmethod
-    def video_meta_data(duration=10.0, width=640, height=360) -> meta.VideoMeta:
+    def video_meta_data(duration=10.0, width=640, height=360, frame_rate=30.0) -> meta.VideoMeta:
         """
         :return: correct metadata with given parameters.
         """
@@ -47,20 +47,20 @@ class BaseTestCase(TestCase):
             height=height,
             par=1.0,
             dar=width / height,
-            frame_rate=30,
-            frames=round(duration * 30),
+            frame_rate=frame_rate,
+            frames=round(duration * frame_rate),
             device=None
         )
 
     @staticmethod
-    def audio_meta_data(duration=10.0) -> meta.AudioMeta:
+    def audio_meta_data(duration=10.0, bitrate=192000, sampling_rate=48000) -> meta.AudioMeta:
         """
         :return: correct metadata with giren parameters.
         """
         return meta.AudioMeta(
             duration=meta.TS(duration),
             start=meta.TS(0),
-            bitrate=192000,
+            bitrate=bitrate,
             scenes=[meta.Scene(
                 stream=None,
                 start=meta.TS(0),
@@ -68,7 +68,7 @@ class BaseTestCase(TestCase):
                 position=meta.TS(0),
             )],
             streams=[],
-            sampling_rate=48000,
+            sampling_rate=sampling_rate,
             channels=2,
-            samples=round(duration * 48000),
+            samples=round(duration * sampling_rate),
         )
