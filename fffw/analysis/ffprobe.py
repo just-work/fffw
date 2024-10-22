@@ -1,15 +1,15 @@
 import json
 from dataclasses import dataclass
-from typing import List, Dict, Any, Union, Optional, Iterable
+from typing import List, Dict, Any, Union, Optional, Sequence
 
 from fffw.analysis import base
-from fffw.graph import meta
 from fffw.encoding import ffprobe
+from fffw.graph import meta
 
 
 @dataclass
 class ProbeInfo:
-    streams: Iterable[Dict[str, Any]]
+    streams: Sequence[Dict[str, Any]]
     format: Dict[str, Any]
 
 
