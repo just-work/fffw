@@ -383,9 +383,9 @@ class VideoMeta(Meta):
             assert str(self.dar) == 'nan'
 
         interval = float(self.duration)
-        ate = self.frame_rate
+        rate = self.frame_rate
         count = self.frames
-        assert abs(count - interval * ate) <= 1, f'{count} <> {interval} * {ate}'
+        assert abs(count - interval * rate) <= 1, f'{count} <> {interval} * {rate}'
 
 
 @dataclass

@@ -403,7 +403,8 @@ class FilterGraphTestCase(FilterGraphBaseTestCase):
         self.source | Trim(VIDEO, start=3.0, end=4.0) > self.output
         vm = cast(VideoMeta, self.output.codecs[0].get_meta_data())
         self.assertEqual(vm.start, TS(3.0))
-        self.assertEqual(vm.duration, TS(4.0))
+        self.assertEqual(vm.end, TS(4.0))
+        self.assertEqual(vm.duration, TS(1.0))
         self.assertEqual(vm.frames, 1.0 * vm.frame_rate)
 
     def test_video_trim_end_of_stream(self):
@@ -426,7 +427,8 @@ class FilterGraphTestCase(FilterGraphBaseTestCase):
         self.source | Trim(AUDIO, start=3.0, end=4.0) > self.output
         am = cast(AudioMeta, self.output.codecs[1].get_meta_data())
         self.assertEqual(am.start, TS(3.0))
-        self.assertEqual(am.duration, TS(4.0))
+        self.assertEqual(am.end, TS(4.0))
+        self.assertEqual(am.duration, TS(1.0))
         self.assertEqual(am.samples, 1.0 * am.sampling_rate)
 
     def test_setpts_metadata(self):

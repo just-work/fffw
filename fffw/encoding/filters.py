@@ -325,17 +325,17 @@ class Trim(AutoFilter):
                     position=scene.position + offset,
                     duration=end - start))
 
+        duration = cast(TS, end) - cast(TS, start)
         kwargs = {
             'start': start,
-            'duration': end,
+            'duration': duration,
             'scenes': scenes,
             'streams': streams
         }
-        interval = cast(TS, end) - cast(TS, start)
         if isinstance(meta, AudioMeta):
-            kwargs['samples'] = round(meta.sampling_rate * interval)
+            kwargs['samples'] = round(meta.sampling_rate * duration)
         if isinstance(meta, VideoMeta):
-            kwargs['frames'] = round(meta.frame_rate * interval)
+            kwargs['frames'] = round(meta.frame_rate * duration)
         return replace(meta, **kwargs)  # type: ignore
 
 
@@ -360,8 +360,7 @@ class SetPTS(AutoFilter):
         meta = metadata[0]
         expr = self.expr.replace(' ', '')
         if expr == self.RESET_PTS:
-            duration = meta.duration - meta.start
-            return replace(meta, start=TS(0), duration=duration)
+            return replace(meta, start=TS(0))
         raise NotImplementedError()
 
     @property
