@@ -299,7 +299,23 @@ class Scene:
 
 
 @dataclass
-class Meta:
+class Internal:
+    """
+    Internal fields for ffmpeg model.
+    """
+    scenes: List[Scene]
+    """ 
+    List of continuous stream fragments (maybe from different files), that need
+    to be read to get a result with current metadata.
+    """
+    streams: List[str]
+    """
+    List of streams (maybe from different files), that need to be read to get
+    a result with current metadata."""
+
+
+@dataclass
+class Meta(Internal):
     """
     Stream metadata.
 
@@ -311,15 +327,6 @@ class Meta:
     """ First frame/sample timestamp for resulting stream."""
     bitrate: int
     """ Input stream bitrate in bits per second."""
-    scenes: List[Scene]
-    """ 
-    List of continuous stream fragments (maybe from different files), that need
-    to be read to get a result with current metadata.
-    """
-    streams: List[str]
-    """
-    List of streams (maybe from different files), that need to be read to get
-    a result with current metadata."""
 
     @property
     def end(self) -> TS:
