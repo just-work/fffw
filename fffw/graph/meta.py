@@ -382,8 +382,10 @@ class VideoMeta(Meta):
         else:
             assert str(self.dar) == 'nan'
 
-        interval = float(self.duration - self.start)
-        assert abs(self.frames - interval * self.frame_rate) <= 1, f'{self.frames} <> {interval} * {self.frame_rate}'
+        interval = float(self.duration)
+        ate = self.frame_rate
+        count = self.frames
+        assert abs(count - interval * ate) <= 1, f'{count} <> {interval} * {ate}'
 
 
 @dataclass
@@ -408,8 +410,10 @@ class AudioMeta(Meta):
         return AUDIO
 
     def validate(self) -> None:
-        interval = float(self.duration - self.start)
-        assert abs(self.samples - interval * self.sampling_rate) <= 1, f'{self.samples} <> {interval} * {self.sampling_rate}'
+        interval = float(self.duration)
+        rate = self.sampling_rate
+        count = self.samples
+        assert abs(count - interval * rate) <= 1, f'{count} <> {interval} * {rate}'
 
 
 def maybe_parse_duration(value: Union[str, float, int, None]) -> TS:
