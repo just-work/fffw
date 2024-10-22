@@ -113,7 +113,7 @@ class Analyzer(abc.ABC):
             position=start,
         )
         return {
-            "duration": start + duration,
+            "duration": duration,
             "start": start,
             "scenes": [scene],
             "streams": [],
