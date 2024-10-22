@@ -426,16 +426,16 @@ def maybe_parse_duration(value: Union[str, float, int, None]) -> TS:
 def audio_meta_data(**kwargs: Any) -> AudioMeta:
     warnings.warn("use fffw.analysis.mediainfo.Analyzer.audio_meta_data", DeprecationWarning, stacklevel=2)
     from fffw.analysis.mediainfo import Analyzer
-    return Analyzer().audio_meta_data(**kwargs)
+    return Analyzer(None).audio_meta_data(**kwargs)  # type: ignore
 
 
 def video_meta_data(**kwargs: Any) -> VideoMeta:
     warnings.warn("use fffw.analysis.mediainfo.Analyzer.video_meta_data", DeprecationWarning, stacklevel=2)
     from fffw.analysis.mediainfo import Analyzer
-    return Analyzer().video_meta_data(**kwargs)
+    return Analyzer(None).video_meta_data(**kwargs)  # type: ignore
 
 
 def from_media_info(mi: MediaInfo) -> List[Meta]:
     warnings.warn("use fffw.analysis.mediainfo.Analyzer.from_media_info", DeprecationWarning, stacklevel=2)
     from fffw.analysis.mediainfo import Analyzer
-    return Analyzer().from_media_info(mi)
+    return Analyzer(mi).analyze()

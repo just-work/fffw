@@ -1,19 +1,43 @@
-from typing import List, Dict, Any, Union, Optional
+import json
+from dataclasses import dataclass
+from typing import List, Dict, Any, Union, Optional, Iterable
 
 from fffw.graph import meta
+from fffw.encoding import ffprobe
+
+
+@dataclass
+class ProbeInfo:
+    streams: Iterable[Dict[str, Any]]
+    format: Dict[str, Any]
+
+
+def analyze(source: str) -> ProbeInfo:
+    """
+    Performs source analysis with ffprobe.
+    :param source: source uri
+    :return: metadata loaded from json output.
+    """
+    ff = ffprobe.FFProbe(source, show_format=True, show_streams=True, output_format='json')
+    ret, output, errors = ff.run()
+    if ret != 0:
+        raise RuntimeError(f"ffprobe returned {ret}")
+    return ProbeInfo(**json.loads(output))
 
 
 class Analyzer:
     """
     Perform ffprobe analysis and normalization to obtain media stream metadata list.
 
-    >>> from fffw.encoding.ffprobe import analyze
-    >>> data = analyze('test.mp4')
-    >>> streams = Analyzer().from_ffprobe_data(**data)
+    >>> info = analyze('test.mp4')
+    >>> streams = Analyzer(info).analyze()
     """
 
     audio_meta_class = meta.AudioMeta
     video_meta_class = meta.VideoMeta
+
+    def __init__(self, info: ProbeInfo):
+        self.info = info
 
     @staticmethod
     def maybe_parse_rational(value: Union[str, float, None], precision: Optional[int] = None) -> float:
@@ -43,9 +67,9 @@ class Analyzer:
             return meta.TS(0)
         return meta.TS(value)
 
-    def from_ffprobe_data(self, **data: Any) -> List[meta.Meta]:
+    def analyze(self) -> List[meta.Meta]:
         streams: List[meta.Meta] = []
-        for stream in data.get("streams", []):
+        for stream in self.info.streams:
             if stream["codec_type"] == "video":
                 streams.append(self.video_meta_data(**stream))
             elif stream["codec_type"] == "audio":

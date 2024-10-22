@@ -55,7 +55,7 @@ class MediaInfoAnyzerTestCase(TestCase):
         self.media_info = MediaInfo(read_fixture("test_hd.mp4.xml"))
 
     def test_parse_streams(self):
-        streams = mediainfo.Analyzer().from_media_info(self.media_info)
+        streams = mediainfo.Analyzer(self.media_info).analyze()
         self.assertEqual(len(streams), 2)
         video = streams[0]
         self.assertIsInstance(video, meta.VideoMeta)
@@ -98,11 +98,11 @@ class MediaInfoAnyzerTestCase(TestCase):
 
     def test_mkv_stream_duration(self):
         """ MKV duration is stored as float and this is a problem for TS constuctor."""
-        original = mediainfo.Analyzer().from_media_info(self.media_info)
+        original = mediainfo.Analyzer(self.media_info).analyze()
         s = read_fixture('test_hd.mp4.xml')
         s = s.replace('<Duration>6742</Duration>', '<Duration>6742.000000</Duration>')
         s = s.replace('<Duration>6740</Duration>', '<Duration>6740.000000</Duration>')
-        streams = mediainfo.Analyzer().from_media_info(MediaInfo(s))
+        streams = mediainfo.Analyzer(MediaInfo(s)).analyze()
         self.assertEqual(len(original), len(streams))
         for s, o in zip(streams, original):
             self.assertEqual(s.duration, o.duration)
@@ -110,7 +110,7 @@ class MediaInfoAnyzerTestCase(TestCase):
     def test_delay_parse(self):
         """ Delay tag contains stream start timestamp."""
         s = read_fixture('master3.ts.xml')
-        streams = mediainfo.Analyzer().from_media_info(MediaInfo(s))
+        streams = mediainfo.Analyzer(MediaInfo(s)).analyze()
         assert streams[0].kind == meta.VIDEO
         self.assertAlmostEqual(streams[0].start, meta.TS(31.476), places=3)  # track[type=Video].Delay
         self.assertAlmostEqual(streams[0].duration, meta.TS(31.476 + 10.01), places=3)  # + track[type=Video].Duration
@@ -129,10 +129,10 @@ class MediaInfoAnyzerTestCase(TestCase):
 
 class FFProbeAnyzerTestCase(TestCase):
     def setUp(self) -> None:
-        self.ffprobe_info = json.loads(read_fixture('test_hd.mp4.json'))
+        self.ffprobe_info = ffprobe.ProbeInfo(**json.loads(read_fixture('test_hd.mp4.json')))
 
     def test_parse_streams(self):
-        streams = ffprobe.Analyzer().from_ffprobe_data(**self.ffprobe_info)
+        streams = ffprobe.Analyzer(self.ffprobe_info).analyze()
         self.assertEqual(len(streams), 2)
         video = streams[0]
         self.assertIsInstance(video, meta.VideoMeta)
@@ -176,7 +176,8 @@ class FFProbeAnyzerTestCase(TestCase):
     def test_delay_parse(self):
         """ Delay tag contains stream start timestamp."""
         s = read_fixture('master3.ts.json')
-        streams = ffprobe.Analyzer().from_ffprobe_data(**json.loads(s))
+        info = ffprobe.ProbeInfo(**json.loads(s))
+        streams = ffprobe.Analyzer(info).analyze()
         assert streams[0].kind == meta.VIDEO
         self.assertAlmostEqual(streams[0].start, meta.TS(31.476), places=3)  # streams[index=0].start_time
         self.assertAlmostEqual(streams[0].duration, meta.TS(31.476 + 10.01), places=3)  # + streams[index=0].duration

@@ -11,20 +11,22 @@ class Analyzer:
 
     >>> import pymediainfo
     >>> mi = pymediainfo.MediaInfo.parse('test.mp4')
-    >>> streams = Analyzer().from_media_info(mi)
+    >>> streams = Analyzer(mi).analyze()
     """
 
     audio_meta_class = meta.AudioMeta
     video_meta_class = meta.VideoMeta
 
-    def from_media_info(self, mi: pymediainfo.MediaInfo) -> List[meta.Meta]:
+    def __init__(self, info: pymediainfo.MediaInfo):
+        self.info = info
+
+    def analyze(self) -> List[meta.Meta]:
         """
         Normalizes stream info from LibMediaInfo into internal stream metadata representation
-        :param mi: media info
         :return: list of media stream metadata
         """
         streams: List[meta.Meta] = []
-        for track in mi.tracks:
+        for track in self.info.tracks:
             if track.track_type in ('Video', 'Image'):
                 streams.append(self.video_meta_data(**track.__dict__))
             elif track.track_type == 'Audio':
