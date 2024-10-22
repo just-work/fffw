@@ -287,7 +287,7 @@ class Scene:
     stream: Optional[str]
     """ Stream identifier."""
     duration: TS
-    """ Stream duration."""
+    """ Stream duration counting from zero timestamp."""
     start: TS
     """ First frame/sample timestamp in source stream."""
     position: TS
@@ -306,7 +306,7 @@ class Meta:
     Describes common stream characteristics like bitrate and duration.
     """
     duration: TS
-    """ Resulting stream duration."""
+    """ Resulting stream duration counted from zero timestamp."""
     start: TS
     """ First frame/sample timestamp for resulting stream."""
     bitrate: int
@@ -376,7 +376,7 @@ class VideoMeta(Meta):
             assert str(self.dar) == 'nan'
 
         interval = float(self.duration - self.start)
-        assert abs(self.frames - interval * self.frame_rate) <= 1
+        assert abs(self.frames - interval * self.frame_rate) <= 1, f'{self.frames} <> {interval} * {self.frame_rate}'
 
 
 @dataclass
@@ -402,7 +402,7 @@ class AudioMeta(Meta):
 
     def validate(self) -> None:
         interval = float(self.duration - self.start)
-        assert abs(self.samples - interval * self.sampling_rate) <= 1
+        assert abs(self.samples - interval * self.sampling_rate) <= 1, f'{self.samples} - {interval} * {self.sampling_rate}'
 
 
 def maybe_parse_duration(value: Union[str, float, int, None]) -> TS:

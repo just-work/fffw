@@ -55,7 +55,8 @@ class Analyzer:
 
     def get_audio_meta_kwargs(self, track: Dict[str, Any]) -> Dict[str, Any]:
         duration = self.maybe_parse_duration(track.get('duration'))
-        start = meta.TS(track.get('start', 0))
+        start = self.maybe_parse_duration(track.get('delay'))
+        duration += start
         scene = meta.Scene(
             stream=None,
             duration=duration,
@@ -79,6 +80,14 @@ class Analyzer:
 
     def get_video_meta_kwargs(self, track: Dict[str, Any]) -> Dict[str, Any]:
         duration = self.maybe_parse_duration(track.get('duration'))
+        start = self.maybe_parse_duration(track.get('delay'))
+        duration += start
+        scene = meta.Scene(
+            stream=None,
+            duration=duration,
+            start=start,
+            position=start,
+        )
         width = int(track.get('width', 0))
         height = int(track.get('height', 0))
         par = float(track.get('pixel_aspect_ratio', 1.0))
@@ -97,13 +106,6 @@ class Analyzer:
                 frame_rate = 0
             else:
                 frame_rate = frames / duration.total_seconds()
-        start = meta.TS(track.get('start', 0))
-        scene = meta.Scene(
-            stream=None,
-            duration=duration,
-            start=start,
-            position=start,
-        )
         return dict(
             scenes=[scene],
             streams=[],

@@ -63,6 +63,7 @@ class Analyzer:
     def get_audio_meta_kwargs(self, track: Dict[str, Any]) -> Dict[str, Any]:
         duration = self.maybe_parse_duration(track.get('duration'))
         start = meta.TS(track.get('start_time', 0))
+        duration += start
         scene = meta.Scene(
             stream=None,
             duration=duration,
@@ -71,7 +72,7 @@ class Analyzer:
         )
         sample_rate = int(track.get('sample_rate', 0))
         if sample_rate != 0:
-            samples = round(duration * sample_rate)
+            samples = round((duration - start) * sample_rate)
         else:
             samples = 0
         return dict(
@@ -87,6 +88,14 @@ class Analyzer:
 
     def get_video_meta_kwargs(self, track: Dict[str, Any]) -> Dict[str, Any]:
         duration = self.maybe_parse_duration(track.get('duration'))
+        start = meta.TS(track.get('start_time', 0))
+        duration += start
+        scene = meta.Scene(
+            stream=None,
+            duration=duration,
+            start=start,
+            position=start,
+        )
         width = int(track.get('width', 0))
         height = int(track.get('height', 0))
         par = self.maybe_parse_rational(track.get('sample_aspect_ratio', 1.0), precision=3)
@@ -101,17 +110,13 @@ class Analyzer:
         try:
             frame_rate = self.maybe_parse_rational(track.get('r_frame_rate') or track['avg_frame_rate'])
         except KeyError:
-            if duration.total_seconds() == 0:
+            if duration == start:
                 frame_rate = 0
             else:
-                frame_rate = frames / duration.total_seconds()
-        start = meta.TS(track.get('start_time', 0))
-        scene = meta.Scene(
-            stream=None,
-            duration=duration,
-            start=start,
-            position=start,
-        )
+                frame_rate = frames / (duration - start).total_seconds()
+        if frames == 0:
+            frames = round((duration - start) * frame_rate)
+
         return dict(
             scenes=[scene],
             streams=[],
