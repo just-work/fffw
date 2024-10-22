@@ -322,7 +322,7 @@ class Meta(Internal):
     Describes common stream characteristics like bitrate and duration.
     """
     duration: TS
-    """ Resulting stream duration counted from zero timestamp."""
+    """ Resulting stream duration counted from first frame/sample timestamp."""
     start: TS
     """ First frame/sample timestamp for resulting stream."""
     bitrate: int
