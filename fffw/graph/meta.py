@@ -287,7 +287,7 @@ class Scene:
     stream: Optional[str]
     """ Stream identifier."""
     duration: TS
-    """ Stream duration counting from zero timestamp."""
+    """ Stream duration from first to last timestamp."""
     start: TS
     """ First frame/sample timestamp in source stream."""
     position: TS
@@ -402,7 +402,7 @@ class AudioMeta(Meta):
 
     def validate(self) -> None:
         interval = float(self.duration - self.start)
-        assert abs(self.samples - interval * self.sampling_rate) <= 1, f'{self.samples} - {interval} * {self.sampling_rate}'
+        assert abs(self.samples - interval * self.sampling_rate) <= 1, f'{self.samples} <> {interval} * {self.sampling_rate}'
 
 
 def maybe_parse_duration(value: Union[str, float, int, None]) -> TS:

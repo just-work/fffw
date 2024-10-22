@@ -56,7 +56,6 @@ class Analyzer:
     def get_audio_meta_kwargs(self, track: Dict[str, Any]) -> Dict[str, Any]:
         duration = self.maybe_parse_duration(track.get('duration'))
         start = self.maybe_parse_duration(track.get('delay'))
-        duration += start
         scene = meta.Scene(
             stream=None,
             duration=duration,
@@ -66,7 +65,7 @@ class Analyzer:
         return dict(
             scenes=[scene],
             streams=[],
-            duration=duration,
+            duration=start + duration,
             start=start,
             bitrate=int(track.get('bit_rate', 0)),
             channels=int(track.get('channel_s', 0)),
@@ -81,7 +80,6 @@ class Analyzer:
     def get_video_meta_kwargs(self, track: Dict[str, Any]) -> Dict[str, Any]:
         duration = self.maybe_parse_duration(track.get('duration'))
         start = self.maybe_parse_duration(track.get('delay'))
-        duration += start
         scene = meta.Scene(
             stream=None,
             duration=duration,
@@ -109,7 +107,7 @@ class Analyzer:
         return dict(
             scenes=[scene],
             streams=[],
-            duration=duration,
+            duration=start + duration,
             start=start,
             bitrate=int(track.get('bit_rate', 0)),
             width=width,

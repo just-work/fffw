@@ -63,7 +63,6 @@ class Analyzer:
     def get_audio_meta_kwargs(self, track: Dict[str, Any]) -> Dict[str, Any]:
         duration = self.maybe_parse_duration(track.get('duration'))
         start = meta.TS(track.get('start_time', 0))
-        duration += start
         scene = meta.Scene(
             stream=None,
             duration=duration,
@@ -72,13 +71,13 @@ class Analyzer:
         )
         sample_rate = int(track.get('sample_rate', 0))
         if sample_rate != 0:
-            samples = round((duration - start) * sample_rate)
+            samples = round(duration * sample_rate)
         else:
             samples = 0
         return dict(
             scenes=[scene],
             streams=[],
-            duration=duration,
+            duration=start + duration,
             start=start,
             bitrate=int(track.get('bit_rate', 0)),
             channels=int(track.get('channels', 0)),
@@ -89,7 +88,6 @@ class Analyzer:
     def get_video_meta_kwargs(self, track: Dict[str, Any]) -> Dict[str, Any]:
         duration = self.maybe_parse_duration(track.get('duration'))
         start = meta.TS(track.get('start_time', 0))
-        duration += start
         scene = meta.Scene(
             stream=None,
             duration=duration,
@@ -110,17 +108,17 @@ class Analyzer:
         try:
             frame_rate = self.maybe_parse_rational(track.get('r_frame_rate') or track['avg_frame_rate'])
         except KeyError:
-            if duration == start:
+            if duration == 0:
                 frame_rate = 0
             else:
-                frame_rate = frames / (duration - start).total_seconds()
+                frame_rate = frames / duration.total_seconds()
         if frames == 0:
-            frames = round((duration - start) * frame_rate)
+            frames = round(duration * frame_rate)
 
         return dict(
             scenes=[scene],
             streams=[],
-            duration=duration,
+            duration=start + duration,
             start=start,
             bitrate=int(track.get('bit_rate', 0)),
             width=width,

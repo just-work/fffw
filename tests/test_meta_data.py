@@ -114,12 +114,14 @@ class MediaInfoAnyzerTestCase(TestCase):
         assert streams[0].kind == meta.VIDEO
         self.assertAlmostEqual(streams[0].start, meta.TS(31.476), places=3)  # track[type=Video].Delay
         self.assertAlmostEqual(streams[0].duration, meta.TS(31.476 + 10.01), places=3)  # + track[type=Video].Duration
+        self.assertAlmostEqual(streams[0].scenes[0].duration, meta.TS(10.01), places=3)
         v = cast(meta.VideoMeta, streams[0])
         frames_duration = v.frames / v.frame_rate
         self.assertAlmostEqual(frames_duration, meta.TS(10.01), places=3)
         assert streams[1].kind == meta.AUDIO
         self.assertAlmostEqual(streams[1].start, meta.TS(31.447), places=3)  # track[type=Audio].Delay
         self.assertAlmostEqual(streams[1].duration, meta.TS(31.447 + 10.007), places=3)  # + track[type=Audio].Duration
+        self.assertAlmostEqual(streams[1].scenes[0].duration, meta.TS(10.007), places=3)
         a = cast(meta.AudioMeta, streams[1])
         samples_duration = a.samples / a.sampling_rate
         self.assertAlmostEqual(samples_duration, meta.TS(10.007), places=3)
@@ -178,12 +180,14 @@ class FFProbeAnyzerTestCase(TestCase):
         assert streams[0].kind == meta.VIDEO
         self.assertAlmostEqual(streams[0].start, meta.TS(31.476), places=3)  # streams[index=0].start_time
         self.assertAlmostEqual(streams[0].duration, meta.TS(31.476 + 10.01), places=3)  # + streams[index=0].duration
+        self.assertAlmostEqual(streams[0].scenes[0].duration, meta.TS(10.01), places=3)
         v = cast(meta.VideoMeta, streams[0])
         frames_duration = v.frames / v.frame_rate
         self.assertAlmostEqual(frames_duration, meta.TS(10.01), places=3)
         assert streams[1].kind == meta.AUDIO
         self.assertAlmostEqual(streams[1].start, meta.TS(31.4467), places=3)  # streams[index=1].start_time
         self.assertAlmostEqual(streams[1].duration, meta.TS(31.4467 + 9.6827), places=3)  # + streams[index=1].duration
+        self.assertAlmostEqual(streams[1].scenes[0].duration, meta.TS(9.6827), places=3)
         a = cast(meta.AudioMeta, streams[1])
         samples_duration = a.samples / a.sampling_rate
         self.assertAlmostEqual(samples_duration, meta.TS(9.6827), places=3)
