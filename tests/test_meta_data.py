@@ -1,3 +1,4 @@
+import abc
 import json
 from copy import deepcopy
 from dataclasses import dataclass, fields
@@ -5,11 +6,11 @@ from datetime import timedelta
 from itertools import product
 from pathlib import Path
 from typing import Iterable, Tuple, Any, TYPE_CHECKING, cast
-from unittest import TestCase
+from unittest import TestCase, mock
 
 from pymediainfo import MediaInfo  # type: ignore
 
-from fffw.analysis import mediainfo, ffprobe
+from fffw.analysis import mediainfo, ffprobe, base
 from fffw.graph import meta
 
 
@@ -49,13 +50,23 @@ class MetaDataTestCase(TestCase):
         self.assertIn("my_custom_metadata", [f.name for f in fields(ExtendedAudioMeta)])
 
 
-class MediaInfoAnyzerTestCase(TestCase):
+class CommonAnalyzerTests(abc.ABC):
+
+    @abc.abstractmethod
+    def init_analyzer(self) -> base.Analyzer:
+        raise NotImplementedError()
+
+
+class MediaInfoAnyzerTestCase(CommonAnalyzerTests, TestCase):
 
     def setUp(self) -> None:
         self.media_info = MediaInfo(read_fixture("test_hd.mp4.xml"))
 
+    def init_analyzer(self) -> base.Analyzer:
+        return mediainfo.Analyzer(self.media_info)
+
     def test_parse_streams(self):
-        streams = mediainfo.Analyzer(self.media_info).analyze()
+        streams = self.init_analyzer().analyze()
         self.assertEqual(len(streams), 2)
         video = streams[0]
         self.assertIsInstance(video, meta.VideoMeta)
@@ -129,12 +140,188 @@ class MediaInfoAnyzerTestCase(TestCase):
         self.assertAlmostEqual(samples_duration, meta.TS(10.007), places=3)
 
 
-class FFProbeAnyzerTestCase(TestCase):
+class FFProbeAnyzerTestCase(CommonAnalyzerTests, TestCase):
+    def init_analyzer(self) -> base.Analyzer:
+        return ffprobe.Analyzer(self.ffprobe_info)
+
     def setUp(self) -> None:
-        self.ffprobe_info = ffprobe.ProbeInfo(**json.loads(read_fixture('test_hd.mp4.json')))
+        output = read_fixture('test_hd.mp4.json')
+        with mock.patch('fffw.encoding.ffprobe.FFProbe.run', return_value=(0, output, '')):
+            self.ffprobe_info = ffprobe.analyze('')
+
+    @staticmethod
+    def test_ffprobe_command_line():
+        output = read_fixture('test_hd.mp4.json')
+        with mock.patch('fffw.encoding.ffprobe.FFProbe') as ffprobe_mock:
+            ffprobe_mock.return_value.run.return_value = (0, output, '')
+            ffprobe.analyze('source')
+        ffprobe_mock.assert_called_once_with('source', show_format=True, show_streams=True, output_format='json')
+
+    def test_handle_ffprobe_error(self):
+        with mock.patch('fffw.encoding.ffprobe.FFProbe.run', return_value=(1, 'output', 'error')):
+            with self.assertRaises(RuntimeError) as ctx:
+                ffprobe.analyze('')
+            self.assertEqual(ctx.exception.args[0], 'ffprobe returned 1')
+
+    def test_maybe_parse_rational(self):
+        cases = (
+            (None, 0.0),
+            (1.1, 1.1),
+            ('1:2', 0.5),
+            ('1/2', 0.5),
+            ('1.5', 1.5),
+        )
+        for value, expected in cases:
+            self.assertEqual(ffprobe.Analyzer.maybe_parse_rational(value), expected)
+        cases = (
+            (3, 0.667),
+            (5, 0.66667),
+            (None, 2 / 3),
+        )
+        for precision, expected in cases:
+            self.assertEqual(ffprobe.Analyzer.maybe_parse_rational('2/3', precision), expected)
+
+    def test_maybe_parse_duration(self):
+        cases = (
+            (None, 0),
+            ("1.2", 1.2),
+        )
+        for value, expected in cases:
+            result = ffprobe.Analyzer.maybe_parse_duration(value)
+            self.assertIsInstance(result, meta.TS)
+            self.assertEqual(result, meta.TS(expected))
+
+    def test_timestamp_fields(self):
+        analyzer = self.init_analyzer()
+        cases = (
+            ('duration', 'get_duration'),
+            ('start_time', 'get_start'),
+        )
+        for key, getter in cases:
+            getter = getattr(analyzer, getter)
+            track = {}
+            result = getter(track)
+            self.assertIsInstance(result, meta.TS)
+            self.assertEqual(result, meta.TS(0))
+            track[key] = '1.2'
+            result = getter(track)
+            self.assertIsInstance(result, meta.TS)
+            self.assertEqual(result, meta.TS(1.2))
+
+    def test_integer_fields(self):
+        analyzer = self.init_analyzer()
+        cases = (
+            ('bit_rate', 'get_bitrate'),
+            ('channels', 'get_channels'),
+            ('sample_rate', 'get_sampling_rate'),
+            ('width', 'get_width'),
+            ('height', 'get_height'),
+        )
+        for key, getter in cases:
+            getter = getattr(analyzer, getter)
+            track = {}
+            result = getter(track)
+            self.assertIsInstance(result, int)
+            self.assertEqual(result, 0)
+
+            track[key] = '100500'
+            result = getter(track)
+            self.assertIsInstance(result, int)
+            self.assertEqual(result, 100500)
+
+    def test_get_samples(self):
+        analyzer = self.init_analyzer()
+        cases = (
+            (None, None, 0),
+            (None, 2.0, 0),
+            (441000, None, 0),
+            (0, 0.0, 0,),
+            (44100, 0.0, 0,),
+            (0, 2.0, 0,),
+            (44100, 2.0, 88200,),
+        )
+        for rate, duration, expected in cases:
+            track = {}
+            if rate is not None:
+                track['sample_rate'] = rate
+            if duration is not None:
+                track['duration'] = duration
+            result = analyzer.get_samples(track)
+            self.assertIsInstance(result, int)
+            self.assertEqual(result, expected)
+
+    def test_get_par(self):
+        analyzer = self.init_analyzer()
+        cases = (
+            (None, 1.0),
+            ('2/3', 0.667),
+        )
+        for value, expected in cases:
+            track = {}
+            if value is not None:
+                track['sample_aspect_ratio'] = value
+            result = analyzer.get_par(track)
+            self.assertIsInstance(result, float)
+            self.assertEqual(result, expected)
+
+    def test_get_dar(self):
+        analyzer = self.init_analyzer()
+        track = {'display_aspect_ratio': '2/3'}
+        result = analyzer.get_dar(track)
+        self.assertIsInstance(result, float)
+        self.assertEqual(result, 0.667)
+        track = {'width': 640, 'height': 360, 'sample_aspect_ratio': '2/3'}
+        result = analyzer.get_dar(track)
+        self.assertIsInstance(result, float)
+        self.assertAlmostEqual(result, 16/9*2/3, places=2)
+        track = {}
+        result = analyzer.get_dar(track)
+        self.assertNotEqual(result, result)  # float('nan')
+
+    def test_get_frame_rate(self):
+        analyzer = self.init_analyzer()
+        cases = (
+            (None, 0.0),
+            ('r_frame_rate', 25.0),
+            ('avg_frame_rate', 25.0),
+        )
+        for key, expected in cases:
+            track = {}
+            if key is not None:
+                track[key] = '25.0'
+            result = analyzer.get_frame_rate(track)
+            self.assertIsInstance(result, float)
+            self.assertEqual(result, expected)
+
+        cases = (
+            ('50', '2.0', 25.0),
+            (None, '2.0', 0.0),
+            ('50', None, 0.0),
+        )
+
+        for frames, duration, expected in cases:
+            track = {}
+            if frames is not None:
+                track['nb_frames'] = frames
+            if duration is not None:
+                track['duration'] = duration
+            result = analyzer.get_frame_rate(track)
+            self.assertIsInstance(result, float)
+            self.assertEqual(result, expected)
+
+    def test_get_frames(self):
+        analyzer = self.init_analyzer()
+        track = {'nb_frames': 125}
+        result = analyzer.get_frames(track)
+        self.assertIsInstance(result, int)
+        self.assertEqual(result, 125)
+        track = {'duration': '2.0', 'r_frame_rate': '25.0'}
+        result = analyzer.get_frames(track)
+        self.assertIsInstance(result, int)
+        self.assertEqual(result, 50)
 
     def test_parse_streams(self):
-        streams = ffprobe.Analyzer(self.ffprobe_info).analyze()
+        streams = self.init_analyzer().analyze()
         self.assertEqual(len(streams), 2)
         video = streams[0]
         self.assertIsInstance(video, meta.VideoMeta)

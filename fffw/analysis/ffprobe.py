@@ -72,13 +72,15 @@ class Analyzer(base.Analyzer):
                 streams.append(self.video_meta_data(**stream))
             elif stream["codec_type"] == "audio":
                 streams.append(self.audio_meta_data(**stream))
+            else:  # pragma: no cover
+                pass
         return streams
 
     def get_duration(self, track: Dict[str, Any]) -> meta.TS:
         return self.maybe_parse_duration(track.get('duration'))
 
     def get_start(self, track: Dict[str, Any]) -> meta.TS:
-        return meta.TS(track.get('start_time', 0))
+        return self.maybe_parse_duration(track.get('start_time'))
 
     def get_bitrate(self, track: Dict[str, Any]) -> int:
         return int(track.get('bit_rate', 0))
@@ -92,10 +94,7 @@ class Analyzer(base.Analyzer):
     def get_samples(self, track: Dict[str, Any]) -> int:
         duration = self.get_duration(track)
         sampling_rate = self.get_sampling_rate(track)
-        if sampling_rate != 0:
-            samples = round(duration * sampling_rate)
-        else:
-            samples = 0
+        samples = round(duration * sampling_rate)
         return samples
 
     def get_par(self, track: Dict[str, Any]) -> float:
@@ -121,7 +120,7 @@ class Analyzer(base.Analyzer):
             frame_rate = self.maybe_parse_rational(track.get('r_frame_rate') or track['avg_frame_rate'])
         except KeyError:
             if duration == 0:
-                frame_rate = 0
+                frame_rate = 0.0
             else:
                 frame_rate = raw_frames / duration.total_seconds()
         return frame_rate

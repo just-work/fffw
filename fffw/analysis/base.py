@@ -5,6 +5,7 @@ from fffw.graph import meta
 
 
 class CommonKwargs(TypedDict):
+    bitrate: int
     duration: meta.TS
     start: meta.TS
     streams: List[str]
@@ -12,14 +13,12 @@ class CommonKwargs(TypedDict):
 
 
 class AudioKwargs(CommonKwargs):
-    bitrate: int
     channels: int
     sampling_rate: int
     samples: int
 
 
 class VideoKwargs(CommonKwargs):
-    bitrate: int
     width: int
     height: int
     par: float
@@ -42,24 +41,6 @@ class Analyzer(abc.ABC):
         kwargs = self.get_video_kwargs(track)
         return self.video_meta_class(**kwargs)
 
-    def get_video_duration(self, track: Dict[str, Any]) -> meta.TS:
-        return self.get_duration(track)
-
-    def get_audio_duration(self, track: Dict[str, Any]) -> meta.TS:
-        return self.get_duration(track)
-
-    def get_video_start(self, track: Dict[str, Any]) -> meta.TS:
-        return self.get_start(track)
-
-    def get_audio_start(self, track: Dict[str, Any]) -> meta.TS:
-        return self.get_start(track)
-
-    def get_video_bitrate(self, track: Dict[str, Any]) -> int:
-        return self.get_bitrate(track)
-
-    def get_audio_bitrate(self, track: Dict[str, Any]) -> int:
-        return self.get_bitrate(track)
-
     def get_video_common_kwargs(self, track: Dict[str, Any]) -> CommonKwargs:
         return self.get_common_kwargs(track)
 
@@ -68,12 +49,10 @@ class Analyzer(abc.ABC):
 
     def get_audio_kwargs(self, track: Dict[str, Any]) -> AudioKwargs:
         kwargs = self.get_audio_common_kwargs(track)
-        bitrate = self.get_audio_bitrate(track)
         channels = self.get_channels(track)
         sampling_rate = self.get_sampling_rate(track)
         samples = self.get_samples(track)
         return dict(
-            bitrate=bitrate,
             channels=channels,
             sampling_rate=sampling_rate,
             samples=samples,
@@ -83,7 +62,6 @@ class Analyzer(abc.ABC):
     def get_video_kwargs(self, track: Dict[str, Any]) -> VideoKwargs:
         kwargs = self.get_video_common_kwargs(track)
 
-        bitrate = self.get_video_bitrate(track)
         width = self.get_width(track)
         height = self.get_height(track)
         par = self.get_par(track)
@@ -93,7 +71,6 @@ class Analyzer(abc.ABC):
 
         return dict(
             device=None,
-            bitrate=bitrate,
             width=width,
             height=height,
             par=par,
@@ -106,6 +83,7 @@ class Analyzer(abc.ABC):
     def get_common_kwargs(self, track: Dict[str, Any]) -> CommonKwargs:
         duration = self.get_duration(track)
         start = self.get_start(track)
+        bitrate = self.get_bitrate(track)
         scene = meta.Scene(
             stream=None,
             duration=duration,
@@ -115,6 +93,7 @@ class Analyzer(abc.ABC):
         return {
             "duration": duration,
             "start": start,
+            "bitrate": bitrate,
             "scenes": [scene],
             "streams": [],
         }
@@ -128,41 +107,45 @@ class Analyzer(abc.ABC):
         return int(track.get('height', 0))
 
     @abc.abstractmethod
-    def get_duration(self, track: Dict[str, Any]) -> meta.TS:
+    def analyze(self) -> List[meta.Meta]:  # pragma: no cover
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_start(self, track: Dict[str, Any]) -> meta.TS:
+    def get_duration(self, track: Dict[str, Any]) -> meta.TS:  # pragma: no cover
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_bitrate(self, track: Dict[str, Any]) -> int:
+    def get_start(self, track: Dict[str, Any]) -> meta.TS:  # pragma: no cover
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_channels(self, track: Dict[str, Any]) -> int:
+    def get_bitrate(self, track: Dict[str, Any]) -> int:  # pragma: no cover
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_sampling_rate(self, track: Dict[str, Any]) -> int:
+    def get_channels(self, track: Dict[str, Any]) -> int:  # pragma: no cover
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_samples(self, track: Dict[str, Any]) -> int:
+    def get_sampling_rate(self, track: Dict[str, Any]) -> int:  # pragma: no cover
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_par(self, track: Dict[str, Any]) -> float:
+    def get_samples(self, track: Dict[str, Any]) -> int:  # pragma: no cover
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_dar(self, track: Dict[str, Any]) -> float:
+    def get_par(self, track: Dict[str, Any]) -> float:  # pragma: no cover
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_frame_rate(self, track: Dict[str, Any]) -> float:
+    def get_dar(self, track: Dict[str, Any]) -> float:  # pragma: no cover
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_frames(self, track: Dict[str, Any]) -> int:
+    def get_frame_rate(self, track: Dict[str, Any]) -> float:  # pragma: no cover
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def get_frames(self, track: Dict[str, Any]) -> int:  # pragma: no cover
         raise NotImplementedError

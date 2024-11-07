@@ -84,7 +84,7 @@ class Analyzer(base.Analyzer):
         return dar
 
     def get_frame_rate(self, track: Dict[str, Any]) -> float:
-        duration = self.get_video_duration(track).total_seconds()
+        duration = self.get_duration(track).total_seconds()
         frames = self.get_frames(track)
         try:
             frame_rate = float(track['frame_rate'])
