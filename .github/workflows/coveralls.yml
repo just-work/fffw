@@ -1,7 +1,11 @@
-name: codecov
-on: [push, pull_request]
+on: ["push", "pull_request"]
+
+name: Test Coveralls
+
 jobs:
-  run:
+
+  build:
+    name: Build
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@master
@@ -15,11 +19,6 @@ jobs:
         pip install -q -e .
         coverage run -m unittest discover tests
         coverage xml
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v2
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: true
+
+    - name: Coveralls
+      uses: coverallsapp/github-action@v2
