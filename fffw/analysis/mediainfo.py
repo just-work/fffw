@@ -90,7 +90,7 @@ class Analyzer(base.Analyzer):
             frame_rate = float(track['frame_rate'])
         except KeyError:
             if duration == 0:
-                frame_rate = 0
+                frame_rate = 0.0
             else:
                 frame_rate = frames / duration
         return frame_rate

@@ -65,6 +65,115 @@ class MediaInfoAnyzerTestCase(CommonAnalyzerTests, TestCase):
     def init_analyzer(self) -> base.Analyzer:
         return mediainfo.Analyzer(self.media_info)
 
+    def test_maybe_parse_duration(self):
+        cases = (
+            (None, 0),
+            ("1200.0", 1.2),
+            ("1200", 1.2)
+        )
+        for value, expected in cases:
+            result = mediainfo.Analyzer.maybe_parse_duration(value)
+            self.assertIsInstance(result, meta.TS)
+            self.assertEqual(result, meta.TS(expected))
+
+    def test_timestamp_fields(self):
+        analyzer = self.init_analyzer()
+        cases = (
+            ('duration', 'get_duration'),
+            ('delay', 'get_start'),
+        )
+        for key, getter in cases:
+            getter = getattr(analyzer, getter)
+            track = {}
+            result = getter(track)
+            self.assertIsInstance(result, meta.TS)
+            self.assertEqual(result, meta.TS(0))
+            track[key] = '1200.0'
+            result = getter(track)
+            self.assertIsInstance(result, meta.TS)
+            self.assertEqual(result, meta.TS(1.2))
+
+    def test_integer_fields(self):
+        analyzer = self.init_analyzer()
+        cases = (
+            ('bit_rate', 'get_bitrate'),
+            ('channel_s', 'get_channels'),
+            ('sampling_rate', 'get_sampling_rate'),
+            ('width', 'get_width'),
+            ('height', 'get_height'),
+            ('samples_count', 'get_samples'),
+            ('frame_count', 'get_frames'),
+        )
+        for key, getter in cases:
+            getter = getattr(analyzer, getter)
+            track = {}
+            result = getter(track)
+            self.assertIsInstance(result, int)
+            self.assertEqual(result, 0)
+
+            track[key] = '100500'
+            result = getter(track)
+            self.assertIsInstance(result, int)
+            self.assertEqual(result, 100500)
+
+    def test_get_par(self):
+        analyzer = self.init_analyzer()
+        cases = (
+            (None, 1.0),
+            ('0.6', 0.6),
+        )
+        for value, expected in cases:
+            track = {}
+            if value is not None:
+                track['pixel_aspect_ratio'] = value
+            result = analyzer.get_par(track)
+            self.assertIsInstance(result, float)
+            self.assertEqual(result, expected)
+
+    def test_get_dar(self):
+        analyzer = self.init_analyzer()
+        track = {'display_aspect_ratio': '0.667'}
+        result = analyzer.get_dar(track)
+        self.assertIsInstance(result, float)
+        self.assertEqual(result, 0.667)
+        track = {'width': 640, 'height': 360, 'pixel_aspect_ratio': '0.667'}
+        result = analyzer.get_dar(track)
+        self.assertIsInstance(result, float)
+        self.assertAlmostEqual(result, 16/9*0.667, places=2)
+        track = {}
+        result = analyzer.get_dar(track)
+        self.assertNotEqual(result, result)  # float('nan')
+
+    def test_get_frame_rate(self):
+        analyzer = self.init_analyzer()
+        cases = (
+            (None, 0.0),
+            ('frame_rate', 25.0),
+        )
+        for key, expected in cases:
+            track = {}
+            if key is not None:
+                track[key] = '25.0'
+            result = analyzer.get_frame_rate(track)
+            self.assertIsInstance(result, float)
+            self.assertEqual(result, expected)
+
+        cases = (
+            ('50', '2000.0', 25.0),
+            (None, '2000.0', 0.0),
+            ('50', None, 0.0),
+        )
+
+        for frames, duration, expected in cases:
+            track = {}
+            if frames is not None:
+                track['frame_count'] = frames
+            if duration is not None:
+                track['duration'] = duration
+            result = analyzer.get_frame_rate(track)
+            self.assertIsInstance(result, float)
+            self.assertEqual(result, expected)
+
     def test_parse_streams(self):
         streams = self.init_analyzer().analyze()
         self.assertEqual(len(streams), 2)
@@ -185,6 +294,7 @@ class FFProbeAnyzerTestCase(CommonAnalyzerTests, TestCase):
         cases = (
             (None, 0),
             ("1.2", 1.2),
+            ("12", 12.0),
         )
         for value, expected in cases:
             result = ffprobe.Analyzer.maybe_parse_duration(value)
