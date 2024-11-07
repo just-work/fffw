@@ -261,7 +261,7 @@ class BaseWrapper(CommandMixin, Params):
             stdin: Union[None, str, TextIO] = None,
             timeout: Optional[float] = None) -> Tuple[int, str, str]:
         args = self.get_args()
-        self.logger.debug(self.get_cmd())
+        self.logger.info('[%s] %s', timeout, self.get_cmd())
         runner = self.runner(
             self.command, *args,
             stdin=stdin,

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, replace, asdict
-from typing import cast, Tuple
+from typing import cast, Tuple, TYPE_CHECKING
 
 from fffw.encoding import *
 from fffw.encoding.vector import SIMD, Vector
@@ -38,8 +38,8 @@ class AnotherFilter(VideoFilter):
 class VectorTestCase(BaseTestCase):
     def setUp(self) -> None:
         super().setUp()
-        self.video_meta = video_meta_data(width=1920, height=1080)
-        self.audio_meta = audio_meta_data(bit_rate=128000)
+        self.video_meta = self.video_meta_data(width=1920, height=1080)
+        self.audio_meta = self.audio_meta_data(bitrate=128000)
         self.audio_bitrate = 64000
         self.source = input_file('input.mp4',
                                  Stream(VIDEO, self.video_meta),
@@ -110,7 +110,7 @@ class VectorTestCase(BaseTestCase):
         with self.subTest("codec meta"):
             expected = replace(self.audio_meta, bitrate=self.audio_bitrate)
             simd = SIMD(self.source, self.output1)
-            a = a > simd
+            a = cast(Vector, a > simd)
             self.assertEqual(a.meta, expected)
 
     def test_vector_metadata_for_multiple_streams(self):
@@ -311,8 +311,8 @@ class VectorTestCase(BaseTestCase):
         """
         If necessary, streams may be also split.
         """
-        video_stream = Stream(VIDEO, video_meta_data())
-        logo = self.simd < input_file('logo.png', video_stream)
+        video_stream = Stream(VIDEO, self.video_meta_data())
+        logo = cast(Vector, self.simd < input_file('logo.png', video_stream))
         overlay = logo | Overlay(0, 0)
 
         v = self.simd.video.connect(Scale, params=[(1280, 720), (640, 360)])
@@ -340,7 +340,7 @@ class VectorTestCase(BaseTestCase):
         """
         Overlay may be applied conditionally.
         """
-        logo = input_file('logo.png', Stream(VIDEO, video_meta_data()))
+        logo = input_file('logo.png', Stream(VIDEO, self.video_meta_data()))
         self.simd < logo
         overlay = logo | Overlay(0, 0)
 
@@ -364,8 +364,8 @@ class VectorTestCase(BaseTestCase):
         """
         Concat filter may be applied conditionally.
         """
-        vstream = Stream(VIDEO, video_meta_data())
-        astream = Stream(AUDIO, audio_meta_data())
+        vstream = Stream(VIDEO, self.video_meta_data())
+        astream = Stream(AUDIO, self.audio_meta_data())
         preroll = input_file('preroll.mp4', vstream, astream)
         self.simd < preroll
 
@@ -393,7 +393,7 @@ class VectorTestCase(BaseTestCase):
     def test_connect_filter_to_a_vector(self):
         """ Plain filter can be connected to a stream vector."""
         logo = input_file('logo.png',
-                          Stream(VIDEO, video_meta_data(width=64, height=64)))
+                          Stream(VIDEO, self.video_meta_data(width=64, height=64)))
         self.simd < logo
         overlay = self.simd.video | Overlay(0, 0)
         # checking that Vector.__ror__ works
@@ -416,9 +416,9 @@ class VectorTestCase(BaseTestCase):
 
     def test_connect_stream_to_simd(self):
         """ Plain input stream can be connected to a SIMD instance."""
-        vstream = Stream(VIDEO, video_meta_data(width=640, height=360))
-        astream = Stream(AUDIO, audio_meta_data())
-        preroll = self.simd < input_file('preroll.mp4', vstream, astream)
+        vstream = Stream(VIDEO, self.video_meta_data(width=640, height=360))
+        astream = Stream(AUDIO, self.audio_meta_data())
+        preroll = cast(Input, self.simd < input_file('preroll.mp4', vstream, astream))
 
         vconcat = vstream | Concat(VIDEO, input_count=2)
         aconcat = astream | Concat(AUDIO, input_count=2)
@@ -452,9 +452,13 @@ class VectorTestCase(BaseTestCase):
         """
         A filter with `init=False` param is cloned correctly.
         """
+        if TYPE_CHECKING:
+            from _typeshed import DataclassInstance
+        else:
+            DataclassInstance = object
 
         @dataclass
-        class MyFilter(filters.VideoFilter):
+        class MyFilter(filters.VideoFilter, DataclassInstance):
             my_flag: bool = param(init=False, default=True)
 
         f = MyFilter()

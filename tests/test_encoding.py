@@ -1,9 +1,9 @@
 from dataclasses import dataclass
-from unittest import TestCase
 
-from fffw.graph import StreamType, VIDEO, AUDIO, video_meta_data
-from fffw.graph import meta
 from fffw.encoding import inputs, outputs, codecs, Upload, VideoCodec, filters
+from fffw.graph import StreamType, VIDEO, AUDIO
+from fffw.graph import meta
+from tests.base import BaseTestCase
 
 
 class H264Cuda(codecs.VideoCodec):
@@ -16,7 +16,7 @@ class ScaleNPP(filters.Scale):
     hardware = 'cuda'
 
 
-class InputsTestCase(TestCase):
+class InputsTestCase(BaseTestCase):
     """ Checks ffmpeg inputs configuration."""
 
     def setUp(self) -> None:
@@ -76,8 +76,7 @@ class InputsTestCase(TestCase):
         """
         Hardware-decoded input could not be passed to CPU codec and so on.
         """
-        vs = inputs.Stream(StreamType.VIDEO,
-                           meta=video_meta_data(width=640, height=360))
+        vs = inputs.Stream(StreamType.VIDEO, meta=self.video_meta_data())
         src = inputs.Input(streams=(vs,),
                            hardware='cuda',
                            device='foo')
@@ -96,16 +95,10 @@ class InputsTestCase(TestCase):
         src.video | ScaleNPP(640, 360) > H264Cuda()
 
 
-class OutputsTestCase(TestCase):
+class OutputsTestCase(BaseTestCase):
     def setUp(self) -> None:
-        self.video_metadata = meta.video_meta_data(
-            width=1920,
-            height=1080,
-            dar=1.777777778,
-            par=1.0,
-            duration=300.0,
-        )
-        self.audio_metadata = meta.audio_meta_data()
+        self.video_metadata = self.video_meta_data()
+        self.audio_metadata = self.audio_meta_data()
 
         self.source = inputs.Input(
             input_file='input.mp4',
